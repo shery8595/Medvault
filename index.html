@@ -17,115 +17,22 @@
         }
     </style>
     <script>
-        // ============================================================
-        // MEDVAULT COMPREHENSIVE PRODUCTION DEBUGGER
-        // ============================================================
-
-        // --- Checkpoint tracker ---
-        var _checkpoints = [];
-        var _debugPanel = null;
-
-        function _cp(label) {
-            var ts = new Date().toISOString().substr(11, 12);
-            _checkpoints.push({ label: label, ts: ts });
-            console.log('[MV-CP] ' + ts + ' | ' + label);
-            if (_debugPanel) _refreshPanel();
-        }
-
-        function _refreshPanel() {
-            var html = '<b style="color:#38bdf8">MedVault Init Checkpoints</b><br><br>';
-            for (var i = 0; i < _checkpoints.length; i++) {
-                var cp = _checkpoints[i];
-                html += '<span style="color:#6ee7b7">[' + cp.ts + ']</span> ' + cp.label + '<br>';
-            }
-            _debugPanel.innerHTML = html;
-        }
-
-        function _mountPanel() {
-            _debugPanel = document.createElement('div');
-            _debugPanel.id = 'mv-debug-panel';
-            _debugPanel.style.cssText = [
-                'position:fixed', 'bottom:0', 'right:0', 'width:420px', 'max-height:50vh',
-                'background:rgba(3,7,18,0.96)', 'color:#e2e8f0', 'padding:14px 18px',
-                'font-family:monospace', 'font-size:11px', 'line-height:1.7',
-                'z-index:999999', 'overflow-y:auto', 'border-top:2px solid #38bdf8',
-                'border-left:2px solid #38bdf8', 'border-top-left-radius:10px'
-            ].join(';');
-            document.body.appendChild(_debugPanel);
-            _refreshPanel();
-        }
-
-        // --- Error overlay builder ---
-        function _showError(kind, message, detail, stack) {
-            // Remove debug panel
-            if (_debugPanel && _debugPanel.parentNode) _debugPanel.parentNode.removeChild(_debugPanel);
-
-            var checkpointHtml = _checkpoints.map(function(cp) {
-                return '<div style="color:#6ee7b7">[' + cp.ts + '] ' + cp.label + '</div>';
-            }).join('');
-
-            var overlay = document.createElement('div');
-            overlay.style.cssText = [
-                'position:fixed', 'top:0', 'left:0', 'width:100%', 'height:100%',
-                'background:rgba(3,7,18,0.97)', 'color:#f87171', 'padding:30px',
-                'z-index:999999', 'font-family:monospace', 'overflow:auto',
-                'line-height:1.6', 'box-sizing:border-box'
-            ].join(';');
-
-            overlay.innerHTML = [
-                '<h1 style="color:#ef4444;margin:0 0 16px;font-size:22px">&#x1F6D1; MedVault ' + kind + '</h1>',
-                '<div style="background:#111827;padding:18px;border-radius:10px;border:1px solid #374151;margin-bottom:14px">',
-                '  <p style="color:#fbbf24;font-weight:bold;margin:0 0 8px;font-size:14px">Message:</p>',
-                '  <pre style="color:#fff;margin:0;white-space:pre-wrap;font-size:13px">' + _esc(message) + '</pre>',
-                (detail ? '  <p style="color:#f87171;margin:10px 0 4px;font-size:12px">' + _esc(detail) + '</p>' : ''),
-                '</div>',
-                '<div style="background:#111827;padding:18px;border-radius:10px;border:1px solid #374151;margin-bottom:14px">',
-                '  <p style="color:#fbbf24;font-weight:bold;margin:0 0 8px;font-size:14px">Stack Trace:</p>',
-                '  <pre style="color:#fda4af;margin:0;white-space:pre-wrap;font-size:12px">' + _esc(stack || 'No stack available') + '</pre>',
-                '</div>',
-                '<div style="background:#111827;padding:18px;border-radius:10px;border:1px solid #374151;margin-bottom:18px">',
-                '  <p style="color:#fbbf24;font-weight:bold;margin:0 0 10px;font-size:14px">Init Checkpoints (last reached = failing stage):</p>',
-                checkpointHtml || '<div style="color:#6b7280">No checkpoints recorded</div>',
-                '</div>',
-                '<div style="color:#9ca3af;font-size:11px;margin-bottom:12px">',
-                '  UA: ' + navigator.userAgent + '<br>',
-                '  Time: ' + new Date().toISOString(),
-                '</div>',
-                '<button onclick="location.reload()" style="background:#ef4444;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px">Hard Refresh</button>',
-                '&nbsp;&nbsp;',
-                '<button onclick="this.previousElementSibling.previousElementSibling.style.display=\'block\'" ',
-                'onclick="navigator.clipboard&&navigator.clipboard.writeText(document.querySelector(\'#mv-err-pre\').innerText)" ',
-                'style="background:#1d4ed8;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px" ',
-                'onclick="navigator.clipboard.writeText(\'' + _esc(message) + '\\n' + _esc(stack||'') + '\')" ',
-                '>Copy Error</button>'
-            ].join('\n');
-
-            document.body.appendChild(overlay);
-        }
-
-        function _esc(s) {
-            return String(s || '')
-                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                .replace(/"/g,'&quot;');
-        }
-
-        // --- Core Globals ---
-        _cp('index.html: inline script start');
-
-        window.LOG_DEBUG = function(msg, data) {
-            _cp('LOG_DEBUG: ' + msg);
-            console.log('[MEDVAULT-DEBUG]', msg, data || '');
+        // --- ADVANCED FHEVM PRODUCTION POLYFILLS ---
+        window.LOG_DEBUG = (msg, data) => {
+            console.log(`[MEDVAULT-DEBUG] ${msg}`, data || '');
         };
 
+        // 1. Core Globals
         window.global = window;
         window.process = {
             env: { NODE_ENV: 'production' },
-            nextTick: function(cb) { setTimeout(cb, 0); },
+            nextTick: (cb) => setTimeout(cb, 0),
             browser: true,
-            cwd: function() { return '/'; }
+            cwd: () => '/'
         };
-        _cp('index.html: globals set (process, global)');
 
+        // 2. Class-based placeholders to prevent "prototype of undefined" crashes
+        // These are overwritten by polyfills.ts once the bundle loads.
         if (!window.EventEmitter) {
             function EventEmitter() {}
             EventEmitter.prototype = {};
@@ -136,37 +43,25 @@
             Stream.prototype = {};
             window.Stream = Stream;
         }
-        window.Buffer = window.Buffer || { isBuffer: function() { return false; } };
-        _cp('index.html: placeholder polyfills set (EventEmitter, Stream, Buffer)');
+        window.Buffer = window.Buffer || { isBuffer: () => false };
 
-        // --- Catch ALL errors (sync) ---
-        window.addEventListener('error', function(event) {
-            _cp('CAUGHT window.onerror: ' + event.message);
-            _showError(
-                'Runtime Error',
-                event.message,
-                'at ' + event.filename + ':' + event.lineno + ':' + event.colno,
-                event.error ? event.error.stack : null
-            );
+        // 3. Error Trapping
+        window.addEventListener('error', (event) => {
+            const errorOverlay = document.createElement('div');
+            errorOverlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(3,7,18,0.95);color:#f87171;padding:40px;z-index:99999;font-family:monospace;overflow:auto;line-height:1.6;border:2px solid #ef4444;";
+            errorOverlay.innerHTML = `
+                <h1 style="color:#ef4444;margin-bottom:20px;font-size:24px;">🛑 MedVault Runtime Crash</h1>
+                <div style="background:#111827;padding:20px;border-radius:12px;border:1px solid #374151;">
+                    <p style="color:#fff;font-weight:bold;margin-top:0;">Error: ${event.message}</p>
+                    <p style="color:#9ca3af;font-size:12px;">Location: ${event.filename}:${event.lineno}:${event.colno}</p>
+                    <hr style="border:0;border-top:1px solid #374151;margin:20px 0;">
+                    <pre style="white-space:pre-wrap;color:#fda4af;font-size:13px;">${event.error ? event.error.stack : 'No stack trace available'}</pre>
+                </div>
+                <p style="margin-top:30px;color:#9ca3af;font-size:14px;">Please take a screenshot and report this to the development team.</p>
+                <button onclick="location.reload()" style="margin-top:20px;background:#ef4444;color:white;border:none;padding:12px 24px;border-radius:8px;font-weight:bold;cursor:pointer;">Hard Refresh</button>
+            `;
+            document.body.appendChild(errorOverlay);
         });
-
-        // --- Catch unhandled promise rejections (THIS WAS MISSING BEFORE) ---
-        window.addEventListener('unhandledrejection', function(event) {
-            var reason = event.reason;
-            var message = reason instanceof Error ? reason.message : String(reason);
-            var stack = reason instanceof Error ? reason.stack : null;
-            _cp('CAUGHT unhandledrejection: ' + message);
-            _showError('Unhandled Promise Rejection', message, null, stack);
-        });
-
-        _cp('index.html: error listeners attached');
-
-        // Mount the checkpoint panel as soon as DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', _mountPanel);
-        } else {
-            _mountPanel();
-        }
     </script>
 </head>
 
