@@ -29,9 +29,8 @@ export function LandingLayout({ children }: { children: React.ReactNode }) {
             <div className="flex h-10 w-12 items-center justify-center transition-colors overflow-hidden rounded-xl">
               <img src="/logo.png" alt="MedVault Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-bold text-[17px] tracking-tight text-slate-900 dark:text-white">MedVault</span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">by Zama FHE</span>
+            <div className="flex flex-col leading-none justify-center">
+              <span className="font-bold text-[17px] tracking-tight text-slate-900 dark:text-white mt-1">MedVault</span>
             </div>
           </Link>
 
