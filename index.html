@@ -18,7 +18,10 @@
     </style>
     <script>
         window.global = window;
-        window.process = { env: {} };
+        window.process = { env: {}, nextTick: (cb) => setTimeout(cb, 0), browser: true };
+        // Defensive placeholders for early-loading dependencies
+        window.EventEmitter = window.EventEmitter || function () { };
+        window.Stream = window.Stream || function () { };
     </script>
 </head>
 
