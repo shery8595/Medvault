@@ -1,5 +1,5 @@
 // @ts-ignore
-if (window.LOG_DEBUG) window.LOG_DEBUG('polyfills.ts: Initializing Gold Standard Polyfills...');
+if (window._cp) window._cp('polyfills.ts: module start, importing...');
 
 import { Buffer } from 'buffer';
 import process from 'process';
@@ -9,7 +9,7 @@ import Stream from 'stream-browserify';
 import inherits from 'inherits';
 
 // @ts-ignore
-if (window.LOG_DEBUG) window.LOG_DEBUG('polyfills.ts: Assigning global dependencies...');
+if (window._cp) window._cp('polyfills.ts: all imports resolved, assigning globals...');
 
 // @ts-ignore
 window.Buffer = Buffer;
@@ -35,6 +35,6 @@ window.Writable = Stream.Writable;
 window.Transform = Stream.Transform;
 
 // @ts-ignore
-if (window.LOG_DEBUG) window.LOG_DEBUG('polyfills.ts: Gold Standard Complete.');
+if (window._cp) window._cp('polyfills.ts: ALL GLOBALS ASSIGNED ✓');
 
 export { };
