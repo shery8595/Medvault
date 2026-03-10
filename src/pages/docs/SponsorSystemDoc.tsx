@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 
 const consentFlowChart = `
@@ -58,7 +58,16 @@ export function SponsorSystemDoc() {
                     <li><strong>UI Unlocking:</strong> The frontend DApp reads the user's wallet address against the GraphQL endpoint and dynamically mounts the "Create Trial" and "Analytics" views.</li>
                 </ol>
 
-                <MermaidDiagram chart={consentFlowChart} title="Cryptographic Consent & Decryption Flow" />
+                <div className="bg-slate-800/50 p-6 mt-6 rounded-xl border border-slate-700/50 mb-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">Cryptographic Consent & Decryption Flow</h3>
+                    <div className="text-slate-300 space-y-4">
+                        <p>1. <strong>Sponsor</strong> requests access to patient profile</p>
+                        <p>2. <strong>Patient</strong> receives notification and generates re-encryption key via KMS</p>
+                        <p>3. <strong>Patient</strong> approves, sending key to KMS with Sponsor's target public key</p>
+                        <p>4. <strong>KMS</strong> re-encrypts FHE ciphertexts to Sponsor's key</p>
+                        <p>5. <strong>Sponsor</strong> downloads re-encrypted ciphertexts and decrypts locally</p>
+                    </div>
+                </div>
 
                 <CodeBlock
                     filename="SponsorRegistry.sol (Ownership)"

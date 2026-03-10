@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Layers, Settings, Shield, Zap, Loader2 } from "lucide-react";
 
@@ -59,7 +59,17 @@ export function FrontendArchitectureDoc() {
                     Rather than a monolithic state store (like Redux), MedVault uses a <strong>layered React Context</strong> architecture. Each context layer has a specific responsibility, and lower layers can safely assume the upper layers are already initialized.
                 </p>
 
-                <MermaidDiagram chart={contextTreeChart} title="React Component Context Tree" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">React Component Context Tree</h3>
+                    <div className="text-slate-300 space-y-2">
+                        <p className="font-mono text-indigo-400">1. Web3Provider (WAGMI/RainbowKit)</p>
+                        <p className="font-mono pl-4 text-emerald-400">2. ApolloProvider (GraphQL Subgraph)</p>
+                        <p className="font-mono pl-8 text-sky-400">3. AuthProvider (Role & Session Management)</p>
+                        <p className="font-mono pl-12 text-violet-400">4. FhevmProvider (Zama FHE Instance & Keys)</p>
+                        <p className="font-mono pl-16 text-rose-400">5. NotificationProvider (Toast Alerts)</p>
+                        <p className="font-mono pl-20 text-slate-300">6. React Router & Pages</p>
+                    </div>
+                </div>
 
                 <div className="not-prose my-8 space-y-4">
                     {contexts.map(ctx => (

@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Coins, ShieldCheck, TrendingUp, Landmark, ArrowRight, Wallet } from "lucide-react";
 
@@ -43,24 +43,17 @@ export function PrivateStakingDoc() {
                 </p>
 
                 <div className="not-prose my-10 p-8 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                    <MermaidDiagram chart={`
-                        graph LR
-                            subgraph Enclave [MedVault Confidential Enclave]
-                                cETH[ConfidentialETH Contract]
-                                SM[StakingManager Contract]
-                            end
-                            subgraph Aave [Aave V3 Protocol]
-                                LP[WETH Liquidity Pool]
-                                aWETH[aWETH Yield Token]
-                            end
-
-                            Patient -- "Encrypted Intent" --> SM
-                            SM -- "Withdraw Reward" --> cETH
-                            cETH -- "Public ETH" --> SM
-                            SM -- "Supply ETH" --> LP
-                            LP -- "Mint" --> aWETH
-                            aWETH -- "Holdings" --> SM
-                    `} />
+                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8">
+                        <h3 className="text-xl font-semibold text-slate-200 mb-4">Staking Lifecycle</h3>
+                        <div className="text-slate-300 space-y-4">
+                            <p>1. <strong>Trial Setup:</strong> Sponsor deposits total reward pool</p>
+                            <p>2. <strong>Enrollment:</strong> Patient stakes deposit (encrypted condition)</p>
+                            <p>3. <strong>Trial Active:</strong> Both Sponsor and Patient funds locked in contract</p>
+                            <p>4. <strong>Completion:</strong> Evaluation checks condition via FHE</p>
+                            <p>5a. <strong>Success:</strong> Patient receives deposit + reward</p>
+                            <p>5b. <strong>Failure:</strong> Patient receives only deposit, reward returns to Sponsor</p>
+                        </div>
+                    </div>
                     <p className="text-center text-xs text-slate-400 mt-4 italic">Figure 1. High-level architecture of the Private Staking Gateway.</p>
                 </div>
 

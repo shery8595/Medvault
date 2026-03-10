@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { Callout } from "../../components/docs/Callout";
 import { AnimatedDiagram } from "../../components/docs/AnimatedDiagram";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Database, Shield, Activity, Users, Lock, Server } from "lucide-react";
 
@@ -104,7 +104,16 @@ export function ArchitectureDoc() {
                     </p>
                 </div>
 
-                <MermaidDiagram chart={architectureChart} title="System Component Architecture" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">System Component Architecture</h3>
+                    <ul className="text-slate-300 space-y-2 list-disc list-inside">
+                        <li><strong>Frontend DApp:</strong> React + Vite, interacting with Wallets.</li>
+                        <li><strong>Relayer SDK:</strong> @zama-fhe/relayer-sdk handling client-side FHE operations.</li>
+                        <li><strong>Smart Contracts:</strong> FHEVM compiled Solidity contracts managing state and Homomorphic ops.</li>
+                        <li><strong>The Graph Indexer:</strong> Indexes blockchain events to Postgres.</li>
+                        <li><strong>GraphQL API:</strong> Serves real-time indexed data to the frontend.</li>
+                    </ul>
+                </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 

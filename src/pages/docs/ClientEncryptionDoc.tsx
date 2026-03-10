@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Shield, Key, Cpu, Database, AlertTriangle, CheckCircle2 } from "lucide-react";
 
@@ -89,7 +89,16 @@ export function ClientEncryptionDoc() {
                     </div>
                 </div>
 
-                <MermaidDiagram chart={encryptionFlowChart} title="fhevmjs Encryption & Decryption Lifecycle" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8 mt-6">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">fhevmjs Encryption & Decryption Lifecycle</h3>
+                    <div className="text-slate-300 space-y-4">
+                        <p>1. <strong>Frontend</strong> initializes fhevmjs instance using the network's public key.</p>
+                        <p>2. <strong>Frontend</strong> encrypts raw numbers into ciphertexts locally in the browser.</p>
+                        <p>3. <strong>Frontend</strong> packages ciphertexts into a transaction and sends to blockchain.</p>
+                        <p>4. <strong>Smart Contract</strong> processes ciphertexts homomorphically without ever decrypting.</p>
+                        <p>5. <strong>Smart Contract</strong> calls ACL for selective decryption if required.</p>
+                    </div>
+                </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 

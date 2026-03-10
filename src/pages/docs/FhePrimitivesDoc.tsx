@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Zap, Lock, AlertTriangle, GitBranch, ArrowRight, Binary } from "lucide-react";
 
@@ -104,6 +104,15 @@ export function FhePrimitivesDoc() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8 mt-6">
+                        <h3 className="text-xl font-semibold text-slate-200 mb-4">Operations vs Gas Cost</h3>
+                        <ul className="text-slate-300 space-y-2 list-disc list-inside">
+                            <li><strong>euint32 Add/Sub:</strong> ~8M Gas (Extremely Fast)</li>
+                            <li><strong>euint32 Mul/Div:</strong> ~12M Gas (Fast)</li>
+                            <li><strong>euint32 Cmp (lt/gt/eq):</strong> ~15M Gas (Moderate)</li>
+                            <li><strong>euint32 Shift (shl/shr):</strong> ~18M Gas (Slow)</li>
+                        </ul>
                     </div>
                     <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400">Table 1. Encrypted type reference for MedVault contract development.</div>
                 </div>

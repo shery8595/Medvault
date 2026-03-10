@@ -1,6 +1,6 @@
 import { Prose } from "../../components/docs/Prose";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Fingerprint, Stethoscope, ShieldAlert, BadgeCheck, DatabaseBackup, Building2, Lock, CheckCircle2 } from "lucide-react";
 
@@ -64,7 +64,18 @@ export function UserGuideDoc() {
                     Patients are the absolute sovereign owners of their encrypted health data. Their workflow is a linear 4-step process, but each step involves distinct cryptographic operations.
                 </p>
 
-                <MermaidDiagram chart={patientJourneyChart} title="Patient State Machine" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">Patient State Machine</h3>
+                    <ul className="list-disc list-inside space-y-2 text-slate-300">
+                        <li><strong>Unregistered:</strong> Initial state</li>
+                        <li><strong>Registered:</strong> After sign up</li>
+                        <li><strong>Matching:</strong> Running FHE evaluation against trials</li>
+                        <li><strong>Matched:</strong> 100% eligibility achieved</li>
+                        <li><strong>Approved:</strong> Sponsor accepted the match</li>
+                        <li><strong>Staked:</strong> Tokens locked for trial</li>
+                        <li><strong>Completed:</strong> Trial finished, rewards claimed</li>
+                    </ul>
+                </div>
 
                 <div className="not-prose space-y-4 my-10">
                     {patientSteps.map((s, i) => (
@@ -97,7 +108,16 @@ export function UserGuideDoc() {
                     Sponsors are authorized pharmaceutical research institutions. They follow a strictly gated workflow that requires both off-chain KYC verification and on-chain admin approval before they can publish trials.
                 </p>
 
-                <MermaidDiagram chart={sponsorJourneyChart} title="Sponsor State Machine" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8 mt-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">Sponsor State Machine</h3>
+                    <ul className="list-disc list-inside space-y-2 text-slate-300">
+                        <li><strong>Trial Setup:</strong> Defining FHE criteria</li>
+                        <li><strong>Active:</strong> Recruiting patients</li>
+                        <li><strong>Reviewing:</strong> Checking matched patients and sending consent requests</li>
+                        <li><strong>Approved:</strong> Patient accepted</li>
+                        <li><strong>Closed:</strong> Trial capacity reached</li>
+                    </ul>
+                </div>
 
                 <div className="not-prose grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
                     {[

@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 
 const fheSequenceChart = `
@@ -50,7 +50,17 @@ export function EligibilityEngineDoc() {
                     The engine evaluates three core metrics simultaneously: Age, Blood Pressure, and HbA1c.
                 </p>
 
-                <MermaidDiagram chart={fheSequenceChart} title="FHE Verification Sequence" />
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8">
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">FHE Verification Sequence</h3>
+                    <div className="text-slate-300 space-y-2">
+                        <p>1. <strong>Patient</strong> generates FHE ciphertexts locally representing their medical history.</p>
+                        <p>2. <strong>Patient</strong> calls Smart Contract <code>applyForTrial(ciphertexts)</code>.</p>
+                        <p>3. <strong>Smart Contract</strong> loads Sponsor's predefined FHE conditions (minAge, bgType, etc).</p>
+                        <p>4. <strong>Smart Contract</strong> performs homomorphic comparisons strictly on-chain.</p>
+                        <p>5. <strong>Smart Contract</strong> decrypts the final boolean result (1 = Match, 0 = Reject).</p>
+                        <p>6. <strong>Blockchain</strong> emits Match event while keeping all patient inputs completely secret.</p>
+                    </div>
+                </div>
 
                 <CodeBlock
                     filename="EligibilityEngine.sol (Snippet: Engine Core)"

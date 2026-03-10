@@ -1,7 +1,7 @@
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
-import { MermaidDiagram } from "../../components/docs/MermaidDiagram";
+
 import { motion } from "framer-motion";
 import { Database, Zap, GitMerge, RefreshCcw } from "lucide-react";
 
@@ -54,7 +54,16 @@ export function SubgraphIndexingDoc() {
           ))}
         </div>
 
-        <MermaidDiagram chart={indexingFlowChart} title="Indexing Pipeline: Chain → Graph → Frontend" />
+        <div className="bg-slate-800/50 p-6 mt-6 rounded-xl border border-slate-700/50 mb-8">
+            <h3 className="text-xl font-semibold text-slate-200 mb-4">Indexing Pipeline: Chain → Graph → Frontend</h3>
+            <div className="text-slate-300 space-y-4">
+                <p>1. <strong>FHEVM Network</strong> emits events (ApplicationStatusUpdated, MatchesUpdated, etc.)</p>
+                <p>2. <strong>Graph Node</strong> detects blocks and trigger mapping scripts</p>
+                <p>3. <strong>AssemblyScript Mappings</strong> parse event data and update Postgres store</p>
+                <p>4. <strong>GraphQL API</strong> exposes the indexed data</p>
+                <p>5. <strong>React Frontend (Apollo Client)</strong> queries the API to render UI without RPC calls</p>
+            </div>
+        </div>
 
         <hr className="my-12 border-slate-200 dark:border-slate-800" />
 
