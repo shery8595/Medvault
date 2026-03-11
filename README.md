@@ -181,25 +181,37 @@ graph LR
 MedVault is built using a modern, fully decentralized Web3 stack tailored for Homomorphic Encryption.
 
 ```mermaid
-mindmap
-  root((MedVault Stack))
-    Frontend
-      React 18
-      Vite
-      Tailwind CSS
-      Framer Motion
-    Web3 & FHE
-      Zama fhevmjs
-      WAGMI / Viem
-      Ethers.js v5/v6
-    Smart Contracts
-      Solidity 0.8.24
-      Zama TFHE Library
-      Hardhat
-    Infrastructure
-      The Graph (Subgraphs)
-      Apollo GraphQL
-      Vercel Hosting
+graph TD
+    classDef default fill:#1e293b,stroke:#334155,stroke-width:1px,color:#f8fafc
+    classDef frontend fill:#312e81,stroke:#6366f1,stroke-width:2px,color:#f8fafc
+    classDef web3 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc
+    classDef contracts fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#f8fafc
+    classDef infra fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#f8fafc
+
+    subgraph "Frontend Layer"
+        R[React 18]:::frontend
+        V[Vite]:::frontend
+        T[Tailwind CSS]:::frontend
+        F[Framer Motion]:::frontend
+    end
+
+    subgraph "Web3 & FHE"
+        Z[fhevmjs]:::web3
+        W[WAGMI / Viem]:::web3
+        E[Ethers.js]:::web3
+    end
+
+    subgraph "Smart Contracts"
+        S[Solidity 0.8.24]:::contracts
+        TL[Zama TFHE Library]:::contracts
+        H[Hardhat]:::contracts
+    end
+
+    subgraph "Data & Infrastructure"
+        TG[The Graph]:::infra
+        A[Apollo]:::infra
+        VH[Vercel]:::infra
+    end
 ```
 
 *   **Frontend UI:** React 18, Vite, Tailwind CSS, Shadcn (Lucide Icons), Framer Motion for highly optimized animations.
