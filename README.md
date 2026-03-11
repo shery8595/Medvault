@@ -36,9 +36,15 @@ graph TD
         J -->|GraphQL API| A
     end
 
+    subgraph "Automation & Oracles"
+        K[Chainlink Automation] -->|Trigger PerformUpkeep| H
+    end
+
     classDef default fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9;
     classDef zama fill:#064e3b,stroke:#059669,stroke-width:2px,color:#ecfdf5;
+    classDef link fill:#1d4ed8,stroke:#2563eb,stroke-width:2px,color:#eff6ff;
     class E,F,G,H zama
+    class K link
 ```
 
 ---
@@ -73,9 +79,14 @@ erDiagram
 | **`EligibilityEngine.sol`** | Core Matching Logic | Homomorphic (CMUX) boundary checks on `euint32`. |
 | **`ConfidentialETH.sol`** | Privacy Wrapper | 1e12 scaled `euint32` encrypted balances to prevent tracking. |
 | **`StakingManager.sol`** | De-Fi Integration | Native Aave V3 yield generation on private assets. |
-| **`SponsorRegistry.sol`** | Identity & Access | Strict KYC gates before trials can be published. |
+| **`PatientRegistry.sol`** | Patient Identity | Manages encrypted health profiles (Age, BloodType, etc.). |
+| **`SponsorRegistry.sol`** | Sponsor Identity | Strict KYC & verification gates before trials are published. |
+| **`SponsorIncentiveVault.sol`** | Reward Governance | Escrows and locks reward pools for entire trials. |
+| **`TrialManager.sol`** | Trial Lifecycle | Handles trial creation, capacities, and active states. |
+| **`TrialMilestoneManager.sol`**| Phased Delivery | Automated milestone-based payouts for long trials. |
+| **`MedVaultAutomation.sol`** | Chainlink Upkeeps | Automates trial checkUpkeep and performUpkeep. |
+| **`ConsentManager.sol`** | Selective Decryption | Manages KMS re-encryption keys and patient approvals. |
 | **`DataAccessLog.sol`** | Compliance Audit | Immutable, anonymized HIPAA/GDPR access tracking. |
-| **`TrialMilestoneManager`** | Lifecycle Management | Automated milestone-based phased payouts. |
 
 ---
 
@@ -208,6 +219,7 @@ graph TD
         TG[The Graph]:::infra
         A[Apollo]:::infra
         VH[Vercel]:::infra
+        CA[Chainlink Automation]:::infra
     end
 ```
 
