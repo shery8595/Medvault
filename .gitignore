@@ -6,3 +6,15 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Hardhat/Build Artifacts
+artifacts/
+cache/
+typechain-types/
+fhevmTemp/
+
+# Logs and Backups
+deploy_output.txt
+test_output.txt
+*.bak
+metadata.json
