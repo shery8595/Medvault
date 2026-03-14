@@ -45,6 +45,50 @@ const edgeCases = [
     { icon: <Lock />, title: "Sponsor Key Compromise", color: "rose", desc: "If a sponsor's private key is leaked, the attacker gains the ability to read decrypted profiles of patients who previously granted consent to that specific sponsor wallet. MedVault's `SponsorRegistry` admin can call `emergencyRemoveSponsor()` to instantly terminate all trial activity associated with the compromised wallet." },
     { icon: <Building2 />, title: "FHE Node Downtime", color: "amber", desc: "The Zama Sepolia testnet is a research network and may experience downtime. When the FHE coprocessor is unavailable, `computeEligibility()` transactions will simply fail at the RPC level. The MedVault frontend catches these failures and shows a clear 'Network Unavailable' banner rather than silently freezing." },
 ];
+const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string; stepBadge?: string }> = {
+    blue: {
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+        cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
+        stepBadge: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+    },
+    teal: {
+        iconBg: "bg-teal-100 dark:bg-teal-900/30",
+        iconText: "text-teal-600 dark:text-teal-400",
+        cardBorder: "border-teal-200 dark:border-teal-900/40",
+        cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+        stepBadge: "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400",
+    },
+    purple: {
+        iconBg: "bg-purple-100 dark:bg-purple-900/30",
+        iconText: "text-purple-600 dark:text-purple-400",
+        cardBorder: "border-purple-200 dark:border-purple-900/40",
+        cardBg: "bg-purple-50/50 dark:bg-purple-950/10",
+        stepBadge: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+    },
+    emerald: {
+        iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+        iconText: "text-emerald-600 dark:text-emerald-400",
+        cardBorder: "border-emerald-200 dark:border-emerald-900/40",
+        cardBg: "bg-emerald-50/50 dark:bg-emerald-950/10",
+        stepBadge: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+    },
+    rose: {
+        iconBg: "bg-rose-100 dark:bg-rose-900/30",
+        iconText: "text-rose-600 dark:text-rose-400",
+        cardBorder: "border-rose-200 dark:border-rose-900/40",
+        cardBg: "bg-rose-50/50 dark:bg-rose-950/10",
+        stepBadge: "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400",
+    },
+    amber: {
+        iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        iconText: "text-amber-600 dark:text-amber-400",
+        cardBorder: "border-amber-200 dark:border-amber-900/40",
+        cardBg: "bg-amber-50/50 dark:bg-amber-950/10",
+        stepBadge: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+    },
+};
 
 export function UserGuideDoc() {
     return (
@@ -78,7 +122,9 @@ export function UserGuideDoc() {
                 </div>
 
                 <div className="not-prose space-y-4 my-10">
-                    {patientSteps.map((s, i) => (
+                    {patientSteps.map((s, i) => {
+                        const styles = colorStyles[s.color];
+                        return (
                         <motion.div
                             key={s.step}
                             initial={{ opacity: 0, x: -20 }}
@@ -87,7 +133,7 @@ export function UserGuideDoc() {
                             viewport={{ once: true }}
                             className="flex gap-5 items-start p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm"
                         >
-                            <div className={`p-3 rounded-2xl bg-${s.color}-100 dark:bg-${s.color}-900/30 text-${s.color}-600 dark:text-${s.color}-400 shrink-0 mt-0.5`}>
+                            <div className={`p-3 rounded-2xl ${styles.iconBg} ${styles.iconText} shrink-0 mt-0.5`}>
                                 {s.icon}
                             </div>
                             <div>
@@ -98,7 +144,8 @@ export function UserGuideDoc() {
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{s.desc}</p>
                             </div>
                         </motion.div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -125,13 +172,16 @@ export function UserGuideDoc() {
                         { step: "B", title: "On-Chain Allowlist", desc: "The MedVault admin multisig executes `addSponsor(address, name)` on the `SponsorRegistry`. The Subgraph indexes the event, unlocking trial creation in the UI.", color: "teal" },
                         { step: "C", title: "Trial Management", desc: "Sponsors create trials with encrypted requirements, review anonymized applicant counts via Subgraph, and issue accept/reject decisions which send encrypted messages.", color: "purple" },
                         { step: "D", title: "Automated Rewards", desc: "Upon acceptance, patients are automatically enrolled in the SponsorIncentiveVault. When the trial's end time is reached, Chainlink Automation automatically distributes the initial Milestone 0 screening reward without manual intervention.", color: "emerald" },
-                    ].map(s => (
-                        <div key={s.step} className={`p-5 rounded-2xl border border-${s.color}-200 dark:border-${s.color}-900/40 bg-white dark:bg-slate-900`}>
-                            <div className={`w-8 h-8 rounded-full bg-${s.color}-100 dark:bg-${s.color}-900/30 flex items-center justify-center font-bold font-mono text-${s.color}-600 dark:text-${s.color}-400 text-sm mb-3`}>{s.step}</div>
+                    ].map(s => {
+                        const styles = colorStyles[s.color];
+                        return (
+                        <div key={s.step} className={`p-5 rounded-2xl border ${styles.cardBorder} bg-white dark:bg-slate-900`}>
+                            <div className={`w-8 h-8 rounded-full ${styles.stepBadge} flex items-center justify-center font-bold font-mono text-sm mb-3`}>{s.step}</div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 mt-0">{s.title}</h4>
                             <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -142,15 +192,18 @@ export function UserGuideDoc() {
                 </p>
 
                 <div className="not-prose space-y-4 my-8">
-                    {edgeCases.map(e => (
-                        <div key={e.title} className={`p-5 rounded-2xl border border-${e.color}-200 dark:border-${e.color}-900/40 bg-${e.color}-50/50 dark:bg-${e.color}-950/10 flex gap-4 items-start`}>
-                            <div className={`p-2 rounded-xl bg-${e.color}-100 dark:bg-${e.color}-900/30 shrink-0 text-${e.color}-600 dark:text-${e.color}-400`}>{e.icon}</div>
+                    {edgeCases.map(e => {
+                        const styles = colorStyles[e.color];
+                        return (
+                        <div key={e.title} className={`p-5 rounded-2xl border ${styles.cardBorder} ${styles.cardBg} flex gap-4 items-start`}>
+                            <div className={`p-2 rounded-xl ${styles.iconBg} shrink-0 ${styles.iconText}`}>{e.icon}</div>
                             <div>
                                 <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1 mt-0">{e.title}</h4>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-0">{e.desc}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <Callout type="info" title="Data Retention Policy">

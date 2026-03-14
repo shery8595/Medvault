@@ -23,6 +23,33 @@ const gdprMapping = [
     { article: "Art. 7 — Conditions for Consent", implementation: "The `ConsentManager` contract requires explicit EIP-712 signatures from the patient before any data can be re-encrypted for a sponsor. Consent is granular (per-trial, per-sponsor) and revocable.", compliance: "Fully implemented on-chain" },
 ];
 
+const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string }> = {
+    teal: {
+        iconBg: "bg-teal-100 dark:bg-teal-900/30",
+        iconText: "text-teal-600 dark:text-teal-400",
+        cardBorder: "border-teal-200 dark:border-teal-900/40",
+         cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+    },
+    purple: {
+        iconBg: "bg-purple-100 dark:bg-purple-900/30",
+        iconText: "text-purple-600 dark:text-purple-400",
+        cardBorder: "border-purple-200 dark:border-purple-900/40",
+         cardBg: "bg-purple-50/50 dark:bg-purple-950/10",
+    },
+    blue: {
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+         cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
+    },
+    amber: {
+        iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        iconText: "text-amber-600 dark:text-amber-400",
+        cardBorder: "border-amber-200 dark:border-amber-900/40",
+         cardBg: "bg-amber-50/50 dark:bg-amber-950/10",
+    },
+};
+
 export function ComplianceDoc() {
     return (
         <motion.div>
@@ -211,9 +238,11 @@ dataAccessLog.log(
                         { title: "Cryptographic Signatures", desc: "Every transaction is signed with the user's Ethereum private key. EIP-712 structured data signatures provide additional typed, human-readable signature context. These signatures are non-repudiable and verifiable on-chain by any third party.", icon: <Lock className="w-5 h-5" />, color: "teal" },
                         { title: "Closed System Controls", desc: "The SponsorRegistry operates as a closed system for trial creation — only KYC-verified institutions can publish trials. Patient data submission is controlled by wallet ownership. No anonymous actors can modify critical state.", icon: <UserX className="w-5 h-5" />, color: "purple" },
                         { title: "Timestamp Authority", desc: "Block timestamps serve as the authoritative time source for all audit log entries. These timestamps are set by Ethereum validators and are accurate to within seconds. Chainlink Automation provides additional deadline enforcement for trial milestones.", icon: <Clock className="w-5 h-5" />, color: "amber" },
-                    ].map(item => (
-                        <div key={item.title} className={`p-5 rounded-2xl border border-${item.color}-200 dark:border-${item.color}-900/30 bg-${item.color}-50/50 dark:bg-${item.color}-950/10 flex gap-4 items-start`}>
-                            <div className={`p-2 rounded-xl bg-${item.color}-100 dark:bg-${item.color}-900/30 text-${item.color}-600 dark:text-${item.color}-400 shrink-0`}>
+                    ].map(item => {
+                        const styles = colorStyles[item.color];
+                        return (
+                        <div key={item.title} className={`p-5 rounded-2xl border ${styles.cardBorder} ${styles.cardBg} flex gap-4 items-start`}>
+                            <div className={`p-2 rounded-xl ${styles.iconBg} ${styles.iconText} shrink-0`}>
                                 {item.icon}
                             </div>
                             <div>
@@ -221,7 +250,8 @@ dataAccessLog.log(
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-0">{item.desc}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {/* Footer */}

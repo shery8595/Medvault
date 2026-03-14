@@ -5,6 +5,17 @@ import { Callout } from "../../components/docs/Callout";
 import { motion } from "framer-motion";
 import { Coins, ShieldCheck, TrendingUp, Landmark, ArrowRight, Wallet } from "lucide-react";
 
+const severityStyles: Record<string, { bg: string; text: string }> = {
+    "Medium": {
+        bg: "bg-amber-100 dark:bg-amber-900/30",
+        text: "text-amber-700 dark:text-amber-400"
+    },
+    "Low": {
+        bg: "bg-blue-100 dark:bg-blue-900/30",
+        text: "text-blue-700 dark:text-blue-400"
+    }
+};
+
 export function PrivateStakingDoc() {
     return (
         <motion.div>
@@ -147,10 +158,6 @@ contract StakingManager {
                     </div>
                 </div>
 
-                <Callout type="warning" title="Decentralization Notice">
-                    While the <code>StakingManager</code> is trustless, yield generated depends on Aave V3's protocol health and WETH liquidity. MedVault does not custody your staked assets; they are held in the pool until you unstake.
-                </Callout>
-
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 
                 <h2>IV. Yield Mathematics</h2>
@@ -207,15 +214,18 @@ contract StakingManager {
                         { title: "Smart Contract Risk", desc: "The StakingManager, ConfidentialETH, and their interactions with Aave introduce additional smart contract surface area. Each contract has been tested with 100+ test cases, but formal verification has not been completed.", severity: "Medium" },
                         { title: "FHE Liveness Dependency", desc: "If the Zama coprocessor experiences downtime, encrypted staking operations (deposits, withdrawals) will be blocked. Public ETH operations remain unaffected.", severity: "Low" },
                         { title: "Scaling Truncation", desc: "The 1e12 scaling factor means very small yield amounts may be lost to truncation. Over long staking periods with small balances, this can result in slightly lower effective APY than quoted.", severity: "Low" },
-                    ].map(risk => (
+                    ].map(risk => {
+                        const styles = severityStyles[risk.severity];
+                        return (
                         <div key={risk.title} className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{risk.title}</h4>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${risk.severity === "Medium" ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"}`}>{risk.severity}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${styles.bg} ${styles.text}`}>{risk.severity}</span>
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed m-0">{risk.desc}</p>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
             </Prose>

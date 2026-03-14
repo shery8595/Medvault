@@ -42,6 +42,27 @@ const sdkMethods = [
     { method: "instance.decrypt(contract, token, ciphertext)", returns: "bigint", desc: "Decrypts a single ciphertext using the viewing token. Requires prior TFHE.allow() on-chain." },
 ];
 
+const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string }> = {
+    teal: {
+        iconBg: "bg-teal-100 dark:bg-teal-900/30",
+        iconText: "text-teal-600 dark:text-teal-400",
+        cardBorder: "border-teal-200 dark:border-teal-900/40",
+        cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+    },
+    purple: {
+        iconBg: "bg-purple-100 dark:bg-purple-900/30",
+        iconText: "text-purple-600 dark:text-purple-400",
+        cardBorder: "border-purple-200 dark:border-purple-900/40",
+        cardBg: "bg-purple-50/50 dark:bg-purple-950/10",
+    },
+    amber: {
+        iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        iconText: "text-amber-600 dark:text-amber-400",
+        cardBorder: "border-amber-200 dark:border-amber-900/40",
+        cardBg: "bg-amber-50/50 dark:bg-amber-950/10",
+    },
+};
+
 export function ClientEncryptionDoc() {
     return (
         <motion.div>
@@ -59,13 +80,16 @@ export function ClientEncryptionDoc() {
                         { icon: <Shield className="w-5 h-5" />, title: "Zero-Knowledge Proofs", desc: "Every encryption call generates a ZK validity proof submitted alongside the ciphertext.", color: "teal" },
                         { icon: <Key className="w-5 h-5" />, title: "EIP-712 Consent", desc: "Decryption requires a MetaMask signature—sponsor cannot read results without patient approval.", color: "purple" },
                         { icon: <Cpu className="w-5 h-5" />, title: "Coprocessor-Backed", desc: "The Zama network's FHE coprocessor performs all actual computation — the EVM never sees plaintext.", color: "amber" },
-                    ].map(g => (
+                    ].map(g => {
+                        const styles = colorStyles[g.color];
+                        return (
                         <div key={g.title} className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                            <div className={`p-2 w-fit rounded-xl bg-${g.color}-100 dark:bg-${g.color}-900/30 text-${g.color}-600 dark:text-${g.color}-400 mb-3`}>{g.icon}</div>
+                            <div className={`p-2 w-fit rounded-xl ${styles.iconBg} ${styles.iconText} mb-3`}>{g.icon}</div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1">{g.title}</h4>
                             <p className="text-xs text-slate-500 leading-relaxed">{g.desc}</p>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />

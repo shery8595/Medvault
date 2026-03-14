@@ -34,11 +34,23 @@ const depChecklist = [
     { label: "App loads and shows FHE Ready indicator", cat: "Frontend" },
 ];
 
-const catColors: Record<string, string> = {
-    "Pre-deploy": "slate",
-    "Contract": "teal",
-    "Subgraph": "blue",
-    "Frontend": "purple",
+const catColorStyles: Record<string, { bg: string; text: string }> = {
+    "Pre-deploy": {
+        bg: "bg-slate-100 dark:bg-slate-800",
+        text: "text-slate-700 dark:text-slate-300"
+    },
+    "Contract": {
+        bg: "bg-teal-100 dark:bg-teal-900/30",
+        text: "text-teal-700 dark:text-teal-400"
+    },
+    "Subgraph": {
+        bg: "bg-blue-100 dark:bg-blue-900/30",
+        text: "text-blue-700 dark:text-blue-400"
+    },
+    "Frontend": {
+        bg: "bg-purple-100 dark:bg-purple-900/30",
+        text: "text-purple-700 dark:text-purple-400"
+    }
 };
 
 export function DeploymentGuideDoc() {
@@ -60,12 +72,12 @@ export function DeploymentGuideDoc() {
                     </h3>
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
                         {depChecklist.map((item, i) => {
-                            const color = catColors[item.cat];
+                            const styles = catColorStyles[item.cat];
                             return (
                                 <div key={i} className="flex items-center gap-4 px-5 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <div className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 shrink-0" />
                                     <span className="text-sm text-slate-700 dark:text-slate-300 flex-1">{item.label}</span>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-${color}-100 dark:bg-${color}-900/30 text-${color}-700 dark:text-${color}-400`}>{item.cat}</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${styles.bg} ${styles.text}`}>{item.cat}</span>
                                 </div>
                             );
                         })}

@@ -15,6 +15,33 @@ const threatModel = [
     { vector: "Event Log Metadata Analysis", severity: "Low", mitigation: "MedVault events emit public structural metadata (trial ID, patient address, status enum) but never emit ciphertexts or health values. An observer can see that an application occurred but cannot determine the match score or patient metrics.", status: "Accepted Risk" },
 ];
 
+const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string }> = {
+    teal: {
+        iconBg: "bg-teal-100 dark:bg-teal-900/30",
+        iconText: "text-teal-600 dark:text-teal-400",
+        cardBorder: "border-teal-200 dark:border-teal-900/40",
+        cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+    },
+    purple: {
+        iconBg: "bg-purple-100 dark:bg-purple-900/30",
+        iconText: "text-purple-600 dark:text-purple-400",
+        cardBorder: "border-purple-200 dark:border-purple-900/40",
+        cardBg: "bg-purple-50/50 dark:bg-purple-950/10",
+    },
+    blue: {
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+        cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
+    },
+    amber: {
+        iconBg: "bg-amber-100 dark:bg-amber-900/30",
+        iconText: "text-amber-600 dark:text-amber-400",
+        cardBorder: "border-amber-200 dark:border-amber-900/40",
+        cardBg: "bg-amber-50/50 dark:bg-amber-950/10",
+    },
+};
+
 export function SecurityModelDoc() {
     return (
         <motion.div>
@@ -91,15 +118,18 @@ export function SecurityModelDoc() {
                         { icon: <Eye className="w-5 h-5" />, title: "Circuit Privacy", desc: "The output ciphertext of a homomorphic computation does not reveal the circuit (function) that was evaluated. The encrypted eligibility score does not leak whether the patient passed or failed any individual health check — only the final aggregated result.", color: "purple" },
                         { icon: <Fingerprint className="w-5 h-5" />, title: "Forward Secrecy", desc: "Each encryption uses fresh randomness. Even if the same patient re-encrypts the same age value, the resulting ciphertext will be entirely different. This prevents correlation attacks across multiple registrations or profile updates.", color: "blue" },
                         { icon: <Ban className="w-5 h-5" />, title: "Post-Quantum Resistance", desc: "The TFHE cryptosystem is built on lattice-based assumptions (LWE/RLWE) which are believed to be resistant to quantum computer attacks. Unlike RSA or ECDSA, MedVault's encryption layer is not threatened by Shor's algorithm.", color: "amber" },
-                    ].map(g => (
-                        <div key={g.title} className={`p-6 rounded-2xl border border-${g.color}-200 dark:border-${g.color}-900/30 bg-white dark:bg-slate-900`}>
-                            <div className={`p-2.5 rounded-xl bg-${g.color}-100 dark:bg-${g.color}-900/30 text-${g.color}-600 dark:text-${g.color}-400 w-fit mb-3`}>
+                    ].map(g => {
+                        const styles = colorStyles[g.color];
+                        return (
+                        <div key={g.title} className={`p-6 rounded-2xl border ${styles.cardBorder} bg-white dark:bg-slate-900`}>
+                            <div className={`p-2.5 rounded-xl ${styles.iconBg} ${styles.iconText} w-fit mb-3`}>
                                 {g.icon}
                             </div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 mt-0">{g.title}</h4>
                             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-0">{g.desc}</p>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -153,9 +183,11 @@ export function SecurityModelDoc() {
                         { title: "Zama Network Public Key", desc: "A 2048-byte TFHE bootstrapping key fetched once per session via an `eth_call` to the Zama precompile address. Used by `fhevmjs` to generate valid ciphertexts that the coprocessor can process. This key is public — it enables encryption, not decryption.", icon: <Key className="w-5 h-5" />, color: "teal" },
                         { title: "EIP-712 Viewing Key (Re-encryption Token)", desc: "Generated per-user, per-contract by signing a structured EIP-712 message in MetaMask. This token authorizes the Zama KMS to perform threshold decryption of a specific ciphertext handle and return the plaintext exclusively to the token holder. Tokens can be time-scoped.", icon: <Fingerprint className="w-5 h-5" />, color: "purple" },
                         { title: "Zama KMS Threshold Shares", desc: "The decryption key for the FHE scheme is split across multiple Zama validator nodes using Shamir's Secret Sharing. No single node possesses the complete decryption key. A threshold (e.g., 3-of-5) of validators must collaborate to decrypt any ciphertext, preventing any single point of key compromise.", icon: <Users className="w-5 h-5" />, color: "amber" },
-                    ].map(k => (
-                        <div key={k.title} className={`p-5 rounded-2xl border border-${k.color}-200 dark:border-${k.color}-900/30 bg-white dark:bg-slate-900 flex gap-4 items-start`}>
-                            <div className={`p-2.5 rounded-xl bg-${k.color}-100 dark:bg-${k.color}-900/30 text-${k.color}-600 dark:text-${k.color}-400 shrink-0`}>
+                    ].map(k => {
+                        const styles = colorStyles[k.color];
+                        return (
+                        <div key={k.title} className={`p-5 rounded-2xl border ${styles.cardBorder} bg-white dark:bg-slate-900 flex gap-4 items-start`}>
+                            <div className={`p-2.5 rounded-xl ${styles.iconBg} ${styles.iconText} shrink-0`}>
                                 {k.icon}
                             </div>
                             <div>
@@ -163,7 +195,8 @@ export function SecurityModelDoc() {
                                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-0">{k.desc}</p>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <CodeBlock
