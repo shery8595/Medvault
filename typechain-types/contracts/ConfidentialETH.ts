@@ -301,7 +301,7 @@ export interface ConfidentialETH extends BaseContract {
   >;
 
   filters: {
-    "Deposit(address,uint256,uint32)": TypedContractEvent<
+    "Deposit(address,uint256,uint64)": TypedContractEvent<
       DepositEvent.InputTuple,
       DepositEvent.OutputTuple,
       DepositEvent.OutputObject

@@ -32,6 +32,7 @@ export interface MedVaultAutomationInterface extends Interface {
       | "enqueue"
       | "enqueued"
       | "finalized"
+      | "owner"
       | "performUpkeep"
       | "queue"
       | "setVault"
@@ -64,6 +65,7 @@ export interface MedVaultAutomationInterface extends Interface {
     functionFragment: "finalized",
     values: [BigNumberish]
   ): string;
+  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "performUpkeep",
     values: [BytesLike]
@@ -91,6 +93,7 @@ export interface MedVaultAutomationInterface extends Interface {
   decodeFunctionResult(functionFragment: "enqueue", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "enqueued", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "finalized", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "performUpkeep",
     data: BytesLike
@@ -206,6 +209,8 @@ export interface MedVaultAutomation extends BaseContract {
 
   finalized: TypedContractMethod<[arg0: BigNumberish], [boolean], "view">;
 
+  owner: TypedContractMethod<[], [string], "view">;
+
   performUpkeep: TypedContractMethod<
     [performData: BytesLike],
     [void],
@@ -258,6 +263,9 @@ export interface MedVaultAutomation extends BaseContract {
   getFunction(
     nameOrSignature: "finalized"
   ): TypedContractMethod<[arg0: BigNumberish], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "owner"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "performUpkeep"
   ): TypedContractMethod<[performData: BytesLike], [void], "nonpayable">;

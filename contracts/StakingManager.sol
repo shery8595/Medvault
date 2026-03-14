@@ -21,6 +21,11 @@ contract StakingManager is ZamaEthereumConfig {
     address public constant WETH_GATEWAY = 0x387d311e47e80b498169e6fb51d3193167d89F7D;
     address public constant AWETH = 0x5B071B590a59395FE4025a0CCc1Fcc931EaC2323;
 
+    // Reentrancy Guard
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
     ConfidentialETH public cETH;
     mapping(address => euint64) private _encryptedTotalStaked;
 
@@ -29,6 +34,14 @@ contract StakingManager is ZamaEthereumConfig {
 
     constructor(address payable _cETH) {
         cETH = ConfidentialETH(_cETH);
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
     }
 
     /**
@@ -62,7 +75,7 @@ contract StakingManager is ZamaEthereumConfig {
      * @notice Unstakes from Aave by withdrawing ETH 
      * @dev User MUST approve this contract to spend their aWETH before calling!
      */
-    function unstake(uint256 amount) external {
+    function unstake(uint256 amount) external nonReentrant {
         require(amount > 0, "Amount must be > 0");
 
         // Transfer aWETH from user to this contract
@@ -93,7 +106,7 @@ contract StakingManager is ZamaEthereumConfig {
     /**
      * @notice Stakes ETH directly from the participant's ConfidentialETH balance
      */
-    function stakeFromConfidential(uint32 units) external {
+    function stakeFromConfidential(uint64 units) external {
         require(units > 0, "Must stake > 0");
         uint256 weiAmount = uint256(units) * cETH.UNIT_SCALE();
 

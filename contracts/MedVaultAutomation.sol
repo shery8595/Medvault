@@ -28,6 +28,8 @@ contract MedVaultAutomation is AutomationCompatibleInterface {
     PendingCheck[] public queue;
     mapping(address => mapping(uint256 => bool)) public enqueued;
     
+    address public owner;
+    
     // Track which trials have already been finalized to avoid re-processing
     mapping(uint256 => bool) public finalized;
 
@@ -40,14 +42,19 @@ contract MedVaultAutomation is AutomationCompatibleInterface {
         address _trialManager,
         address payable _vault
     ) {
+        owner = msg.sender;
         engine = EligibilityEngine(_engine);
         consentManager = ConsentManager(_consentManager);
         trialManager = TrialManager(_trialManager);
         vault = SponsorIncentiveVault(_vault);
     }
 
-    function setVault(address payable _vault) external {
-        // In a real app, protect this with onlyOwner
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+    function setVault(address payable _vault) external onlyOwner {
         vault = SponsorIncentiveVault(_vault);
     }
 
