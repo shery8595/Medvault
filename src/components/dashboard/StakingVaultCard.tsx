@@ -27,27 +27,35 @@ export function StakingVaultCard() {
         loading: stakingLoading,
         revealBalance,
         unstake,
-        stakeFromWallet
+        stakeFromWallet,
+        stakeFromConfidential
     } = useStaking();
     const { apy, loading: apyLoading } = useAaveYield();
     const [isUnstaking, setIsUnstaking] = useState(false);
-    const [isStakingFromWallet, setIsStakingFromWallet] = useState(false);
+    const [isStaking, setIsStaking] = useState(false);
+    const [stakeMode, setStakeMode] = useState<"wallet" | "confidential">("wallet");
     const [stakeAmount, setStakeAmount] = useState("0.1");
     const [showStakeInput, setShowStakeInput] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
 
-    const handleStakeFromWallet = async () => {
+    const handleStake = async () => {
         if (!stakeAmount || parseFloat(stakeAmount) <= 0) return;
         try {
-            setIsStakingFromWallet(true);
-            setStatus("Staking from wallet...");
-            await stakeFromWallet(stakeAmount);
-            setStatus("Success! ETH staked on Aave.");
+            setIsStaking(true);
+            setStatus(stakeMode === "wallet" ? "Staking from wallet..." : "Staking from Reward Enclave...");
+            
+            if (stakeMode === "wallet") {
+                await stakeFromWallet(stakeAmount);
+            } else {
+                await stakeFromConfidential(stakeAmount);
+            }
+            
+            setStatus(`Success! ETH staked on Aave via ${stakeMode === "wallet" ? "wallet" : "Reward Enclave"}.`);
             setShowStakeInput(false);
         } catch (err: any) {
             setStatus(`Failed: ${err.message}`);
         } finally {
-            setIsStakingFromWallet(false);
+            setIsStaking(false);
         }
     };
     const handleUnstake = async () => {
@@ -168,6 +176,30 @@ export function StakingVaultCard() {
                                         exit={{ opacity: 0, height: 0 }}
                                         className="w-full space-y-3"
                                     >
+                                        <div className="flex gap-1 p-1 bg-white/5 dark:bg-slate-100/50 rounded-xl border border-white/10 dark:border-slate-200">
+                                            <button
+                                                onClick={() => setStakeMode("wallet")}
+                                                className={cn(
+                                                    "flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all",
+                                                    stakeMode === "wallet" 
+                                                        ? "bg-emerald-500 text-slate-900 shadow-sm" 
+                                                        : "text-white/40 dark:text-slate-400 hover:text-white dark:hover:text-slate-600"
+                                                )}
+                                            >
+                                                Wallet
+                                            </button>
+                                            <button
+                                                onClick={() => setStakeMode("confidential")}
+                                                className={cn(
+                                                    "flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all",
+                                                    stakeMode === "confidential" 
+                                                        ? "bg-emerald-500 text-slate-900 shadow-sm" 
+                                                        : "text-white/40 dark:text-slate-400 hover:text-white dark:hover:text-slate-600"
+                                                )}
+                                            >
+                                                Enclave
+                                            </button>
+                                        </div>
                                         <div className="relative">
                                             <input
                                                 type="number"
@@ -189,10 +221,10 @@ export function StakingVaultCard() {
                                             </Button>
                                             <Button
                                                 className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-900 h-10 text-[10px] font-black"
-                                                onClick={handleStakeFromWallet}
-                                                disabled={isStakingFromWallet}
+                                                onClick={handleStake}
+                                                disabled={isStaking}
                                             >
-                                                {isStakingFromWallet ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
+                                                {isStaking ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
                                             </Button>
                                         </div>
                                     </motion.div>
@@ -218,13 +250,28 @@ export function StakingVaultCard() {
                                         </Button>
 
                                         {!isRevealed && (
-                                            <Button
-                                                variant="outline"
-                                                className="w-full h-10 rounded-xl border-white/20 dark:border-slate-300 text-white/70 dark:text-slate-500 hover:bg-white/5 dark:hover:bg-slate-100 text-[10px] font-bold uppercase tracking-widest transition-all"
-                                                onClick={() => setShowStakeInput(true)}
-                                            >
-                                                <Coins className="h-3 w-3 mr-2" /> Stake from Wallet
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    className="flex-1 h-10 rounded-xl border-white/20 dark:border-slate-300 text-white/70 dark:text-slate-500 hover:bg-white/5 dark:hover:bg-slate-100 text-[10px] font-bold uppercase tracking-widest transition-all"
+                                                    onClick={() => {
+                                                        setStakeMode("wallet");
+                                                        setShowStakeInput(true);
+                                                    }}
+                                                >
+                                                    <Coins className="h-3 w-3 mr-2" /> Wallet
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="flex-1 h-10 rounded-xl border-white/20 dark:border-slate-300 text-white/70 dark:text-slate-500 hover:bg-white/5 dark:hover:bg-slate-100 text-[10px] font-bold uppercase tracking-widest transition-all"
+                                                    onClick={() => {
+                                                        setStakeMode("confidential");
+                                                        setShowStakeInput(true);
+                                                    }}
+                                                >
+                                                    <Sparkles className="h-3 w-3 mr-2 text-emerald-500" /> Enclave
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
                                 )}

@@ -3,6 +3,7 @@
 // Run this from the subgraph directory:
 // graph deploy --product hosted-service shery8595/Med-Vault --version-label v0.2.6
 
+require('dotenv').config();
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");

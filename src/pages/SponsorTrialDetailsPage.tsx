@@ -610,20 +610,34 @@ export function SponsorTrialDetailsPage() {
                                                                                 if (!signer || !id) return;
                                                                                 setDecisionStatus(`Promoting to ${m.name}...`);
                                                                                 try {
+                                                                                    const vault = getSponsorIncentiveVault(signer);
+                                                                                    
+                                                                                    // 0. V1.2.4: Check if already paid to avoid CALL_EXCEPTION (auto-distribution fallback)
+                                                                                    const isPaid = await vault.participantMilestonePaid(id, match.patientAddress, mIdx);
+                                                                                    if (isPaid) {
+                                                                                        setDecisionStatus(`Success! Reward for ${m.name} was already distributed.`);
+                                                                                        return;
+                                                                                    }
+
                                                                                     // 1. Mark Milestone as Complete
                                                                                     const mm = getTrialMilestoneManager(signer);
                                                                                     const tx1 = await mm.completeMilestone(id, match.patientAddress, mIdx);
                                                                                     await tx1.wait();
-
+ 
                                                                                     // 2. Trigger Individual Payout
                                                                                     setDecisionStatus(`Success! Promoted to ${m.name}. Processing reward...`);
-                                                                                    const vault = getSponsorIncentiveVault(signer);
                                                                                     const tx2 = await vault.distributeMilestoneToParticipant(id, match.patientAddress, mIdx);
                                                                                     await tx2.wait();
-
+ 
                                                                                     setDecisionStatus(`Success! Promoted & Reward Sent for ${m.name}.`);
                                                                                 } catch (err: any) {
-                                                                                    setDecisionStatus(`Error: ${err.reason || err.message}`);
+                                                                                    console.error("Promotion Error:", err);
+                                                                                    const reason = err.reason || err.message || "";
+                                                                                    if (reason.includes("Participant not registered")) {
+                                                                                        setDecisionStatus("Error: Participant not in reward pool. Fund trial and retry.");
+                                                                                    } else {
+                                                                                        setDecisionStatus(`Error: ${reason}`);
+                                                                                    }
                                                                                 }
                                                                             }}
                                                                         >
