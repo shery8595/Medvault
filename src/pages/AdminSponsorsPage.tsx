@@ -266,7 +266,7 @@ export default function AdminSponsorsPage() {
                         </Button>
                         
                         <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800/50">
-                            <ShieldCheck className="h-5 w-5 text-teal-500 shrink-0" />
+                            <ShieldCheck className="h-5 w-5 text-blue-500 shrink-0" />
                             <p className="text-[11px] text-slate-500 leading-relaxed italic">
                                 Your secure wallet address <span className="text-slate-300 font-mono text-[10px]">{account?.slice(0, 10)}...</span> will be automatically linked to this institutional application.
                             </p>

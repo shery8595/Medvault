@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool, euint16, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
-import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {FHE, euint8, ebool, euint16, InEuint8, InEbool, InEuint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./DataAccessLog.sol";
 
 /**
  * @title PatientRegistry
  * @notice Stores expanded encrypted patient profiles for clinical trial eligibility
  */
-contract PatientRegistry is ZamaEthereumConfig {
+contract PatientRegistry {
     struct Patient {
         euint8 age;
         ebool gender; // true = Male, false = Female
@@ -51,23 +50,23 @@ contract PatientRegistry is ZamaEthereumConfig {
      * @notice Submit or update encrypted medical profile with expanded fields
      */
     function submitEncryptedProfile(
-        externalEuint8 _age, bytes calldata _ageProof,
-        externalEbool _gender, bytes calldata _genderProof,
-        externalEuint16 _weight, bytes calldata _weightProof,
-        externalEuint8 _height, bytes calldata _heightProof,
-        externalEbool _hasDiabetes, bytes calldata _diabetesProof,
-        externalEuint16 _hbLevel, bytes calldata _hbProof,
-        externalEbool _isSmoker, bytes calldata _isSmokerProof,
-        externalEbool _hasHypertension, bytes calldata _hasHypertensionProof
+        InEuint8 calldata _age,
+        InEbool calldata _gender,
+        InEuint16 calldata _weight,
+        InEuint8 calldata _height,
+        InEbool calldata _hasDiabetes,
+        InEuint16 calldata _hbLevel,
+        InEbool calldata _isSmoker,
+        InEbool calldata _hasHypertension
     ) external {
-        euint8 age = FHE.fromExternal(_age, _ageProof);
-        ebool gender = FHE.fromExternal(_gender, _genderProof);
-        euint16 weight = FHE.fromExternal(_weight, _weightProof);
-        euint8 height = FHE.fromExternal(_height, _heightProof);
-        ebool hasDiabetes = FHE.fromExternal(_hasDiabetes, _diabetesProof);
-        euint16 hbLevel = FHE.fromExternal(_hbLevel, _hbProof);
-        ebool isSmoker = FHE.fromExternal(_isSmoker, _isSmokerProof);
-        ebool hasHypertension = FHE.fromExternal(_hasHypertension, _hasHypertensionProof);
+        euint8 age = FHE.asEuint8(_age);
+        ebool gender = FHE.asEbool(_gender);
+        euint16 weight = FHE.asEuint16(_weight);
+        euint8 height = FHE.asEuint8(_height);
+        ebool hasDiabetes = FHE.asEbool(_hasDiabetes);
+        euint16 hbLevel = FHE.asEuint16(_hbLevel);
+        ebool isSmoker = FHE.asEbool(_isSmoker);
+        ebool hasHypertension = FHE.asEbool(_hasHypertension);
 
         // Allow contract to perform operations
         FHE.allowThis(age);

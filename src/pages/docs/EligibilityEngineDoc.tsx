@@ -18,10 +18,10 @@ sequenceDiagram
     TM-->>EE: euint32[] (MinAge, MaxHbA1c, etc.)
     
     rect rgb(20, 20, 30)
-        Note over EE: Zama FHE Processing
-        EE->>EE: TFHE.ge(age, minAge) -> ebool
-        EE->>EE: TFHE.le(hba1c, maxHba1c) -> ebool
-        EE->>EE: TFHE.cmux(isMatch, score, 0) -> euint32
+        Note over EE: Fhenix FHE Processing
+        EE->>EE: FHE.ge(age, minAge) -> ebool
+        EE->>EE: FHE.le(hba1c, maxHba1c) -> ebool
+        EE->>EE: FHE.cmux(isMatch, score, 0) -> euint32
     end
 
     EE->>EE: storeScore(trialId, patient, finalScore)
@@ -36,7 +36,7 @@ export function EligibilityEngineDoc() {
                 <h1 className="mt-2 text-5xl">Eligibility Engine Mechanics</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-12 max-w-prose">
-                    The `EligibilityEngine` is the algorithmic core of MedVault. It runs the Zama fhEVM precompiles to evaluate highly sensitive patient health metrics against sponsor-defined trial criteria.
+                    The `EligibilityEngine` is the algorithmic core of MedVault. It runs the Fhenix fhEVM precompiles to evaluate highly sensitive patient health metrics against sponsor-defined trial criteria.
                 </p>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -65,34 +65,34 @@ export function EligibilityEngineDoc() {
                 <CodeBlock
                     filename="EligibilityEngine.sol (Snippet: Engine Core)"
                     language="solidity"
-                    code={`import "@zama-ai/fhevm/contracts/lib/TFHE.sol";
+                    code={`import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 function _computeScore(address patient, uint256 trialId) internal returns (euint32) {
     // 0. Initialize a new encrypted score of 0
-    euint32 score = TFHE.asEuint32(0);
+    euint32 score = FHE.asEuint32(0);
     ebool isMatch;
 
     // 1. Age Range Check
     // We 'AND' two booleans together: is age >= minAge AND age <= maxAge?
-    isMatch = TFHE.and(
-        TFHE.ge(patientInfo.age, reqs.minAge),
-        TFHE.le(patientInfo.age, reqs.maxAge)
+    isMatch = FHE.and(
+        FHE.ge(patientInfo.age, reqs.minAge),
+        FHE.le(patientInfo.age, reqs.maxAge)
     );
     // If isMatch is true (after decryption), add 40 to the score.
-    score = TFHE.add(score, TFHE.cmux(isMatch, TFHE.asEuint32(40), TFHE.asEuint32(0)));
+    score = FHE.add(score, FHE.cmux(isMatch, FHE.asEuint32(40), FHE.asEuint32(0)));
 
     // 2. Blood Pressure Check
-    isMatch = TFHE.and(
-        TFHE.ge(patientInfo.bloodPressure, reqs.minBloodPressure),
-        TFHE.le(patientInfo.bloodPressure, reqs.maxBloodPressure)
+    isMatch = FHE.and(
+        FHE.ge(patientInfo.bloodPressure, reqs.minBloodPressure),
+        FHE.le(patientInfo.bloodPressure, reqs.maxBloodPressure)
     );
     // Add 30 points if the BP is within range
-    score = TFHE.add(score, TFHE.cmux(isMatch, TFHE.asEuint32(30), TFHE.asEuint32(0)));
+    score = FHE.add(score, FHE.cmux(isMatch, FHE.asEuint32(30), FHE.asEuint32(0)));
 
     // 3. HbA1c Check (Max threshold only)
-    isMatch = TFHE.le(patientInfo.hba1c, reqs.maxHba1c);
+    isMatch = FHE.le(patientInfo.hba1c, reqs.maxHba1c);
     // Add final 30 points
-    score = TFHE.add(score, TFHE.cmux(isMatch, TFHE.asEuint32(30), TFHE.asEuint32(0)));
+    score = FHE.add(score, FHE.cmux(isMatch, FHE.asEuint32(30), FHE.asEuint32(0)));
 
     return score;
 }`}
@@ -113,31 +113,31 @@ function _computeScore(address patient, uint256 trialId) internal returns (euint
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                                     <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">Dimension</th>
                                     <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">Weight</th>
-                                    <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">TFHE Operation</th>
+                                    <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">FHE Operation</th>
                                     <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">Condition</th>
                                     <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">CMUX Points</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {[
-                                    { dim: "Age", weight: "40%", op: "TFHE.ge() AND TFHE.le()", cond: "minAge ≤ age ≤ maxAge", pts: "+40 / +0" },
-                                    { dim: "Blood Pressure", weight: "30%", op: "TFHE.ge() AND TFHE.le()", cond: "minBP ≤ bp ≤ maxBP", pts: "+30 / +0" },
-                                    { dim: "HbA1c", weight: "30%", op: "TFHE.le()", cond: "hba1c ≤ maxHba1c", pts: "+30 / +0" },
+                                    { dim: "Age", weight: "40%", op: "FHE.ge() AND FHE.le()", cond: "minAge ≤ age ≤ maxAge", pts: "+40 / +0" },
+                                    { dim: "Blood Pressure", weight: "30%", op: "FHE.ge() AND FHE.le()", cond: "minBP ≤ bp ≤ maxBP", pts: "+30 / +0" },
+                                    { dim: "HbA1c", weight: "30%", op: "FHE.le()", cond: "hba1c ≤ maxHba1c", pts: "+30 / +0" },
                                 ].map((row, i) => (
                                     <tr key={row.dim} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-bold text-teal-600 dark:text-teal-400 text-xs">{row.dim}</td>
+                                        <td className="px-4 py-3 font-bold text-blue-600 dark:text-blue-400 text-xs">{row.dim}</td>
                                         <td className="px-4 py-3 font-bold text-slate-900 dark:text-white text-xs">{row.weight}</td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.op}</td>
                                         <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">{row.cond}</td>
                                         <td className="px-4 py-3 font-mono text-xs text-emerald-600 dark:text-emerald-400">{row.pts}</td>
                                     </tr>
                                 ))}
-                                <tr className="bg-teal-50 dark:bg-teal-900/20 border-t-2 border-teal-500">
-                                    <td className="px-4 py-3 font-bold text-teal-700 dark:text-teal-300 text-xs">Total</td>
-                                    <td className="px-4 py-3 font-bold text-teal-700 dark:text-teal-300 text-xs">100%</td>
-                                    <td className="px-4 py-3 text-xs text-teal-600 dark:text-teal-400 font-mono">5 TFHE ops + 3 CMUX</td>
-                                    <td className="px-4 py-3 text-xs text-teal-600 dark:text-teal-400">All dimensions pass</td>
-                                    <td className="px-4 py-3 font-bold font-mono text-teal-700 dark:text-teal-300 text-xs">= 100</td>
+                                <tr className="bg-blue-50 dark:bg-blue-900/20 border-t-2 border-blue-500">
+                                    <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300 text-xs">Total</td>
+                                    <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300 text-xs">100%</td>
+                                    <td className="px-4 py-3 text-xs text-blue-600 dark:text-blue-400 font-mono">5 FHE ops + 3 CMUX</td>
+                                    <td className="px-4 py-3 text-xs text-blue-600 dark:text-blue-400">All dimensions pass</td>
+                                    <td className="px-4 py-3 font-bold font-mono text-blue-700 dark:text-blue-300 text-xs">= 100</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -173,9 +173,9 @@ mapping(uint256 => mapping(address => euint32)) private trialApplicantScores;
 function storeScore(uint256 trialId, address patient, euint32 score) internal {
     trialApplicantScores[trialId][patient] = score;
     // Grant decryption rights ONLY to the patient
-    TFHE.allow(score, patient);
+    FHE.allow(score, patient);
     // Allow this contract to read the score for future operations
-    TFHE.allowThis(score);
+    FHE.allowThis(score);
 }`}
                 />
 
@@ -187,8 +187,8 @@ function storeScore(uint256 trialId, address patient, euint32 score) internal {
                 </p>
 
                 <ul>
-                    <li><strong>Exact boundary match passes:</strong> If a trial requires <code>minAge = 18</code> and the patient's encrypted age is exactly <code>18</code>, the <code>TFHE.ge(age, minAge)</code> check returns <code>ebool(true)</code>. The patient receives the full 40 points for that dimension.</li>
-                    <li><strong>Off-by-one fails:</strong> If a trial requires <code>maxAge = 65</code> and the patient's age is <code>66</code>, the <code>TFHE.le(age, maxAge)</code> returns <code>ebool(false)</code>. The CMUX adds 0 points. The sponsor never learns the patient's actual age — only the aggregate score reflects the mismatch.</li>
+                    <li><strong>Exact boundary match passes:</strong> If a trial requires <code>minAge = 18</code> and the patient's encrypted age is exactly <code>18</code>, the <code>FHE.ge(age, minAge)</code> check returns <code>ebool(true)</code>. The patient receives the full 40 points for that dimension.</li>
+                    <li><strong>Off-by-one fails:</strong> If a trial requires <code>maxAge = 65</code> and the patient's age is <code>66</code>, the <code>FHE.le(age, maxAge)</code> returns <code>ebool(false)</code>. The CMUX adds 0 points. The sponsor never learns the patient's actual age — only the aggregate score reflects the mismatch.</li>
                     <li><strong>Partial matches are informative:</strong> A score of <code>70</code> tells the patient they passed the Age and BP checks (40+30) but failed HbA1c. A score of <code>60</code> means BP + HbA1c passed but Age was out of range. This partial information helps patients identify which health factors need attention.</li>
                 </ul>
 
@@ -199,18 +199,18 @@ function storeScore(uint256 trialId, address patient, euint32 score) internal {
                     A single patient can apply to multiple trials simultaneously. The <code>EligibilityEngine</code> evaluates each application independently because the scoring mapping is keyed by <code>(trialId, patientAddress)</code>. This design means:
                 </p>
                 <ul>
-                    <li><strong>No re-encryption needed:</strong> The patient's encrypted health data is stored once in <code>PatientRegistry</code>. Each <code>computeEligibility()</code> call reads the same ciphertext handles. The TFHE ACL ensures the Engine has read access.</li>
+                    <li><strong>No re-encryption needed:</strong> The patient's encrypted health data is stored once in <code>PatientRegistry</code>. Each <code>computeEligibility()</code> call reads the same ciphertext handles. The FHE ACL ensures the Engine has read access.</li>
                     <li><strong>Independent scoring:</strong> Score for Trial #1 does not affect or leak information about score for Trial #2. Each trial has its own encrypted requirements, producing its own encrypted score.</li>
                     <li><strong>Gas per application:</strong> Each <code>computeEligibility()</code> call costs approximately the same gas regardless of how many other trials the patient has applied to — there is no accumulating state read overhead.</li>
                 </ul>
 
                 <Callout type="tip" title="Gas Cost Estimation">
-                    A typical <code>computeEligibility()</code> transaction on Zama Sepolia uses approximately <strong>3-5 million gas</strong> due to the 5 TFHE comparison operations and 3 CMUX multiplexing operations. Each TFHE precompile call costs roughly 300,000-500,000 gas. Transaction confirmation takes 15-60 seconds due to the coprocessor's polynomial math processing time.
+                    A typical <code>computeEligibility()</code> transaction on Fhenix Sepolia uses approximately <strong>3-5 million gas</strong> due to the 5 FHE comparison operations and 3 CMUX multiplexing operations. Each FHE precompile call costs roughly 300,000-500,000 gas. Transaction confirmation takes 15-60 seconds due to the coprocessor's polynomial math processing time.
                 </Callout>
 
                 <h3>Decoupling Storage from Computation</h3>
                 <p>
-                    Why not update the <code>Applied Trials</code> array right here in the Engine? Because updating complex array structures while simultaneously performing heavy TFHE opcodes would routinely exceed the Zama Sepolia block gas limits.
+                    Why not update the <code>Applied Trials</code> array right here in the Engine? Because updating complex array structures while simultaneously performing heavy FHE opcodes would routinely exceed the Fhenix Sepolia block gas limits.
                 </p>
                 <p>
                     Therefore, the <code>EligibilityEngine</code> calculates the score and stores it. The frontend <code>PatientRegistry</code> and Subgraph then index the simple <code>ApplicationStatusUpdated</code> event (which contains the trial ID but <em>not</em> the score) to update the user's dashboard asynchronously.

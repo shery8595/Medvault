@@ -8,7 +8,7 @@ const consentFlowChart = `
 sequenceDiagram
     participant P as Patient Wallet
     participant D as DApp (fhevmjs)
-    participant Z as Zama Network
+    participant Z as Fhenix Network
     participant S as Sponsor
 
     P->>D: Trigger "Reveal Result"
@@ -43,7 +43,7 @@ export function SponsorSystemDoc() {
 
                 <h2>The Sybil Vulnerability in Healthcare</h2>
                 <p>
-                    In a completely permissionless system, malicious actors could flood the fhEVM with thousands of fake clinical trials designed to "mine" or deduce patient data by setting extreme parameter bounds. Because Zama FHE operations require heavy computational resources, defending the computation layer is paramount.
+                    In a completely permissionless system, malicious actors could flood the fhEVM with thousands of fake clinical trials designed to "mine" or deduce patient data by setting extreme parameter bounds. Because Fhenix FHE operations require heavy computational resources, defending the computation layer is paramount.
                 </p>
 
                 <h2>The Verification Flow</h2>
@@ -114,8 +114,8 @@ contract SponsorRegistry is Ownable {
                 <ol className="space-y-4 my-8">
                     <li><strong>Post-Match Notification:</strong> After the <code>EligibilityEngine</code> computes a score, the patient views their result by generating an EIP-712 viewing key. If the score is satisfactory (typically 100 = perfect match), the UI presents a "Grant Access to Sponsor" button.</li>
                     <li><strong>On-Chain Consent Record:</strong> The patient calls <code>ConsentManager.grantConsent(sponsorAddress, trialId)</code>. This stores a consent record scoped to the specific <code>(patient, sponsor, trialId)</code> tuple and emits a <code>ConsentGranted</code> event for the subgraph to index.</li>
-                    <li><strong>Re-Encryption via KMS:</strong> With consent on-chain, the sponsor can request re-encryption of the patient's ciphertext handles through the Zama KMS. The KMS verifies: (a) the consent record exists on-chain, (b) the requesting address matches the authorized sponsor, and (c) the consent has not been revoked.</li>
-                    <li><strong>Sponsor-Side Decryption:</strong> The KMS re-encrypts the patient's TFHE ciphertexts using the sponsor's public key. The sponsor downloads these re-encrypted blobs and decrypts locally. The blockchain never sees the plaintext values.</li>
+                    <li><strong>Re-Encryption via KMS:</strong> With consent on-chain, the sponsor can request re-encryption of the patient's ciphertext handles through the Fhenix KMS. The KMS verifies: (a) the consent record exists on-chain, (b) the requesting address matches the authorized sponsor, and (c) the consent has not been revoked.</li>
+                    <li><strong>Sponsor-Side Decryption:</strong> The KMS re-encrypts the patient's FHE ciphertexts using the sponsor's public key. The sponsor downloads these re-encrypted blobs and decrypts locally. The blockchain never sees the plaintext values.</li>
                     <li><strong>Revocation:</strong> At any time, the patient can call <code>revokeConsent(sponsor, trialId)</code>. This immediately invalidates the consent record on-chain. Future re-encryption requests from that sponsor will be rejected by the KMS. Previously decrypted data cannot be "un-decrypted," but no new data access is possible.</li>
                 </ol>
 

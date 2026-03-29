@@ -93,10 +93,10 @@ export function HeartbeatBackground() {
         const SPEED = 0.00028;          // progress per ms (full loop ≈ 3.6 s)
         const TAIL_FRAC = 0.22;        // tail length as fraction of total path
         const DOT_R = 5;
-        const DOT_COLOR = "#780606";
-        const GLOW_COLOR = "rgba(120, 6, 6, 0.45)";
-        const TRAIL_COLOR_START = "rgba(120, 6, 6, 0.7)";
-        const TRAIL_COLOR_END = "rgba(120, 6, 6, 0)";
+        const DOT_COLOR = "#ef4444";
+        const GLOW_COLOR = "rgba(239, 68, 68, 0.45)";
+        const TRAIL_COLOR_START = "rgba(239, 68, 68, 0.7)";
+        const TRAIL_COLOR_END = "rgba(239, 68, 68, 0)";
 
         let progress = 0;
         let lastTime: number | null = null;
@@ -126,7 +126,7 @@ export function HeartbeatBackground() {
                 ctx!.beginPath();
                 ctx!.moveTo(x0, y0);
                 ctx!.lineTo(x1, y1);
-                ctx!.strokeStyle = `rgba(120, 6, 6, ${alpha})`;
+                ctx!.strokeStyle = `rgba(239, 68, 68, ${alpha})`;
                 ctx!.lineWidth = 1.5 + t * 1.5;         // thinner tail → thicker head
                 ctx!.lineCap = "round";
                 ctx!.stroke();
@@ -136,7 +136,7 @@ export function HeartbeatBackground() {
             const [hx, hy] = pointAtDist(segs, totalLen, headDist);
             const glow = ctx!.createRadialGradient(hx, hy, 0, hx, hy, 28);
             glow.addColorStop(0, GLOW_COLOR);
-            glow.addColorStop(1, "rgba(120, 6, 6, 0)");
+            glow.addColorStop(1, "rgba(239, 68, 68, 0)");
             ctx!.fillStyle = glow;
             ctx!.beginPath();
             ctx!.arc(hx, hy, 28, 0, Math.PI * 2);

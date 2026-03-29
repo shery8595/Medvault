@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: PatientRegistry
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0xa923306a2E0AEA46e0a6622167fB30aD950fa2F5"
+      address: "0xE759A21B97819fD12aAB1E6f7019D8148F11bbC3"
       abi: PatientRegistry
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -25,11 +25,11 @@ dataSources:
 
   - kind: ethereum
     name: TrialManager
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x1c8199Af6dA98FF10986A462111Efd06BB939183"
+      address: "0x90A340c7C09Fa72243F23AB6A3310610649384b2"
       abi: TrialManager
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -51,11 +51,11 @@ dataSources:
 
   - kind: ethereum
     name: ConsentManager
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x5D0F6f8d10f742845EB79d34760cf9ebA04C9795"
+      address: "0x0f2042a1e50d566959B010eaCDfF51be1024EA68"
       abi: ConsentManager
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -74,11 +74,11 @@ dataSources:
 
   - kind: ethereum
     name: EligibilityEngine
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x07836d00D9B6f756D563852bd483D155c279c976"
+      address: "0x9ce11CA3E61AbE27B83d38053739F2a0F825C00b"
       abi: EligibilityEngine
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -104,11 +104,11 @@ dataSources:
 
   - kind: ethereum
     name: SponsorIncentiveVault
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x7DE14F44035d41C97a284E9E426Dc1669A9009c7"
+      address: "0x10cF533eb4337deBf8F682D20E56246865787393"
       abi: SponsorIncentiveVault
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -132,11 +132,11 @@ dataSources:
 
   - kind: ethereum
     name: DataAccessLog
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x6835FfEE1b26E9ed0D292e3d76995Af591Cd7c7e"
+      address: "0x69396B26Ce11c1B74B1203ca44cf7ba7ED12Bbb0"
       abi: DataAccessLog
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -153,11 +153,11 @@ dataSources:
 
   - kind: ethereum
     name: TrialMilestoneManager
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0xBb605f24Dd439ba2ECB4A5B2F7caBd6932e48A6F"
+      address: "0x15CDC92dfFAE9543636FdB611f3A8Cc74ba44b7e"
       abi: TrialMilestoneManager
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -174,13 +174,14 @@ dataSources:
         - event: MilestoneCompleted(indexed uint256,indexed address,uint256)
           handler: handleMilestoneCompleted
       file: ./src/mappings/trial-milestone-manager.ts
+
   - kind: ethereum
     name: SponsorRegistry
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x11B247232406F87E9de7a2Bf1F2bf7439A88F511"
+      address: "0x4F5d99b08EC26903d2CEDBee06CA1867E4b682b3"
       abi: SponsorRegistry
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -203,11 +204,11 @@ dataSources:
 
   - kind: ethereum
     name: StakingManager
-    network: sepolia
+    network: arbitrum-sepolia
     source:
-      address: "0x0BA95f8941E9954Bd515570861b27b394467f2e1"
+      address: "0x946e1C0C73dd643ebab62fd52c2e354c831fcc4a"
       abi: StakingManager
-      startBlock: 7641000
+      startBlock: 252990000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

@@ -1,6 +1,7 @@
+/// <reference types="vite/client" />
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { ethers } from "ethers";
-import { getFHEInstance } from "./fhe";
+import { getFHEInstance, connectFHE } from "./fhe";
 
 interface Web3ContextType {
     account: string | null;
@@ -24,8 +25,8 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     const [isConnecting, setIsConnecting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const SEPOLIA_CHAIN_ID = "0xaa36a7"; // 11155111
-    const RPC_URL = import.meta.env.VITE_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/rtwAOMEZ9SRzYI81Qwtpc";
+    const SEPOLIA_CHAIN_ID = "0x66eee"; // 421614 (Arbitrum Sepolia)
+    const RPC_URL = import.meta.env.VITE_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc";
 
     useEffect(() => {
         const rp = new ethers.JsonRpcProvider(RPC_URL);
@@ -56,10 +57,10 @@ export function Web3Provider({ children }: { children: ReactNode }) {
                             method: "wallet_addEthereumChain",
                             params: [{
                                 chainId: SEPOLIA_CHAIN_ID,
-                                chainName: "Sepolia Test Network",
+                                chainName: "Arbitrum Sepolia",
                                 nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-                                rpcUrls: ["https://sepolia.infura.io/v3/"],
-                                blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                                rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+                                blockExplorerUrls: ["https://sepolia.arbiscan.io"],
                             }],
                         });
                     } else {
@@ -78,7 +79,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
             // Initialize FHE
             console.log("Web3Context: Initializing FHE...");
-            await getFHEInstance();
+            await connectFHE(ethProvider, ethSigner);
             console.log("Web3Context: FHE Ready.");
             setIsFHEReady(true);
         } catch (err: any) {

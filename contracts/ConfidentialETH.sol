@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint64, ebool, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
-import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {FHE, euint64, ebool, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /**
  * @title ConfidentialETH
  * @notice A privacy-preserving wrapper for native ETH (similar to WETH but with FHE)
  * @dev 1 unit = 1 micro-ETH (1e-6 ETH = 1e12 wei)
  */
-contract ConfidentialETH is ZamaEthereumConfig {
+contract ConfidentialETH {
     uint256 public constant UNIT_SCALE = 1_000_000_000_000; // 1 unit = 1e12 wei = 1 micro-ETH
 
     mapping(address => euint64) private _balances;
@@ -84,7 +83,7 @@ contract ConfidentialETH is ZamaEthereumConfig {
      */
     function withdraw(uint64 units) external nonReentrant {
         require(units > 0, "Amount must be > 0");
-        require(FHE.isInitialized(_balances[msg.sender]), "No balance");
+        require(euint64.unwrap(_balances[msg.sender]) != 0, "No balance");
         
         euint64 eAmount = FHE.asEuint64(units);
         _balances[msg.sender] = FHE.sub(_balances[msg.sender], eAmount);
@@ -105,7 +104,7 @@ contract ConfidentialETH is ZamaEthereumConfig {
      */
     function withdrawTo(address user, address destination, uint64 units) external onlyAuthorized nonReentrant {
         require(units > 0, "Amount must be > 0");
-        require(FHE.isInitialized(_balances[user]), "No balance");
+        require(euint64.unwrap(_balances[user]) != 0, "No balance");
         
         euint64 eAmount = FHE.asEuint64(units);
         _balances[user] = FHE.sub(_balances[user], eAmount);
@@ -127,7 +126,7 @@ contract ConfidentialETH is ZamaEthereumConfig {
     function transferEncrypted(address from, address to, euint64 amount) external onlyAuthorized {
         _balances[from] = FHE.sub(_balances[from], amount);
         
-        if (FHE.isInitialized(_balances[to])) {
+        if (euint64.unwrap(_balances[to]) != 0) {
             _balances[to] = FHE.add(_balances[to], amount);
         } else {
             _balances[to] = amount;
@@ -151,7 +150,7 @@ contract ConfidentialETH is ZamaEthereumConfig {
     function _creditBalance(address user, uint64 units) internal {
         euint64 encryptedAmount = FHE.asEuint64(units);
         
-        if (FHE.isInitialized(_balances[user])) {
+        if (euint64.unwrap(_balances[user]) != 0) {
             _balances[user] = FHE.add(_balances[user], encryptedAmount);
         } else {
             _balances[user] = encryptedAmount;

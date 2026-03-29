@@ -53,9 +53,9 @@ export function ConfidentialWallet() {
     };
 
     return (
-        <Card className="border-0 shadow-2xl relative overflow-hidden group min-h-[400px] rounded-[2rem] bg-slate-950">
+        <Card className="border-0 shadow-2xl relative overflow-hidden group min-h-[400px] rounded-[2rem] bg-[#0a192f]/80">
             {/* Animated Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-slate-900 opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-indigo-900/40 to-[#020617] opacity-80" />
             <motion.div
                 animate={{
                     scale: [1, 1.2, 1],
@@ -95,7 +95,7 @@ export function ConfidentialWallet() {
 
             <CardContent className="relative z-10 space-y-8 px-8 pb-8">
                 {/* Balance Display */}
-                <div className="p-8 rounded-[1.5rem] bg-black/20 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center min-h-[180px] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-black/30">
+                <div className="p-8 rounded-[1.5rem] bg-blue-950/20 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center min-h-[180px] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:bg-blue-950/30">
                     <p className="text-xs font-bold tracking-[0.2em] uppercase text-slate-400 mb-4 flex items-center gap-2">
                         {isRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-fuchsia-400" />}
                         Private Balance
@@ -187,7 +187,7 @@ export function ConfidentialWallet() {
                     </Button>
                     <Button
                         variant="outline"
-                        className={`h-14 rounded-xl border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all duration-300 font-bold text-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] ${action === 'withdraw' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-100 shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)]' : 'bg-black/20 text-slate-300'}`}
+                        className={`h-14 rounded-xl border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all duration-300 font-bold text-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] ${action === 'withdraw' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-100 shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)]' : 'bg-blue-950/20 text-slate-300'}`}
                         onClick={() => setAction(action === "withdraw" ? null : "withdraw")}
                     >
                         <Download className="h-5 w-5 mr-3 relative top-0.5" /> Unshield cETH
@@ -201,7 +201,7 @@ export function ConfidentialWallet() {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="p-5 rounded-2xl bg-black/40 border border-white/10 space-y-4 backdrop-blur-md shadow-inner"
+                            className="p-5 rounded-2xl bg-blue-950/40 border border-white/10 space-y-4 backdrop-blur-md shadow-inner"
                         >
                             <div className="flex items-center gap-3 bg-white/5 rounded-xl p-2 border border-white/5 focus-within:border-fuchsia-500/50 focus-within:bg-white/10 transition-colors">
                                 <div className="flex-1">

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useWeb3 } from "../lib/Web3Context";
 import { getConfidentialETH } from "../lib/contracts";
-import { reencryptUint32 } from "../lib/fhe";
+import { reencryptUint64 } from "../lib/fhe";
 import { ethers } from "ethers";
 
 export function useConfidentialBalance() {
@@ -49,7 +49,7 @@ export function useConfidentialBalance() {
             const contractAddress = await contract.getAddress();
 
             // Re-encrypt to user's public key (requires signature)
-            const decryptedValue = await reencryptUint32(contractAddress, account, handle);
+            const decryptedValue = await reencryptUint64(contractAddress, account, handle);
 
             // The value is in units (1 unit = 1e12 wei = 1 micro-ETH)
             const units = Number(decryptedValue);

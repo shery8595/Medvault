@@ -56,7 +56,7 @@ export function ConsentTable({ logs, searchQuery = "" }: ConsentTableProps) {
                 <td className="px-6 py-5">
                   <div className="flex gap-1.5 flex-wrap">
                     {(log.dataShared || ["Vital Signs", "Lab Data"]).map((data, i) => (
-                      <span key={i} className="inline-flex items-center rounded-lg bg-teal-50 dark:bg-teal-900/20 px-2 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-tight">
+                      <span key={i} className="inline-flex items-center rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight">
                         {data}
                       </span>
                     ))}

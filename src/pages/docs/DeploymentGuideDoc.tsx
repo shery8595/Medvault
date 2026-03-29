@@ -10,14 +10,14 @@ const envVars = [
     { key: "VITE_ELIGIBILITY_ENGINE_ADDRESS", required: true, desc: "EligibilityEngine contract address." },
     { key: "VITE_SPONSOR_REGISTRY_ADDRESS", required: true, desc: "SponsorRegistry contract address." },
     { key: "VITE_SUBGRAPH_URL", required: true, desc: "The Graph Studio deployment URL for the medvault-subgraph. Found in Studio dashboard after deploy." },
-    { key: "VITE_CHAIN_ID", required: true, desc: "Chain ID for the target Zama testnet (e.g., 9001 for Zama Sepolia)." },
+    { key: "VITE_CHAIN_ID", required: true, desc: "Chain ID for the target Fhenix testnet (e.g., 9001 for Fhenix Sepolia)." },
     { key: "DEPLOY_PRIVATE_KEY", required: true, desc: "Private key of the deployer EOA. Never commit to git. Used only by Hardhat." },
     { key: "GRAPH_STUDIO_DEPLOY_KEY", required: false, desc: "Your Graph Studio API key for `graph deploy`. Found in Studio settings." },
 ];
 
 const depChecklist = [
     { label: "MetaMask funded with Sepolia ETH", cat: "Pre-deploy" },
-    { label: "Zama Sepolia RPC added to MetaMask", cat: "Pre-deploy" },
+    { label: "Fhenix Sepolia RPC added to MetaMask", cat: "Pre-deploy" },
     { label: ".env file populated from .env.example", cat: "Pre-deploy" },
     { label: "Node.js ≥ 20 installed", cat: "Pre-deploy" },
     { label: "`npm install` completed", cat: "Contract" },
@@ -40,8 +40,8 @@ const catColorStyles: Record<string, { bg: string; text: string }> = {
         text: "text-slate-700 dark:text-slate-300"
     },
     "Contract": {
-        bg: "bg-teal-100 dark:bg-teal-900/30",
-        text: "text-teal-700 dark:text-teal-400"
+        bg: "bg-blue-100 dark:bg-blue-900/30",
+        text: "text-blue-700 dark:text-blue-400"
     },
     "Subgraph": {
         bg: "bg-blue-100 dark:bg-blue-900/30",
@@ -61,13 +61,13 @@ export function DeploymentGuideDoc() {
                 <h1 className="mt-2 text-5xl">Deployment Guide</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-6 max-w-prose">
-                    Deploying MedVault involves three independent but tightly coupled systems: <strong>smart contracts</strong> on the Zama Sepolia testnet, a <strong>Subgraph</strong> on The Graph Studio, and the <strong>Vite frontend</strong>. They must be deployed in strict order, with addresses propagated between each step.
+                    Deploying MedVault involves three independent but tightly coupled systems: <strong>smart contracts</strong> on the Fhenix Sepolia testnet, a <strong>Subgraph</strong> on The Graph Studio, and the <strong>Vite frontend</strong>. They must be deployed in strict order, with addresses propagated between each step.
                 </p>
 
                 {/* Pre-deploy checklist */}
                 <div className="not-prose my-10">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-teal-500" />
+                        <CheckCircle2 className="w-5 h-5 text-blue-500" />
                         Full Deployment Checklist
                     </h3>
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
@@ -88,7 +88,7 @@ export function DeploymentGuideDoc() {
 
                 <h2>I. Step 1 — Smart Contract Deployment</h2>
                 <p>
-                    The Hardhat project is pre-configured with a custom <code>zamaSepolia</code> network entry pointing to Zama's testnet RPC. Contracts use <code>@zama-ai/fhevm</code>, which is a drop-in replacement for standard Solidity but includes the TFHE precompile importers.
+                    The Hardhat project is pre-configured with a custom <code>fhenixSepolia</code> network entry pointing to Fhenix's testnet RPC. Contracts use <code>@fhenixprotocol/fhevm</code>, which is a drop-in replacement for standard Solidity but includes the FHE precompile importers.
                 </p>
 
                 <CodeBlock
@@ -100,17 +100,17 @@ npm install
 # Clean previous compilation artifacts
 npx hardhat clean
 
-# Compile all contracts (includes @zama-ai/fhevm and @chainlink/contracts)
+# Compile all contracts (includes @fhenixprotocol/fhevm and @chainlink/contracts)
 npx hardhat compile
 
-# Deploy to the Zama Sepolia testnet
+# Deploy to the Fhenix Sepolia testnet
 # This runs scripts/deploy.js which deploys all contracts in order:
 # 1. SponsorRegistry, 2. PatientRegistry, 3. TrialManager, 4. EligibilityEngine
-npx hardhat deploy --network zamaSepolia`}
+npx hardhat deploy --network fhenixSepolia`}
                 />
 
                 <Callout type="warning" title="Capture Contract Addresses Immediately">
-                    After a successful deploy, Hardhat will print each contract's address to the console. Copy them now — they are needed for <strong>both</strong> the frontend <code>.env</code> file and the Subgraph's <code>subgraph.yaml</code>. If you lose them, you can re-query them via Hardhat's artifact files in <code>./deployments/zamaSepolia/</code>.
+                    After a successful deploy, Hardhat will print each contract's address to the console. Copy them now — they are needed for <strong>both</strong> the frontend <code>.env</code> file and the Subgraph's <code>subgraph.yaml</code>. If you lose them, you can re-query them via Hardhat's artifact files in <code>./deployments/fhenixSepolia/</code>.
                 </Callout>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -196,7 +196,7 @@ graph deploy --studio medvault-subgraph --version-label v0.1.7`}
                             <tbody>
                                 {envVars.map((v, i) => (
                                     <tr key={v.key} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-2 font-mono text-teal-600 dark:text-teal-400 text-xs align-top">{v.key}</td>
+                                        <td className="px-4 py-2 font-mono text-blue-600 dark:text-blue-400 text-xs align-top">{v.key}</td>
                                         <td className="px-4 py-2 text-xs align-top">
                                             {v.required
                                                 ? <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">Required</span>
@@ -226,7 +226,7 @@ npm run build && npm run preview`}
                 />
 
                 <Callout type="tip" title="Verify FHE Readiness in the Browser">
-                    After launching, look for the <strong>FHE Ready</strong> green badge in the top-right corner of the Dashboard header. If it shows <strong>FHE Initializing</strong> or an error, the frontend failed to connect to the Zama RPC — double-check your MetaMask network configuration and the <code>VITE_CHAIN_ID</code> variable.
+                    After launching, look for the <strong>FHE Ready</strong> green badge in the top-right corner of the Dashboard header. If it shows <strong>FHE Initializing</strong> or an error, the frontend failed to connect to the Fhenix RPC — double-check your MetaMask network configuration and the <code>VITE_CHAIN_ID</code> variable.
                 </Callout>
 
             </Prose>

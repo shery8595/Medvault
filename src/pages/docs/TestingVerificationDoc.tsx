@@ -7,17 +7,17 @@ export function TestingVerificationDoc() {
     return (
         <motion.div>
             <Prose className="max-w-none">
-                <span className="text-teal-500 font-bold tracking-widest uppercase text-xs">Quality Assurance</span>
+                <span className="text-blue-500 font-bold tracking-widest uppercase text-xs">Quality Assurance</span>
                 <h1 className="mt-2 text-5xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Testing & Verification</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-12 max-w-prose leading-relaxed">
                     MedVault maintains a rigorous testing standard to ensure the mathematical integrity of FHE operations and the stability of the clinical trial ecosystem.
                 </p>
 
-                <div className="my-12 p-8 border border-slate-200 dark:border-slate-800 rounded-3xl bg-teal-500/5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-20 -mt-20" />
+                <div className="my-12 p-8 border border-slate-200 dark:border-slate-800 rounded-3xl bg-blue-500/5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20" />
                     <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-24 h-24 rounded-2xl bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                        <div className="w-24 h-24 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
                             <ShieldCheck className="w-12 h-12 text-white" />
                         </div>
                         <div>
@@ -36,21 +36,21 @@ export function TestingVerificationDoc() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-10 not-prose">
                     {/* Eligibility Engine Card */}
-                    <div className="p-8 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-teal-500/30 transition-all group overflow-hidden relative">
-                        <div className="absolute top-6 right-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/50 bg-teal-500/5 px-2 py-1 rounded-md border border-teal-500/10">30 Tests Verified</div>
-                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-teal-500/5 rounded-full blur-3xl group-hover:bg-teal-500/10 transition-colors" />
-                        <div className="w-12 h-12 rounded-2xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mb-6">
-                            <Activity className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                    <div className="p-8 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-blue-500/30 transition-all group overflow-hidden relative">
+                        <div className="absolute top-6 right-8 text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/50 bg-blue-500/5 px-2 py-1 rounded-md border border-blue-500/10">30 Tests Verified</div>
+                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors" />
+                        <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-6">
+                            <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h4 className="font-bold text-slate-900 dark:text-white text-xl mb-3">EligibilityEngine.sol</h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
                             Validated the mathematical accuracy of homomorphic comparisons against encrypted patient profiles.
                         </p>
                         <ul className="space-y-3 m-0 p-0 text-xs font-medium text-slate-600 dark:text-slate-400">
-                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-teal-500" /> Age Boundary Checks (e.g., 18 ≤ Age ≤ 65)</li>
-                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-teal-500" /> Multi-Condition Boolean Matching (e.g., AND/OR for Diabetes)</li>
-                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-teal-500" /> Encrypted Hb Level Thresholds (uint16 precision)</li>
-                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-teal-500" /> Reentrancy Guard during Eligibility Callback</li>
+                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Age Boundary Checks (e.g., 18 ≤ Age ≤ 65)</li>
+                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Multi-Condition Boolean Matching (e.g., AND/OR for Diabetes)</li>
+                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Encrypted Hb Level Thresholds (uint16 precision)</li>
+                            <li className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-blue-500" /> Reentrancy Guard during Eligibility Callback</li>
                         </ul>
                     </div>
 
@@ -120,20 +120,20 @@ export function TestingVerificationDoc() {
                 <div className="my-8 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 p-6 font-mono text-sm shadow-inner">
                     <div className="flex flex-col gap-2">
                         <div className="flex justify-between border-b border-slate-800 pb-2">
-                            <span className="text-slate-500">@zama-fhe/relayer-sdk</span>
-                            <span className="text-teal-400">0.3.0-6</span>
+                            <span className="text-slate-500">@fhenix-fhe/relayer-sdk</span>
+                            <span className="text-blue-400">0.3.0-6</span>
                         </div>
                         <div className="flex justify-between border-b border-slate-800 py-2">
                             <span className="text-slate-500">@fhevm/hardhat-plugin</span>
-                            <span className="text-teal-400">0.3.0-3</span>
+                            <span className="text-blue-400">0.3.0-3</span>
                         </div>
                         <div className="flex justify-between border-b border-slate-800 py-2">
                             <span className="text-slate-500">ethers</span>
-                            <span className="text-teal-400">6.16.0</span>
+                            <span className="text-blue-400">6.16.0</span>
                         </div>
                         <div className="flex justify-between pt-2">
                             <span className="text-slate-500">hardhat</span>
-                            <span className="text-teal-400">2.22.17</span>
+                            <span className="text-blue-400">2.22.17</span>
                         </div>
                     </div>
                 </div>
@@ -148,9 +148,9 @@ export function TestingVerificationDoc() {
                 </p>
 
                 <div className="relative group my-8">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-teal-500/20 to-purple-500/20 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
                     <div className="relative p-6 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
-                        <code className="text-teal-400 font-mono text-sm leading-6">
+                        <code className="text-blue-400 font-mono text-sm leading-6">
                             npx hardhat test test/comprehensive_medvault.test.js --network hardhat
                         </code>
                         <Terminal className="w-5 h-5 text-slate-500" />

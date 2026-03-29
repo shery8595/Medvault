@@ -37,10 +37,10 @@ export function useEligibility(address?: string) {
             const encryptedResult = await engine.getEncryptedResult(address, trialId);
 
             // In the hardened plan, result is NOT public. 
-            // We use the FHE library's decrypt utility which handles the Zama reveal process.
+            // We use the FHE library's decrypt utility which handles the Fhenix reveal process.
             const decrypted = await publicDecrypt(encryptedResult);
 
-            setResults(prev => ({ ...prev, [trialId]: decrypted === 1 }));
+            setResults(prev => ({ ...prev, [trialId]: decrypted.value === 1 }));
         } catch (err) {
             console.error("Decryption failed:", err);
         } finally {

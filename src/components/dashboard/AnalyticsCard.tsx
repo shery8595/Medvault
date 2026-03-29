@@ -15,16 +15,16 @@ const COLORS = ['#14B8A6', '#6366F1', '#F43F5E', '#F59E0B', '#8B5CF6'];
 
 export function AnalyticsCard({ title, type, data, centerLabel }: AnalyticsCardProps) {
   return (
-    <Card className="min-h-[420px] relative overflow-hidden bg-white/5 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all duration-500 ease-out hover:border-teal-500/30 hover:shadow-teal-500/5 hover:-translate-y-1 group">
+    <Card className="min-h-[420px] relative overflow-hidden bg-white/5 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all duration-500 ease-out hover:border-blue-500/30 hover:shadow-blue-500/5 hover:-translate-y-1 group">
       {/* Morphing Background Layer */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-teal-500/10" />
+        <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-blue-500/10" />
         <div className="absolute -bottom-32 -left-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-indigo-500/10 delay-700" />
       </div>
 
       <CardHeader className="pb-2 relative z-10">
         <div className="flex items-center gap-2 mb-1">
-          <div className="h-1.5 w-1.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)] animate-pulse" />
+          <div className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(20,184,166,0.6)] animate-pulse" />
           <CardTitle className="text-sm font-black uppercase tracking-[0.25em] text-slate-500 group-hover:text-slate-400 transition-colors">
             {title}
           </CardTitle>

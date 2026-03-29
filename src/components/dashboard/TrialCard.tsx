@@ -274,7 +274,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
         className={cn(
           "group relative overflow-hidden transition-all duration-500 ease-out",
           isGlass
-            ? "bg-white/5 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl hover:border-teal-500/30 hover:shadow-teal-500/5 hover:-translate-y-1"
+            ? "bg-white/5 border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl hover:border-blue-500/30 hover:shadow-blue-500/5 hover:-translate-y-1"
             : "border-slate-200/60 bg-white shadow-neo hover:shadow-neo-lg dark:border-slate-800 dark:bg-slate-900/50"
         )}
       >
@@ -282,7 +282,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
           <>
             {/* Morphing Glow Layer */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out pointer-events-none">
-              <div className="absolute -top-32 -left-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-teal-500/10" />
+              <div className="absolute -top-32 -left-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-blue-500/10" />
               <div className="absolute -bottom-32 -right-32 w-64 h-64 rounded-full blur-[100px] animate-pulse bg-indigo-500/10 delay-700" />
             </div>
             {/* Inner Glow Border */}
@@ -298,7 +298,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                   variant="outline"
                   className={cn(
                     "font-mono text-[10px] uppercase tracking-[0.15em] px-2.5 py-1",
-                    isGlass ? "bg-white/5 border-white/10 text-teal-400" : "bg-slate-50 dark:bg-slate-800"
+                    isGlass ? "bg-white/5 border-white/10 text-blue-400" : "bg-slate-50 dark:bg-slate-800"
                   )}
                 >
                   {trial.phase.toUpperCase().startsWith("PHASE") ? trial.phase : `Phase ${trial.phase}`}
@@ -314,7 +314,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                 {(trial.matchCount || 0) > 100 && (
                   <Badge
                     variant="secondary"
-                    className="bg-teal-50 text-teal-700 border-teal-100 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-800"
+                    className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
                   >
                     Trending Trial
                   </Badge>
@@ -325,7 +325,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                 <div className="flex-1">
                   <h3 className={cn(
                     "font-display font-black tracking-tight mb-1 leading-tight transition-colors duration-300",
-                    isGlass ? "text-xl text-white group-hover:text-teal-400" : "text-lg text-slate-900 dark:text-slate-50 group-hover:text-accent"
+                    isGlass ? "text-xl text-white group-hover:text-blue-400" : "text-lg text-slate-900 dark:text-slate-50 group-hover:text-accent"
                   )}>
                     {trial.name}
                   </h3>
@@ -397,19 +397,19 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                 <div className="flex items-center gap-3 group/item">
                   <div className={cn(
                     "flex items-center justify-center h-8.5 w-8.5 rounded-xl transition-all duration-500 group-hover/item:scale-110 group-hover/item:rotate-3 shadow-lg",
-                    isGlass ? "bg-teal-500/10 border border-teal-500/20" : "bg-teal-500/5 border border-teal-500/10"
+                    isGlass ? "bg-blue-500/10 border border-blue-500/20" : "bg-blue-500/5 border border-blue-500/10"
                   )}>
-                    <Clock className="h-4.5 w-4.5 text-teal-400" />
+                    <Clock className="h-4.5 w-4.5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-teal-500/60 mb-1">
+                    <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-blue-500/60 mb-1">
                       Status
                     </p>
                     {(() => {
                       const hasEnded = trial.endTime && parseInt(trial.endTime) <= Math.floor(Date.now() / 1000);
                       const isLive = trial.active && !hasEnded;
                       return (
-                        <p className={cn("text-sm font-black", isLive ? "text-teal-400 animate-pulse" : hasEnded ? "text-rose-400" : "text-slate-400")}>
+                        <p className={cn("text-sm font-black", isLive ? "text-blue-400 animate-pulse" : hasEnded ? "text-rose-400" : "text-slate-400")}>
                           {isLive ? "Live" : hasEnded ? "Ended" : "Inactive"}
                         </p>
                       );
@@ -425,7 +425,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
               isGlass ? "bg-white/[0.02] border-t md:border-t-0 md:border-l border-white/5" : "bg-slate-50/50 border-t md:border-t-0 md:border-l border-slate-100 dark:bg-slate-800/20 dark:border-slate-800"
             )}>
               {isGlass && (
-                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 blur-[50px] rounded-full" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] rounded-full" />
               )}
 
               <div className="text-center mb-4 relative z-10">
@@ -433,7 +433,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                   <span
                     className={cn(
                       "font-display font-black leading-none transition-all duration-500 group-hover:scale-110",
-                      isGlass ? "text-4xl text-teal-400" : "text-2xl text-slate-900 dark:text-slate-50"
+                      isGlass ? "text-4xl text-blue-400" : "text-2xl text-slate-900 dark:text-slate-50"
                     )}
                   >
                     {isGlass
@@ -459,7 +459,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                   transition={{ duration: 1, ease: "easeOut" }}
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
-                    isGlass || (decryptedScore !== null ? decryptedScore : 0) > 80 ? "bg-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.6)]" :
+                    isGlass || (decryptedScore !== null ? decryptedScore : 0) > 80 ? "bg-blue-500 shadow-[0_0_12px_rgba(20,184,166,0.6)]" :
                       (decryptedScore !== null ? decryptedScore : 0) > 50 ? "bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]" : "bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]"
                   )}
                 />
@@ -469,7 +469,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                 <Button
                   size="sm"
                   variant="default"
-                  className="w-full text-[11px] font-bold uppercase tracking-wider mb-3 bg-accent hover:bg-accent/90 shadow-[0_0_15px_rgba(45,212,191,0.2)]"
+                  className="w-full text-[11px] font-bold uppercase tracking-wider mb-3 bg-accent hover:bg-accent/90 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                   onClick={handleRevealScore}
                   disabled={isDecrypting}
                 >
@@ -528,7 +528,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                             key={i}
                             className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"
                           >
-                            <CheckCircle className="h-4 w-4 text-teal-500 mt-0.5 shrink-0" />
+                            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                             <span>{item}</span>
                           </li>
                         ))}
@@ -666,7 +666,7 @@ export function TrialCard({ trial, index = 0, variant = "default" }: TrialCardPr
                                 className={cn(
                                   "mt-4 p-4 rounded-[1.5rem] border space-y-3",
                                   trial.incentivePool?.distributed
-                                    ? "bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/20"
+                                    ? "bg-gradient-to-br from-emerald-500/10 to-blue-500/5 border-emerald-500/20"
                                     : "bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20"
                                 )}
                               >

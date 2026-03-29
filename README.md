@@ -1,11 +1,11 @@
 # MedVault — Private, FHE-Powered Clinical Trials
 
-[![FHEVM](https://img.shields.io/badge/Powered%20By-FHEVM-teal?style=for-the-badge)](https://zama.ai/fhevm)
+[![Fhenix](https://img.shields.io/badge/Powered%20By-Fhenix-teal?style=for-the-badge)](https://fhenix.io)
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-blue?style=for-the-badge)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-100%20Passing-emerald?style=for-the-badge)](docs/TESTING_GUIDE.md)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=for-the-badge)](https://vercel.com)
 
-**MedVault** is the first decentralized clinical trial platform leveraging **Fully Homomorphic Encryption (FHE)** to bridge the gap between medical privacy and decentralized research. Built on the Zama fhEVM, it allows patients to match with life-saving trials while keeping their medical data mathematically encrypted at all times.
+**MedVault** is a decentralized clinical trial platform leveraging **Fully Homomorphic Encryption (FHE)** to bridge the gap between medical privacy and decentralized research. Built on **Fhenix (CoFHE)**, it allows patients to match with life-saving trials while keeping their medical data mathematically encrypted at all times on **Arbitrum Sepolia**.
 
 </div>
 
@@ -18,12 +18,12 @@ MedVault uses a multi-layered approach to synchronize browser-level encryption w
 ```mermaid
 graph TD
     subgraph "Frontend Layer (React + Vite)"
-        A[MedVault DApp] --> B[fhevmjs Client]
-        B -->|AES-256 + FHE Key Gen| C[EIP-712 Signing]
+        A[MedVault DApp] --> B[Fhenix CoFHE SDK]
+        B -->|FHE Key Gen + Permits| C[EIP-712 Signing]
         C -->|Encrypted Payloads| D[RPC Provider]
     end
     
-    subgraph "Execution Layer (Zama FHEVM)"
+    subgraph "Execution Layer (Fhenix CoFHE)"
         D --> E[EligibilityEngine.sol]
         E -->|Homomorphic Compute| F[ConfidentialETH.sol]
         E -->|Manage Trials| H[SponsorRegistry.sol]
@@ -35,15 +35,15 @@ graph TD
         E .-x|Events emitted| J[The Graph Node]
         J -->|GraphQL API| A
     end
-
+    
     subgraph "Automation & Oracles"
         K[Chainlink Automation] -->|Trigger PerformUpkeep| H
     end
 
     classDef default fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9;
-    classDef zama fill:#064e3b,stroke:#059669,stroke-width:2px,color:#ecfdf5;
+    classDef fhenix fill:#064e3b,stroke:#059669,stroke-width:2px,color:#ecfdf5;
     classDef link fill:#1d4ed8,stroke:#2563eb,stroke-width:2px,color:#eff6ff;
-    class E,F,G,H zama
+    class E,F,G,H fhenix
     class K link
 ```
 
@@ -51,7 +51,7 @@ graph TD
 
 ## 📜 2. Smart Contract Ecosystem
 
-MedVault's core logic is distributed across a modular set of FHE-aware smart contracts. Each contract is designed to handle encrypted types (`euint32`, `ebool`) securely.
+MedVault's core logic is distributed across a modular set of FHE-aware smart contracts. Each contract is designed to handle encrypted types (`euint8`, `euint16`, `ebool`) securely using the Fhenix `FHE.sol` library.
 
 ```mermaid
 erDiagram
@@ -68,62 +68,64 @@ erDiagram
     }
     
     EligibilityEngine {
-        euint32 encryptedAge
-        euint32 encryptedBloodPressure
+        euint8 encryptedAge
+        euint16 encryptedHbLevel
         ebool trialMatchStatus
     }
 ```
 
 | Contract | Purpose | Key Feature |
 |-----------|---------|-------------|
-| **`EligibilityEngine.sol`** | Core Matching Logic | Homomorphic (CMUX) boundary checks on `euint32`. |
-| **`ConfidentialETH.sol`** | Privacy Wrapper | 1e12 scaled `euint32` encrypted balances to prevent tracking. |
+| **`EligibilityEngine.sol`** | Core Matching Logic | Homomorphic matching on `euint8`, `euint16`, and `ebool`. |
+| **`ConfidentialETH.sol`** | Privacy Wrapper | 1e12 scaled `euint64` encrypted balances to prevent tracking. |
 | **`StakingManager.sol`** | De-Fi Integration | Native Aave V3 yield generation on private assets. |
-| **`PatientRegistry.sol`** | Patient Identity | Manages encrypted health profiles (Age, BloodType, etc.). |
-| **`SponsorRegistry.sol`** | Sponsor Identity | Strict KYC & verification gates before trials are published. |
-| **`SponsorIncentiveVault.sol`** | Reward Governance | Escrows and locks reward pools for entire trials. |
-| **`TrialManager.sol`** | Trial Lifecycle | Handles trial creation, capacities, and active states. |
-| **`TrialMilestoneManager.sol`**| Phased Delivery | Automated milestone-based payouts for long trials. |
-| **`MedVaultAutomation.sol`** | Chainlink Upkeeps | Automates trial checkUpkeep and performUpkeep. |
-| **`ConsentManager.sol`** | Selective Decryption | Manages KMS re-encryption keys and patient approvals. |
+| **`PatientRegistry.sol`** | Patient Identity | Manages encrypted health profiles via Fhenix encrypted types. |
+| **`SponsorRegistry.sol`** | Sponsor Identity | KYC & verification gates using off-chain encryption hashes. |
+| **`SponsorIncentiveVault.sol`** | Reward Governance | Escrows and locks reward pools for phased trial distribution. |
+| **`TrialManager.sol`** | Trial Lifecycle | Handles trial creation and public metadata for discovery. |
+| **`TrialMilestoneManager.sol`**| Phased Delivery | Automated milestone-based progress tracking. |
+| **`MedVaultAutomation.sol`** | Chainlink Upkeeps | Automates trial checkUpkeep and performUpkeep on Arbitrum Sepolia. |
+| **`ConsentManager.sol`** | Selective Decryption | Manages patient approvals for FHE visibility. |
 | **`DataAccessLog.sol`** | Compliance Audit | Immutable, anonymized HIPAA/GDPR access tracking. |
 
 ---
 
-## 🔐 3. Zama FHEVM Encryption / Decryption Lifecycle
+## 🔐 3. Fhenix CoFHE Encryption / Decryption Lifecycle
 
-Fully Homomorphic Encryption allows the blockchain to do math on numbers it cannot see. Here is how MedVault utilizes Zama's `fhevmjs` and `TFHE.sol`.
+Fully Homomorphic Encryption allows the blockchain to do math on numbers it cannot see. MedVault utilizes the **@cofhe/sdk** and **FHE.sol**.
 
 ```mermaid
 sequenceDiagram
     participant P as Patient (Browser)
-    participant RPC as Zama RPC
-    participant SC as Smart Contract (FHEVM)
-    participant KMS as Zama KMS (Threshold)
+    participant RPC as Arbitrum Sepolia RPC
+    participant SC as Smart Contract (Fhenix)
+    participant CO as Fhenix Coprocessor
     
     Note over P: Patient enters: Age=35
-    P->>P: fhevmjs.encrypt(35) -> 0xabc...
-    P->>RPC: tx: applyForTrial(0xabc...)
+    P->>P: sdk.encrypt8(35) -> Ciphertext
+    P->>RPC: tx: applyForTrial(Ciphertext)
     RPC->>SC: execute transaction
-    Note over SC: Contract loads Sponsor's Encrypted Req: MinAge=18
-    SC->>SC: TFHE.ge(0xabc..., Encrypted_18)
-    Note over SC: Result is a new ciphertext (ebool)
-    SC->>KMS: Request Decryption of result
-    KMS-->>SC: Decrypted boolean: TRUE
-    SC->>SC: Emit MatchEvent(PatientAddress)
+    Note over SC: Contract loads Sponsor's Req: MinAge=18
+    SC->>CO: FHE.gt(Ciphertext, 18)
+    CO-->>SC: Result Ciphertext (ebool)
+    Note over SC: Access Control (FHE.allow)
+    P->>SC: getEncryptedResult()
+    SC-->>P: Result Ciphertext
+    P->>P: sdk.decryptForView(Ciphertext)
+    Note over P: Decrypted boolean: TRUE
     Note over SC,P: The network knows they matched, but NOT their age
 ```
 
 ### The Cryptographic Guarantee:
-1. **Client-side Encryption:** `fhevmjs` generates a single-use public key derived from the network.
-2. **On-Chain Computation:** The smart contract uses `TFHE.add()`, `TFHE.ge()`, etc., to manipulate the ciphertexts.
-3. **Threshold Decryption (ACL):** Only the final binary result (e.g., "Matched? Yes/No") is allowed to be decrypted by the ACL. The raw inputs remain encrypted forever.
+1. **Client-side Encryption:** `@cofhe/sdk` handles secure encryption before data leaves the browser.
+2. **On-Chain Computation:** The smart contract uses `FHE.add()`, `FHE.gt()`, etc., to manipulate ciphertexts via the Fhenix coprocessor.
+3. **Access Control (Permits):** Only the intended recipient (e.g., the patient) can re-encrypt and view the final result using signed **Permits**.
 
 ---
 
 ## 💰 4. Private Staking & Yield
 
-MedVault integrates with **Aave V3** to allow sponsors and patients to earn yield on their confidential assets while they are locked in trials.
+MedVault integrates with **Aave V3** to allow participants to earn yield on their confidential assets while they are locked in trials.
 
 ```mermaid
 stateDiagram-v2
@@ -144,10 +146,10 @@ stateDiagram-v2
     CETH --> Wallet: 6. Withdraw (Unshielding)
 ```
 
-1. **Shielding:** Users deposit native ETH into `ConfidentialETH`, receiving an encrypted (`euint32`) balance.
-2. **Staking:** The user commits encrypted funds to a trial. The `StakingManager` deducts the encrypted balance.
-3. **Yield Generation:** The `StakingManager` pools the actual underlying native ETH and supplies it to Aave V3.
-4. **Unshielding:** When the trial finishes, the encrypted balance + yield is returned, and the user can unshield it back to their public wallet.
+1. **Shielding:** Users deposit native ETH into `ConfidentialETH`, receiving an encrypted (`euint64`) balance.
+2. **Staking:** The user commits encrypted funds to a trial. The `StakingManager` tracks the staked value privately.
+3. **Yield Generation:** The `StakingManager` pools the underlying native ETH and supplies it to Aave V3 on Arbitrum.
+4. **Unshielding:** Upon trial completion, the encrypted balance + yield is returned, and the user can unshield it back to their wallet.
 
 ---
 
@@ -159,23 +161,23 @@ The core value proposition of MedVault is the ability to evaluate a patient agai
 graph LR
     subgraph "Patient Profile (Encrypted)"
         A[Encrypted Age]
-        B[Encrypted BloodType]
+        B[Encrypted Gender]
         C[Encrypted Condition Status]
     end
     
-    subgraph "TFHE Evaluation Gates"
-        A -->|TFHE.ge| D{Age >= MinAge?}
-        B -->|TFHE.eq| E{BloodType == Req?}
-        C -->|TFHE.eq| F{Condition == True?}
+    subgraph "FHE Evaluation Gates"
+        A -->|FHE.gt| D{Age within Range?}
+        B -->|FHE.eq| E{Gender Match?}
+        C -->|FHE.eq| F{Condition Check?}
         
-        D -->|TFHE.and| G((Global AND Gate))
-        E -->|TFHE.and| G
-        F -->|TFHE.and| G
+        D -->|FHE.and| G((Global AND Gate))
+        E -->|FHE.and| G
+        F -->|FHE.and| G
     end
     
     subgraph "Result"
-        G --> H[Encrypted Boolean]
-        H -->|Decryption Request| I[Match / Reject]
+        G --> H[Encrypted Result]
+        H -->|Permit Reveal| I[Reveal Match]
     end
     
     classDef secret fill:#064e3b,stroke:#059669,stroke-width:2px,color:#ecfdf5;
@@ -186,7 +188,7 @@ graph LR
 
 ## 🧰 6. Tech Stack
 
-MedVault is built using a modern, fully decentralized Web3 stack tailored for Homomorphic Encryption.
+MedVault is built using a modern, fully decentralized Web3 stack tailored for Fhenix CoFHE.
 
 ```mermaid
 graph TD
@@ -195,23 +197,23 @@ graph TD
     classDef web3 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc
     classDef contracts fill:#701a75,stroke:#d946ef,stroke-width:2px,color:#f8fafc
     classDef infra fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#f8fafc
-
+ 
     subgraph "Frontend Layer"
-        R[React 18]:::frontend
+        R[React 19]:::frontend
         V[Vite]:::frontend
         T[Tailwind CSS]:::frontend
         F[Framer Motion]:::frontend
     end
 
     subgraph "Web3 & FHE"
-        Z[fhevmjs]:::web3
+        Z[@cofhe/sdk]:::web3
         W[WAGMI / Viem]:::web3
-        E[Ethers.js]:::web3
+        E[Ethers.js v6]:::web3
     end
 
     subgraph "Smart Contracts"
-        S[Solidity 0.8.24]:::contracts
-        TL[Zama TFHE Library]:::contracts
+        S[Solidity 0.8.27]:::contracts
+        TL[FHE.sol Library]:::contracts
         H[Hardhat]:::contracts
     end
 
@@ -223,26 +225,25 @@ graph TD
     end
 ```
 
-*   **Frontend UI:** React 18, Vite, Tailwind CSS, Shadcn (Lucide Icons), Framer Motion for highly optimized animations.
-*   **Cryptography:** `@zama-ai/fhevmjs` for client-side encryption and EIP-712 credential signing.
-*   **Blockchain Dev:** `Hardhat` with `@fhevm/hardhat-plugin` for testing mocked FHE operations locally.
-*   **Smart Contracts:** Solidity `0.8.24` utilizing the core `TFHE.sol` library.
-*   **Data Indexing:** The Graph (AssemblyScript mappings) paired with Apollo Client for rapid UI rendering without heavy RPC polling.
-*   **Tooling:** TypeChain, Eslint, Prettier, PostCSS.
+*   **Frontend UI:** React 19, Vite, Tailwind CSS, Lucide Icons, Framer Motion.
+*   **Cryptography:** `@cofhe/sdk` for client-side encryption and permit management.
+*   **Blockchain Dev:** `Hardhat` with `@cofhe/hardhat-plugin` for FHE-aware development.
+*   **Smart Contracts:** Solidity `0.8.27` utilizing the `@fhenixprotocol/cofhe-contracts/FHE.sol` library.
+*   **Data Indexing:** The Graph paired with Apollo Client for rapid UI rendering.
+*   **Tooling:** TypeChain, Eslint, Prettier.
 
 ---
 
 ## ✅ Verification & Assurance
 
-We maintain a rigorous quality standard. The system is verified by a **100-case comprehensive stress test suite** that validates every edge case in the FHE environment.
+The system is verified by a **comprehensive stress test suite** that validates every edge case in the Fhenix CoFHE environment.
 
-*   **Success Rate**: 100/100 Tests Passing.
-*   **Coverage**: Eligibility Engine, Staking Consistency, Reward Distribution, and Access Control.
-*   **Environment**: Standardized for local Hardhat and Zama Mock FHE.
+*   **Status**: All Tests Passing on Arbitrum Sepolia.
+*   **Coverage**: Eligibility Engine, Staking Consistency, Reward Distribution, and Access Control (ACL).
 
 ```bash
 # Run the verification suite
-npx hardhat test test/comprehensive_medvault.test.js --network hardhat
+npx hardhat test test/comprehensive_medvault.test.js --network arbitrumSepolia
 ```
 
 ---
@@ -251,7 +252,7 @@ npx hardhat test test/comprehensive_medvault.test.js --network hardhat
 
 ### Prerequisites
 *   Node.js (v20+)
-*   Metamask with Zama Sepolia Testnet configured.
+*   Metamask with **Arbitrum Sepolia** Testnet configured.
 
 ### Local Installation
 1.  **Clone & Install**:
@@ -260,22 +261,18 @@ npx hardhat test test/comprehensive_medvault.test.js --network hardhat
     cd medvault
     npm install
     ```
-2.  **Environment Setup**: Create a `.env.local` file:
-    ```bash
-    GEMINI_API_KEY=your_key_here
-    ```
-3.  **Run Development Server**:
+2.  **Run Development Server**:
     ```bash
     npm run dev
     ```
 
 ### Vercel Deployment
-MedVault is pre-configured with a `vercel.json` to handle the critical security headers (**COOP/COEP**) required for FHEVM WASM execution. Just import the repo into Vercel and it works out of the box.
+MedVault is configured with `vercel.json` to handle the security headers required for FHE SDK execution.
 
 ---
 
 ## 📄 Documentation
-For deep technical dives, check out our internal documentation portal or the following guides:
+For deep technical dives, check out the following guides:
 *   [Testing & Verification Guide](docs/TESTING_GUIDE.md)
 *   [New Contract Development Guide](docs/NEW_CONTRACTS_GUIDE.md)
 *   [Upgrade Roadmap V1.1](docs/UPGRADE_V1.1_PHASED_PAYOUTS_AND_AUDIT.md)
@@ -283,5 +280,7 @@ For deep technical dives, check out our internal documentation portal or the fol
 ---
 
 <div align="center">
-Built with ❤️ for the future of Medical Privacy.
+Built with ❤️ for the future of Medical Privacy on Fhenix.
+</div>
+future of Medical Privacy.
 </div>

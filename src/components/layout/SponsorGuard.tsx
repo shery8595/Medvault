@@ -19,7 +19,7 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
         return (
             <FullScreenGate>
                 <GateIcon
-                    icon={<Wallet className="h-8 w-8 text-teal-400" />}
+                    icon={<Wallet className="h-8 w-8 text-blue-400" />}
                     color="teal"
                 />
                 <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
@@ -31,7 +31,7 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
                 <Button
                     onClick={connect}
                     disabled={isConnecting}
-                    className="gap-2 bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-teal-500/20"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20"
                 >
                     {isConnecting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -49,9 +49,9 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
         return (
             <FullScreenGate>
                 <div className="relative mb-6">
-                    <div className="absolute inset-0 rounded-full bg-teal-500/10 blur-xl animate-pulse" />
+                    <div className="absolute inset-0 rounded-full bg-blue-500/10 blur-xl animate-pulse" />
                     <div className="relative flex items-center justify-center h-20 w-20 rounded-2xl bg-slate-800 border border-slate-700">
-                        <Loader2 className="h-8 w-8 text-teal-400 animate-spin" />
+                        <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
                     </div>
                 </div>
                 <p className="text-slate-300 font-semibold text-sm tracking-wide">Verifying sponsor status…</p>
@@ -119,7 +119,7 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
                 <p className="text-slate-500 text-xs">Want to run clinical trials on MedVault?</p>
                 <div className="flex flex-col sm:flex-row gap-3">
                     <Link to="/admin/sponsors">
-                        <Button className="gap-2 bg-teal-600 hover:bg-teal-700 text-white px-7 py-3 rounded-2xl font-bold shadow-lg shadow-teal-500/20">
+                        <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white px-7 py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20">
                             <FileText className="h-4 w-4" />
                             Apply to Become a Sponsor
                             <ArrowRight className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
 
                 {/* Info note */}
                 <div className="flex items-start gap-2.5 mt-4 max-w-sm p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-left">
-                    <ShieldCheck className="h-4 w-4 text-teal-400 shrink-0 mt-0.5" />
+                    <ShieldCheck className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
                     <p className="text-[11px] text-slate-500 leading-relaxed">
                         After submitting your application, the MedVault admin team will review and whitelist your wallet address in the{" "}
                         <span className="text-slate-400 font-semibold">SponsorRegistry</span> contract. You'll then have full access to the portal.
@@ -158,7 +158,7 @@ function FullScreenGate({ children }: { children: React.ReactNode }) {
             {/* Ambient glow */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-8"
-                    style={{ background: "radial-gradient(ellipse, rgba(45,212,191,0.08) 0%, transparent 70%)" }}
+                    style={{ background: "radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)" }}
                 />
             </div>
 
@@ -171,8 +171,8 @@ function FullScreenGate({ children }: { children: React.ReactNode }) {
 
 /* ─── Helper: icon tile ──────────────────────────────────────────────────── */
 function GateIcon({ icon, color }: { icon: React.ReactNode; color: "teal" | "rose" }) {
-    const glow = color === "teal" ? "bg-teal-500/15" : "bg-rose-500/15";
-    const border = color === "teal" ? "border-teal-500/30" : "border-rose-500/30";
+    const glow = color === "teal" ? "bg-blue-500/15" : "bg-rose-500/15";
+    const border = color === "teal" ? "border-blue-500/30" : "border-rose-500/30";
     return (
         <div className="relative mb-6">
             <div className={`absolute inset-0 rounded-full ${glow} blur-2xl animate-pulse`} />

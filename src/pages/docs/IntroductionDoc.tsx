@@ -45,10 +45,10 @@ const layerStyles: Record<string, { container: string; dot: string; label: strin
         iconBg: "bg-blue-900/40 text-blue-400",
     },
     teal: {
-        container: "bg-teal-950/40 border-teal-500/20",
-        dot: "bg-teal-500",
-        label: "text-teal-400",
-        iconBg: "bg-teal-900/40 text-teal-400",
+        container: "bg-blue-950/40 border-blue-500/20",
+        dot: "bg-blue-500",
+        label: "text-blue-400",
+        iconBg: "bg-blue-900/40 text-blue-400",
     },
     purple: {
         container: "bg-purple-950/40 border-purple-500/20",
@@ -79,7 +79,7 @@ const ArchitectureFlowDiagram = () => {
             color: "teal",
             nodes: [
                 { icon: <Database className="w-4 h-4" />, name: "PatientRegistry", detail: "euint32 Storage" },
-                { icon: <Activity className="w-4 h-4" />, name: "EligibilityEngine", detail: "TFHE Compute" },
+                { icon: <Activity className="w-4 h-4" />, name: "EligibilityEngine", detail: "FHE Compute" },
                 { icon: <Cpu className="w-4 h-4" />, name: "TrialManager", detail: "Trial Logic" },
                 { icon: <Shield className="w-4 h-4" />, name: "ConsentManager", detail: "ACL Gating" },
             ]
@@ -108,12 +108,12 @@ const ArchitectureFlowDiagram = () => {
             {/* Background Grid */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px]" />
             {/* Glow accents */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500/5 rounded-full blur-[120px]" />
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]" />
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px]" />
 
             <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-8">
-                    <div className="p-2 rounded-xl bg-teal-500/10 text-teal-500 border border-teal-500/20">
+                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
                         <Layers className="w-5 h-5" />
                     </div>
                     <div>
@@ -187,9 +187,9 @@ const ArchitectureFlowDiagram = () => {
 const EncryptionPipelineDiagram = () => {
     const stages = [
         { label: "Plaintext", value: "age = 42", bg: "bg-rose-500", desc: "Raw patient data in browser memory", icon: <Heart className="w-4 h-4" /> },
-        { label: "TFHE Encrypt", value: "fhevmjs.encrypt32(42)", bg: "bg-amber-500", desc: "Client-side encryption via Zama SDK", icon: <Lock className="w-4 h-4" /> },
+        { label: "FHE Encrypt", value: "fhevmjs.encrypt32(42)", bg: "bg-amber-500", desc: "Client-side encryption via Fhenix SDK", icon: <Lock className="w-4 h-4" /> },
         { label: "Ciphertext", value: "0x7f3a...b2c1", bg: "bg-purple-500", desc: "euint32 handle stored on-chain", icon: <Database className="w-4 h-4" /> },
-        { label: "FHE Compute", value: "TFHE.ge(age, minAge)", bg: "bg-teal-500", desc: "Homomorphic comparison in coprocessor", icon: <Cpu className="w-4 h-4" /> },
+        { label: "FHE Compute", value: "FHE.ge(age, minAge)", bg: "bg-blue-500", desc: "Homomorphic comparison in coprocessor", icon: <Cpu className="w-4 h-4" /> },
         { label: "Encrypted Result", value: "ebool → euint32 score", bg: "bg-blue-500", desc: "Score accumulated via CMUX", icon: <Activity className="w-4 h-4" /> },
         { label: "Patient Decrypt", value: "EIP-712 → plaintext 100", bg: "bg-emerald-500", desc: "Only patient can view their score", icon: <Key className="w-4 h-4" /> },
     ];
@@ -297,7 +297,7 @@ const ContractInteractionDiagram = () => {
 // ─── FHE State Machine ───
 const FheStateMachine = () => {
     const states = [
-        { step: "01", title: "Client Encryption", desc: "`fhevmjs` encrypts health metrics entirely in the browser using TFHE.", icon: <Users className="w-5 h-5" />, color: "blue" },
+        { step: "01", title: "Client Encryption", desc: "`fhevmjs` encrypts health metrics entirely in the browser using FHE.", icon: <Users className="w-5 h-5" />, color: "blue" },
         { step: "02", title: "On-Chain Vault", desc: "`PatientRegistry` stores ciphertext handles in encrypted contract state.", icon: <Database className="w-5 h-5" />, color: "purple" },
         { step: "03", title: "FHEVM Engine", desc: "`EligibilityEngine` runs homomorphic comparisons without decrypting inputs.", icon: <Lock className="w-5 h-5" />, color: "teal", highlight: true },
         { step: "04", title: "EIP-712 Decrypt", desc: "Only the patient can sign a viewing key to decrypt their match score.", icon: <Key className="w-5 h-5" />, color: "amber" },
@@ -305,11 +305,11 @@ const FheStateMachine = () => {
 
     return (
         <div className="my-16 p-8 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-[#060D18] relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -ml-20 -mb-20 opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
 
             <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white mt-0 mb-8 relative z-10 flex items-center gap-3">
-                <Activity className="w-5 h-5 text-teal-500" />
+                <Activity className="w-5 h-5 text-blue-500" />
                 The FHE Matching State Machine
             </h3>
 
@@ -322,7 +322,7 @@ const FheStateMachine = () => {
                             transition={{ delay: i * 0.2 }}
                             viewport={{ once: true }}
                             className={`flex-1 w-full p-4 rounded-2xl shadow-sm text-center ${s.highlight
-                                ? "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-b-4 border-b-teal-500"
+                                ? "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-b-4 border-b-blue-500"
                                 : s.color === "amber"
                                     ? "bg-amber-500 text-white"
                                     : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
@@ -379,19 +379,19 @@ export function IntroductionDoc() {
                                 transition={{ duration: 0.6, delay: 0.3 }}
                             >
                                 <div className="flex items-center gap-2 mb-3">
-                                    <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
-                                    <span className="text-teal-400 text-xs font-black uppercase tracking-[0.25em]">Technical Documentation</span>
+                                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_12px_rgba(59,130,246,0.6)]" />
+                                    <span className="text-blue-400 text-xs font-black uppercase tracking-[0.25em]">Technical Documentation</span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-display font-black text-white tracking-tight mb-3 leading-[1.1]">
-                                    MedVault<span className="text-teal-400">.</span>
+                                    MedVault<span className="text-blue-400">.</span>
                                 </h1>
                                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed font-medium">
-                                    The first <strong className="text-white">Fully Homomorphic Encryption</strong> powered clinical trial matching platform built on Ethereum, leveraging the Zama fhEVM coprocessor to enable computation on encrypted medical data.
+                                    The first <strong className="text-white">Fully Homomorphic Encryption</strong> powered clinical trial matching platform built on Ethereum, leveraging the Fhenix fhEVM coprocessor to enable computation on encrypted medical data.
                                 </p>
 
                                 {/* Quick action pills */}
                                 <div className="flex flex-wrap gap-2 mt-6">
-                                    <Link to="/docs/architecture" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-teal-500 text-white text-xs font-bold shadow-lg shadow-teal-500/25 hover:bg-teal-400 transition-colors">
+                                    <Link to="/docs/architecture" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/25 hover:bg-blue-400 transition-colors">
                                         <Cpu className="w-3.5 h-3.5" /> Architecture
                                         <ArrowRight className="w-3 h-3" />
                                     </Link>
@@ -428,7 +428,7 @@ export function IntroductionDoc() {
                 ═══════════════════════════════════════════════════════════════════════ */}
                 <h2>I. System Architecture at a Glance</h2>
                 <p>
-                    MedVault is built on a <strong>4-layer architecture</strong> that strictly separates client-side encryption, on-chain FHE computation, DeFi reward mechanisms, and event indexing. Each layer communicates through well-defined contract interfaces with TFHE ACL-gated access control.
+                    MedVault is built on a <strong>4-layer architecture</strong> that strictly separates client-side encryption, on-chain FHE computation, DeFi reward mechanisms, and event indexing. Each layer communicates through well-defined contract interfaces with FHE ACL-gated access control.
                 </p>
 
                 <ArchitectureFlowDiagram />
@@ -468,7 +468,7 @@ export function IntroductionDoc() {
                 ═══════════════════════════════════════════════════════════════════════ */}
                 <h2>III. The FHE Encryption Pipeline</h2>
                 <p>
-                    The following diagram traces a single patient health attribute (e.g., Age) through the complete MedVault encryption lifecycle — from raw plaintext in the browser, through TFHE encryption, on-chain homomorphic computation, and finally patient-only decryption.
+                    The following diagram traces a single patient health attribute (e.g., Age) through the complete MedVault encryption lifecycle — from raw plaintext in the browser, through FHE encryption, on-chain homomorphic computation, and finally patient-only decryption.
                 </p>
 
                 <EncryptionPipelineDiagram />
@@ -486,10 +486,10 @@ export function IntroductionDoc() {
 
                 <div className="not-prose space-y-4 my-10">
                     {[
-                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Zama fhevmjs SDK encrypts every value into TFHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
+                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Fhenix fhevmjs SDK encrypts every value into FHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
                         { step: "2", title: "Sponsor Publishes Encrypted Trial Criteria", desc: "A verified pharmaceutical sponsor defines their trial eligibility criteria (e.g., Age 18-65, HbA1c < 7.0). These requirements are also encrypted as euint32 ciphertext values and stored on-chain in the TrialManager contract. The trial's structural metadata (name, phase, location) remains public.", icon: <Building2 className="w-6 h-6" />, color: "purple" },
-                        { step: "3", title: "EligibilityEngine Computes on Encrypted Data", desc: "The EligibilityEngine smart contract performs TFHE homomorphic operations (TFHE.ge(), TFHE.le(), TFHE.cmux()) to compare encrypted patient values against encrypted trial bounds. The result is an encrypted eligibility score (0-100) stored on-chain. The network computes the match without decrypting any inputs.", icon: <Activity className="w-6 h-6" />, color: "teal" },
-                        { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Zama KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
+                        { step: "3", title: "EligibilityEngine Computes on Encrypted Data", desc: "The EligibilityEngine smart contract performs FHE homomorphic operations (FHE.ge(), FHE.le(), FHE.cmux()) to compare encrypted patient values against encrypted trial bounds. The result is an encrypted eligibility score (0-100) stored on-chain. The network computes the match without decrypting any inputs.", icon: <Activity className="w-6 h-6" />, color: "teal" },
+                        { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Fhenix KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
                         { step: "5", title: "Optional Consent & Enrollment", desc: "If the score is 100 (perfect match), the patient may optionally grant identity access to the sponsor through ConsentManager. Upon approval, the patient is registered in the SponsorIncentiveVault reward pool. Chainlink Automation handles milestone payouts. The patient earns yield via Aave V3.", icon: <CheckCircle2 className="w-6 h-6" />, color: "emerald" },
                     ].map((s, i) => (
                         <motion.div
@@ -548,7 +548,7 @@ export function IntroductionDoc() {
                             <thead>
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                                     <th className="text-left px-4 py-3 font-bold text-slate-700 dark:text-slate-300">Dimension</th>
-                                    <th className="text-left px-4 py-3 font-bold text-teal-700 dark:text-teal-400">FHE (MedVault)</th>
+                                    <th className="text-left px-4 py-3 font-bold text-blue-700 dark:text-blue-400">FHE (MedVault)</th>
                                     <th className="text-left px-4 py-3 font-bold text-purple-700 dark:text-purple-400">ZKP</th>
                                 </tr>
                             </thead>
@@ -557,15 +557,15 @@ export function IntroductionDoc() {
                                     { dim: "Patient Online Requirement", fhe: "Upload once, go offline forever. Engine evaluates asynchronously.", zkp: "Must be online to generate a proof for every trial application.", win: "fhe" },
                                     { dim: "Trial Parameter Updates", fhe: "Sponsor can update criteria without invalidating patient data.", zkp: "Patient's proof invalidates immediately on any criteria change.", win: "fhe" },
                                     { dim: "Multi-Trial Matching", fhe: "Single encrypted profile matched against unlimited trials.", zkp: "Separate proof generation required per trial. O(n) computation.", win: "fhe" },
-                                    { dim: "Computation Location", fhe: "On-chain in the Zama coprocessor. Fully trustless.", zkp: "Client-side. Requires trusted prover setup.", win: "fhe" },
+                                    { dim: "Computation Location", fhe: "On-chain in the Fhenix coprocessor. Fully trustless.", zkp: "Client-side. Requires trusted prover setup.", win: "fhe" },
                                     { dim: "Data Granularity", fhe: "Exact encrypted values. Complex range queries supported.", zkp: "Only proves boolean statements. No partial scores.", win: "fhe" },
                                     { dim: "Gas Cost", fhe: "Higher per-operation. Optimized via batched CMUX compute.", zkp: "Lower per-proof. But O(n) proofs needed per patient.", win: "draw" },
                                     { dim: "Proof Size", fhe: "Ciphertexts are larger (~256 bytes per euint32).", zkp: "Proofs are compact (~128-256 bytes).", win: "zkp" },
-                                    { dim: "Setup Complexity", fhe: "No trusted setup. Standard TFHE bootstrapping keys.", zkp: "May require trusted setup ceremony (zk-SNARKs).", win: "fhe" },
+                                    { dim: "Setup Complexity", fhe: "No trusted setup. Standard FHE bootstrapping keys.", zkp: "May require trusted setup ceremony (zk-SNARKs).", win: "fhe" },
                                 ].map((row, i) => (
                                     <tr key={row.dim} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
                                         <td className="px-4 py-3 font-bold text-slate-700 dark:text-slate-300 text-xs">{row.dim}</td>
-                                        <td className={`px-4 py-3 text-xs ${row.win === "fhe" || row.win === "draw" ? "text-teal-700 dark:text-teal-400" : "text-slate-500"}`}>
+                                        <td className={`px-4 py-3 text-xs ${row.win === "fhe" || row.win === "draw" ? "text-blue-700 dark:text-blue-400" : "text-slate-500"}`}>
                                             {row.win === "fhe" && <span className="mr-1">✓</span>}{row.fhe}
                                         </td>
                                         <td className={`px-4 py-3 text-xs ${row.win === "zkp" ? "text-purple-700 dark:text-purple-400" : "text-slate-500"}`}>
@@ -597,7 +597,7 @@ export function IntroductionDoc() {
 
                 <div className="not-prose grid grid-cols-1 md:grid-cols-3 gap-6 my-10">
                     {[
-                        { icon: <Activity className="w-8 h-8" />, title: "Encrypted Matching Engine", desc: "The EligibilityEngine computes weighted eligibility scores across 3+ health dimensions using TFHE.cmux() conditional multiplexing — without decrypting any patient data. Scores accumulate entirely in ciphertext space.", gradient: "from-teal-500 to-emerald-500" },
+                        { icon: <Activity className="w-8 h-8" />, title: "Encrypted Matching Engine", desc: "The EligibilityEngine computes weighted eligibility scores across 3+ health dimensions using FHE.cmux() conditional multiplexing — without decrypting any patient data. Scores accumulate entirely in ciphertext space.", gradient: "from-blue-500 to-emerald-500" },
                         { icon: <Coins className="w-8 h-8" />, title: "Private Yield Generation", desc: "Patient trial rewards are wrapped in ConfidentialETH (encrypted balances), then staked into Aave V3 lending pools. Yield accrues on private assets — a novel DeFi × healthcare primitive.", gradient: "from-purple-500 to-fuchsia-500" },
                         { icon: <Bot className="w-8 h-8" />, title: "Automated Compliance Trail", desc: "Every sensitive operation is logged to DataAccessLog with anonymized keccak256 hashes. MedVaultAutomation uses Chainlink Keepers for trustless milestone payouts. Full HIPAA/GDPR-compatible audit trail.", gradient: "from-blue-500 to-cyan-500" },
                     ].map(inn => (
@@ -656,7 +656,7 @@ export function IntroductionDoc() {
                 </div>
 
                 <Callout type="warning" title="Testnet Environment">
-                    MedVault is currently deployed on the <strong>Zama Sepolia Testnet</strong>. FHE operations require massive polynomial mathematics in the Zama coprocessor, so expect 15–60 second confirmation times for FHE transactions.
+                    MedVault is currently deployed on the <strong>Fhenix Sepolia Testnet</strong>. FHE operations require massive polynomial mathematics in the Fhenix coprocessor, so expect 15–60 second confirmation times for FHE transactions.
                 </Callout>
 
                 <Divider />
@@ -671,7 +671,7 @@ export function IntroductionDoc() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 mb-8">
                     {[
-                        { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Zama integration deep-dive, and guide to TFHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
+                        { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Fhenix integration deep-dive, and guide to FHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
                         { id: "S2", title: "Smart Contracts", desc: "Reference for all 11 contracts, EligibilityEngine scoring mechanics, and consent-gated decryption.", color: "purple", links: [{ label: "Engine", href: "/docs/engine" }, { label: "Contracts", href: "/docs/contracts" }, { label: "Sponsors", href: "/docs/sponsor-system" }] },
                         { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with fhevmjs, The Graph subgraph indexing, and React context management.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }] },
                         { id: "S4", title: "Operations & Guides", desc: "User workflows, private yield staking, deployment guides, and the verification suite.", color: "amber", links: [{ label: "Workflows", href: "/docs/guides" }, { label: "Staking", href: "/docs/staking" }, { label: "Testing", href: "/docs/testing" }, { label: "Deploy", href: "/docs/deployment" }] },
@@ -687,7 +687,7 @@ export function IntroductionDoc() {
                             <p className="text-sm text-slate-500 dark:text-slate-400 m-0 leading-snug mb-3">{section.desc}</p>
                             <div className="flex flex-wrap gap-2">
                                 {section.links.map(link => (
-                                    <Link key={link.href} to={link.href} className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors px-2 py-1 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200/50 dark:border-teal-800/50">
+                                    <Link key={link.href} to={link.href} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/50">
                                         {link.label}
                                         <ArrowRight className="w-3 h-3" />
                                     </Link>

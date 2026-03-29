@@ -20,7 +20,7 @@ const Progress = React.forwardRef<
       className={cn(
         "h-full w-full flex-1 transition-all",
         variant === "default" && "bg-accent",
-        variant === "success" && "bg-teal-500",
+        variant === "success" && "bg-blue-500",
         variant === "warning" && "bg-amber-500",
         variant === "destructive" && "bg-rose-500"
       )}

@@ -8,7 +8,7 @@ export function DocsFooter() {
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Documentation Version</div>
                 <div className="text-slate-900 dark:text-white font-medium">v1.0.0 — Last updated March 15, 2026</div>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 text-teal-500 rounded-full text-xs font-bold border border-teal-500/20">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-500 rounded-full text-xs font-bold border border-blue-500/20">
                 <BookOpen className="w-4 h-4" />
                 16 Pages • 11 Contracts
             </div>

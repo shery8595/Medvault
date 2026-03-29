@@ -31,8 +31,8 @@ export function SponsorAnalyticsPage() {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-6">
         <div className="relative">
-          <Sparkles className="h-10 w-10 text-teal-500 animate-pulse" />
-          <div className="absolute inset-0 blur-2xl bg-teal-500/20 animate-pulse" />
+          <Sparkles className="h-10 w-10 text-blue-500 animate-pulse" />
+          <div className="absolute inset-0 blur-2xl bg-blue-500/20 animate-pulse" />
         </div>
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-slate-500 animate-pulse">
           Aggregating verified clinical data...
@@ -76,7 +76,7 @@ export function SponsorAnalyticsPage() {
           {/* Morphing Background Layer */}
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out pointer-events-none">
             <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full blur-[100px] animate-pulse bg-indigo-500/10" />
-            <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full blur-[100px] animate-pulse bg-teal-500/10 delay-700" />
+            <div className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full blur-[100px] animate-pulse bg-blue-500/10 delay-700" />
           </div>
 
           <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
@@ -163,7 +163,7 @@ export function SponsorAnalyticsPage() {
 
 function MetricSummary({ title, value, sub, icon, color }: { title: string, value: string | number, sub: string, icon: React.ReactNode, color: string }) {
   const colorMap = {
-    teal: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+    teal: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
     indigo: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
     emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
   };
@@ -181,7 +181,7 @@ function MetricSummary({ title, value, sub, icon, color }: { title: string, valu
         <span className="text-4xl font-black text-white tracking-tighter mb-2">{value}</span>
 
         <div className="flex items-center gap-2">
-          <div className={cn("h-1 w-1 rounded-full animate-pulse", color === 'teal' ? 'bg-teal-500' : color === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500')} />
+          <div className={cn("h-1 w-1 rounded-full animate-pulse", color === 'teal' ? 'bg-blue-500' : color === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500')} />
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{sub}</span>
         </div>
       </div>
@@ -189,7 +189,7 @@ function MetricSummary({ title, value, sub, icon, color }: { title: string, valu
       {/* Subtle Glow */}
       <div className={cn(
         "absolute -bottom-10 -right-10 w-24 h-24 blur-[40px] opacity-0 group-hover:opacity-10 transition-opacity duration-700",
-        color === 'teal' ? 'bg-teal-500' : color === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500'
+        color === 'teal' ? 'bg-blue-500' : color === 'indigo' ? 'bg-indigo-500' : 'bg-emerald-500'
       )} />
     </Card>
   );

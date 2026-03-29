@@ -65,7 +65,7 @@ export function SponsorAuditLogPage() {
             <div>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-xl bg-slate-900 dark:bg-slate-800 border border-slate-800 dark:border-slate-700">
-                        <ShieldCheck className="h-6 w-6 text-teal-400" />
+                        <ShieldCheck className="h-6 w-6 text-blue-400" />
                     </div>
                     <h2 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
                         Regulatory Audit Trail
@@ -124,7 +124,7 @@ export function SponsorAuditLogPage() {
                                     <tr>
                                         <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                                             <div className="flex flex-col items-center justify-center gap-3">
-                                                <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+                                                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                                                 <p className="font-medium">Syncing cryptographic audit logs...</p>
                                             </div>
                                         </td>

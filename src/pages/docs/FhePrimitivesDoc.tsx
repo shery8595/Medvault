@@ -22,37 +22,37 @@ const eTypes = [
     { type: "ebool", bits: 1, example: "Match result (true/false)", gas: "~Low", used: true },
 ];
 
-const tfheFunctions = [
-    { fn: "TFHE.add(a, b)", returns: "euint", replaces: "a + b", note: "Homomorphic addition" },
-    { fn: "TFHE.sub(a, b)", returns: "euint", replaces: "a - b", note: "Homomorphic subtraction" },
-    { fn: "TFHE.mul(a, b)", returns: "euint", replaces: "a * b", note: "Very expensive – avoid if possible" },
-    { fn: "TFHE.ge(a, b)", returns: "ebool", replaces: "a >= b", note: "Greater than or equal" },
-    { fn: "TFHE.le(a, b)", returns: "ebool", replaces: "a <= b", note: "Less than or equal" },
-    { fn: "TFHE.gt(a, b)", returns: "ebool", replaces: "a > b", note: "Greater than" },
-    { fn: "TFHE.lt(a, b)", returns: "ebool", replaces: "a < b", note: "Less than" },
-    { fn: "TFHE.eq(a, b)", returns: "ebool", replaces: "a == b", note: "Equality check" },
-    { fn: "TFHE.and(a, b)", returns: "ebool", replaces: "a && b", note: "Boolean AND on ebool" },
-    { fn: "TFHE.or(a, b)", returns: "ebool", replaces: "a || b", note: "Boolean OR on ebool" },
-    { fn: "TFHE.cmux(cond, t, f)", returns: "euint", replaces: "cond ? t : f", note: "Conditional multiplexer" },
-    { fn: "TFHE.asEuint32(val)", returns: "euint32", replaces: "uint32(val)", note: "Cast plaintext to encrypted" },
+const fheFunctions = [
+    { fn: "FHE.add(a, b)", returns: "euint", replaces: "a + b", note: "Homomorphic addition" },
+    { fn: "FHE.sub(a, b)", returns: "euint", replaces: "a - b", note: "Homomorphic subtraction" },
+    { fn: "FHE.mul(a, b)", returns: "euint", replaces: "a * b", note: "Very expensive – avoid if possible" },
+    { fn: "FHE.ge(a, b)", returns: "ebool", replaces: "a >= b", note: "Greater than or equal" },
+    { fn: "FHE.le(a, b)", returns: "ebool", replaces: "a <= b", note: "Less than or equal" },
+    { fn: "FHE.gt(a, b)", returns: "ebool", replaces: "a > b", note: "Greater than" },
+    { fn: "FHE.lt(a, b)", returns: "ebool", replaces: "a < b", note: "Less than" },
+    { fn: "FHE.eq(a, b)", returns: "ebool", replaces: "a == b", note: "Equality check" },
+    { fn: "FHE.and(a, b)", returns: "ebool", replaces: "a && b", note: "Boolean AND on ebool" },
+    { fn: "FHE.or(a, b)", returns: "ebool", replaces: "a || b", note: "Boolean OR on ebool" },
+    { fn: "FHE.cmux(cond, t, f)", returns: "euint", replaces: "cond ? t : f", note: "Conditional multiplexer" },
+    { fn: "FHE.asEuint32(val)", returns: "euint32", replaces: "uint32(val)", note: "Cast plaintext to encrypted" },
 ];
 
 export function FhePrimitivesDoc() {
     return (
         <motion.div>
             <Prose className="max-w-none">
-                <span className="text-teal-500 font-bold tracking-widest uppercase text-xs">Core Concepts</span>
-                <h1 className="mt-2 text-5xl">Zama fhEVM Primitives & TFHE Operations</h1>
+                <span className="text-blue-500 font-bold tracking-widest uppercase text-xs">Core Concepts</span>
+                <h1 className="mt-2 text-5xl">Fhenix fhEVM Primitives & FHE Operations</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-6 max-w-prose">
-                    Fully Homomorphic Encryption demands a fundamental rethinking of how we write smart contracts. Standard Solidity types like <code>uint256</code> and <code>bool</code> cannot safely represent sensitive state. Every piece of health data must instead live inside an encrypted envelope exposed by Zama's <code>@zama-ai/fhevm</code> library.
+                    Fully Homomorphic Encryption demands a fundamental rethinking of how we write smart contracts. Standard Solidity types like <code>uint256</code> and <code>bool</code> cannot safely represent sensitive state. Every piece of health data must instead live inside an encrypted envelope exposed by Fhenix's <code>@fhenixprotocol/cofhe-contracts</code> library.
                 </p>
 
                 {/* Stat Bar */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-10 not-prose">
                     {[
                         { label: "Encrypted Types", value: "6+", icon: <Lock className="w-5 h-5" />, color: "teal" },
-                        { label: "TFHE Operations", value: "12+", icon: <Zap className="w-5 h-5" />, color: "purple" },
+                        { label: "FHE Operations", value: "12+", icon: <Zap className="w-5 h-5" />, color: "purple" },
                         { label: "Branching Allowed", value: "None", icon: <GitBranch className="w-5 h-5" />, color: "rose" },
                         { label: "Data Revealed On-Chain", value: "Zero", icon: <Binary className="w-5 h-5" />, color: "amber" },
                     ].map((s) => (
@@ -68,7 +68,7 @@ export function FhePrimitivesDoc() {
 
                 <h2>I. Encrypted Integer Types (e-Types)</h2>
                 <p>
-                    The Zama fhEVM exposes encrypted versions of Solidity's primitive unsigned integer types. Each type trades off bit-width against FHE computation cost. Larger types require more polynomial rings during evaluation, increasing gas significantly.
+                    The Fhenix fhEVM exposes encrypted versions of Solidity's primitive unsigned integer types. Each type trades off bit-width against FHE computation cost. Larger types require more polynomial rings during evaluation, increasing gas significantly.
                 </p>
                 <p>
                     MedVault primarily uses <code>euint32</code> because all medical scalar metrics (Age, Blood Pressure, HbA1c) fit comfortably within a 32-bit range while minimizing unnecessary gas expenditure.
@@ -90,7 +90,7 @@ export function FhePrimitivesDoc() {
                             <tbody>
                                 {eTypes.map((t, i) => (
                                     <tr key={t.type} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-mono text-teal-600 dark:text-teal-400 font-bold">{t.type}</td>
+                                        <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 font-bold">{t.type}</td>
                                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{t.bits}</td>
                                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{t.example}</td>
                                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{t.gas}</td>
@@ -123,15 +123,15 @@ export function FhePrimitivesDoc() {
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 
-                <h2>II. The TFHE.sol Standard Library</h2>
+                <h2>II. The FHE.sol Standard Library</h2>
                 <p>
-                    All arithmetic, comparisons, and logic operations on encrypted types must go through the <code>TFHE.sol</code> library shipped by Zama. Internally, these functions translate to specialized EVM precompile calls that trigger FHE computation in the Zama coprocessor, not in the EVM itself.
+                    All arithmetic, comparisons, and logic operations on encrypted types must go through the <code>FHE.sol</code> library shipped by Fhenix. Internally, these functions translate to specialized EVM precompile calls that trigger FHE computation in the Fhenix coprocessor, not in the EVM itself.
                 </p>
 
-                {/* TFHE Function Reference Table */}
+                {/* FHE Function Reference Table */}
                 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="px-4 pt-4 pb-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 m-0">TFHE.sol Function Reference</h4>
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 m-0">FHE.sol Function Reference</h4>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -144,9 +144,9 @@ export function FhePrimitivesDoc() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {tfheFunctions.map((f, i) => (
+                                {fheFunctions.map((f, i) => (
                                     <tr key={f.fn} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-mono text-teal-600 dark:text-teal-400 text-xs">{f.fn}</td>
+                                        <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 text-xs">{f.fn}</td>
                                         <td className="px-4 py-3 font-mono text-purple-600 dark:text-purple-400 text-xs">{f.returns}</td>
                                         <td className="px-4 py-3 font-mono text-slate-500 text-xs">{f.replaces}</td>
                                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">{f.note}</td>
@@ -159,16 +159,16 @@ export function FhePrimitivesDoc() {
 
                 <h2>III. The CMUX (Conditional Multiplexer) Pattern</h2>
                 <p>
-                    Since <code>if/else</code> statements are completely forbidden on encrypted data, the <strong>entire conditional logic</strong> in MedVault is implemented via <code>TFHE.cmux()</code>. This is the single most important function in FHE smart contract development.
+                    Since <code>if/else</code> statements are completely forbidden on encrypted data, the <strong>entire conditional logic</strong> in MedVault is implemented via <code>FHE.cmux()</code>. This is the single most important function in FHE smart contract development.
                 </p>
 
                 <div className="not-prose my-8 p-6 rounded-2xl border border-purple-200 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/10">
                     <div className="font-mono text-center text-slate-900 dark:text-white text-lg font-bold mb-2">
-                        TFHE.cmux(<span className="text-purple-600 dark:text-purple-400">ebool condition</span>, <span className="text-teal-600 dark:text-teal-400">euint trueVal</span>, <span className="text-rose-600 dark:text-rose-400">euint falseVal</span>) → <span className="text-amber-600 dark:text-amber-400">euint</span>
+                        FHE.cmux(<span className="text-purple-600 dark:text-purple-400">ebool condition</span>, <span className="text-blue-600 dark:text-blue-400">euint trueVal</span>, <span className="text-rose-600 dark:text-rose-400">euint falseVal</span>) → <span className="text-amber-600 dark:text-amber-400">euint</span>
                     </div>
                     <div className="flex items-center justify-center gap-6 mt-6 flex-wrap">
                         {[
-                            { label: "condition", desc: "An encrypted boolean result from any TFHE comparison", color: "purple" },
+                            { label: "condition", desc: "An encrypted boolean result from any FHE comparison", color: "purple" },
                             { label: "trueVal", desc: "The value selected when condition = true (always computed!)", color: "teal" },
                             { label: "falseVal", desc: "The value selected when condition = false (always computed!)", color: "rose" },
                         ].map(a => (
@@ -181,7 +181,7 @@ export function FhePrimitivesDoc() {
                 </div>
 
                 <Callout type="warning" title="CMUX Cost: Both Branches Are Always Evaluated">
-                    Unlike standard code where <code>condition ? doA() : doB()</code> only executes one branch, FHE's <code>TFHE.cmux</code> <strong>always evaluates both branches</strong> behind the scenes. The coprocessor performs polynomial multiplication on both paths and then mathematically selects the correct one. Never put expensive operations inside a cmux argument.
+                    Unlike standard code where <code>condition ? doA() : doB()</code> only executes one branch, FHE's <code>FHE.cmux</code> <strong>always evaluates both branches</strong> behind the scenes. The coprocessor performs polynomial multiplication on both paths and then mathematically selects the correct one. Never put expensive operations inside a cmux argument.
                 </Callout>
 
                 <h3>Full Coding Example: Age Range Eligibility</h3>
@@ -190,7 +190,7 @@ export function FhePrimitivesDoc() {
                 <CodeBlock
                     filename="EligibilityEngine.sol — Age Check Pattern"
                     language="solidity"
-                    code={`import "@zama-ai/fhevm/contracts/lib/TFHE.sol";
+                    code={`import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 // Patient's encrypted age (stored in PatientRegistry)
 euint32 encryptedAge = registry.getPatientAge(patientAddr);
@@ -200,19 +200,19 @@ euint32 encMinAge = trialManager.getMinAge(trialId);
 euint32 encMaxAge = trialManager.getMaxAge(trialId);
 
 // --- Step 1: Compute two comparison eboools ---
-ebool isOldEnough  = TFHE.ge(encryptedAge, encMinAge); // age >= minAge
-ebool isYoungEnough = TFHE.le(encryptedAge, encMaxAge); // age <= maxAge
+ebool isOldEnough  = FHE.ge(encryptedAge, encMinAge); // age >= minAge
+ebool isYoungEnough = FHE.le(encryptedAge, encMaxAge); // age <= maxAge
 
 // --- Step 2: AND the two conditions into a single pass/fail ebool ---
-ebool ageInRange = TFHE.and(isOldEnough, isYoungEnough);
+ebool ageInRange = FHE.and(isOldEnough, isYoungEnough);
 
 // --- Step 3: Assign 40 points via cmux if both conditions are met ---
-// Note: BOTH TFHE.asEuint32(40) and TFHE.asEuint32(0) are "computed" 
+// Note: BOTH FHE.asEuint32(40) and FHE.asEuint32(0) are "computed" 
 // in the coprocessor, but only one value is cryptographically selected.
-euint32 agePoints = TFHE.cmux(
+euint32 agePoints = FHE.cmux(
     ageInRange,
-    TFHE.asEuint32(40), // 40 points if in range
-    TFHE.asEuint32(0)   // 0 points if outside range
+    FHE.asEuint32(40), // 40 points if in range
+    FHE.asEuint32(0)   // 0 points if outside range
 );`}
                 />
 
@@ -220,18 +220,18 @@ euint32 agePoints = TFHE.cmux(
 
                 <h2>IV. Permission Management (ACL)</h2>
                 <p>
-                    When a contract stores a ciphertext, only specific addresses can access it. The Zama fhEVM enforces this via an on-chain Access Control List (ACL). When <code>TFHE.allow(handle, address)</code> is called, the specified address is granted the right to request decryption of that specific ciphertext handle.
+                    When a contract stores a ciphertext, only specific addresses can access it. The Fhenix fhEVM enforces this via an on-chain Access Control List (ACL). When <code>FHE.allow(handle, address)</code> is called, the specified address is granted the right to request decryption of that specific ciphertext handle.
                 </p>
                 <p>
-                    MedVault calls <code>TFHE.allowThis(score)</code> immediately after computing the match score so the <code>EligibilityEngine</code> itself can pass it into storage, and <code>TFHE.allow(score, patientAddress)</code> so the patient wallet can later decrypt it.
+                    MedVault calls <code>FHE.allowThis(score)</code> immediately after computing the match score so the <code>EligibilityEngine</code> itself can pass it into storage, and <code>FHE.allow(score, patientAddress)</code> so the patient wallet can later decrypt it.
                 </p>
 
                 <CodeBlock
                     filename="ACL Permission Grant Pattern"
                     language="solidity"
                     code={`// After computing the final euint32 score:
-TFHE.allowThis(score);              // Allow the current contract to store it
-TFHE.allow(score, patientAddress);  // Allow only the patient to decrypt it
+FHE.allowThis(score);              // Allow the current contract to store it
+FHE.allow(score, patientAddress);  // Allow only the patient to decrypt it
 // The sponsor cannot request decryption without patient consent
 trialApplicantScores[trialId][patientAddress] = score;`}
                 />

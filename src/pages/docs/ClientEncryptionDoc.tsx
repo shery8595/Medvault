@@ -10,7 +10,7 @@ sequenceDiagram
     participant U as User Interface
     participant SDK as fhevmjs SDK
     participant MM as MetaMask
-    participant RPC as Zama RPC
+    participant RPC as Fhenix RPC
     participant C as Smart Contract
 
     U->>SDK: createInstance({ chainId })
@@ -20,7 +20,7 @@ sequenceDiagram
 
     U->>SDK: createEncryptedInput(contract, user)
     SDK->>SDK: .add32(age).add32(weight).encrypt()
-    Note over SDK: Generates TFHE ciphertexts + ZK input proof
+    Note over SDK: Generates FHE ciphertexts + ZK input proof
     SDK-->>U: { handles[], inputProof }
 
     U->>MM: Sign transaction with encrypted handles
@@ -37,17 +37,17 @@ const sdkMethods = [
     { method: "input.add16(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint16 to the input batch." },
     { method: "input.add32(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint32 to the batch. Used for most MedVault health metrics." },
     { method: "input.addBool(val)", returns: "EncryptedInput", desc: "Adds an encrypted boolean. Used for binary flags." },
-    { method: "input.encrypt()", returns: "{ handles[], inputProof }", desc: "Finalizes the batch, generates all TFHE ciphertexts, and computes the ZK validity proof." },
+    { method: "input.encrypt()", returns: "{ handles[], inputProof }", desc: "Finalizes the batch, generates all FHE ciphertexts, and computes the ZK validity proof." },
     { method: "instance.generateToken({ contract... })", returns: "{ token, publicKey }", desc: "Generates an EIP-712 viewing token by requesting a MetaMask signature. Used to decrypt on-chain values." },
-    { method: "instance.decrypt(contract, token, ciphertext)", returns: "bigint", desc: "Decrypts a single ciphertext using the viewing token. Requires prior TFHE.allow() on-chain." },
+    { method: "instance.decrypt(contract, token, ciphertext)", returns: "bigint", desc: "Decrypts a single ciphertext using the viewing token. Requires prior FHE.allow() on-chain." },
 ];
 
 const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string }> = {
     teal: {
-        iconBg: "bg-teal-100 dark:bg-teal-900/30",
-        iconText: "text-teal-600 dark:text-teal-400",
-        cardBorder: "border-teal-200 dark:border-teal-900/40",
-        cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+        cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
     },
     purple: {
         iconBg: "bg-purple-100 dark:bg-purple-900/30",
@@ -71,7 +71,7 @@ export function ClientEncryptionDoc() {
                 <h1 className="mt-2 text-5xl">Client-Side Encryption with <code>fhevmjs</code></h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-6 max-w-prose">
-                    The core security guarantee of MedVault is that <strong>raw medical data never leaves the browser unencrypted</strong>. The Zama <code>fhevmjs</code> SDK performs all TFHE ciphertext generation on the client, before any transaction is submitted to the network.
+                    The core security guarantee of MedVault is that <strong>raw medical data never leaves the browser unencrypted</strong>. The Fhenix <code>fhevmjs</code> SDK performs all FHE ciphertext generation on the client, before any transaction is submitted to the network.
                 </p>
 
                 {/* Key Guarantees */}
@@ -79,7 +79,7 @@ export function ClientEncryptionDoc() {
                     {[
                         { icon: <Shield className="w-5 h-5" />, title: "Zero-Knowledge Proofs", desc: "Every encryption call generates a ZK validity proof submitted alongside the ciphertext.", color: "teal" },
                         { icon: <Key className="w-5 h-5" />, title: "EIP-712 Consent", desc: "Decryption requires a MetaMask signature—sponsor cannot read results without patient approval.", color: "purple" },
-                        { icon: <Cpu className="w-5 h-5" />, title: "Coprocessor-Backed", desc: "The Zama network's FHE coprocessor performs all actual computation — the EVM never sees plaintext.", color: "amber" },
+                        { icon: <Cpu className="w-5 h-5" />, title: "Coprocessor-Backed", desc: "The Fhenix network's FHE coprocessor performs all actual computation — the EVM never sees plaintext.", color: "amber" },
                     ].map(g => {
                         const styles = colorStyles[g.color];
                         return (
@@ -103,9 +103,9 @@ export function ClientEncryptionDoc() {
                 </p>
 
                 <div className="not-prose grid grid-cols-1 md:grid-cols-2 gap-4 my-8">
-                    <div className="p-5 rounded-2xl border-l-4 border-teal-500 bg-teal-50 dark:bg-teal-950/20 border border-l-teal-500 border-slate-200 dark:border-slate-800">
+                    <div className="p-5 rounded-2xl border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950/20 border border-l-blue-500 border-slate-200 dark:border-slate-800">
                         <h4 className="font-bold text-slate-900 dark:text-white mb-2">① Parameter Encryption</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Transforms plain integer form values (e.g., <code>42</code>, <code>180</code>) into full TFHE ciphertexts capable of being passed as Solidity <code>euint32</code> or <code>euint16</code> types.</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Transforms plain integer form values (e.g., <code>42</code>, <code>180</code>) into full FHE ciphertexts capable of being passed as Solidity <code>euint32</code> or <code>euint16</code> types.</p>
                     </div>
                     <div className="p-5 rounded-2xl border-l-4 border-purple-500 bg-purple-50 dark:bg-purple-950/20 border border-slate-200 dark:border-slate-800">
                         <h4 className="font-bold text-slate-900 dark:text-white mb-2">② Viewing Key Management</h4>
@@ -128,7 +128,7 @@ export function ClientEncryptionDoc() {
 
                 <h2>II. Instance Initialization</h2>
                 <p>
-                    Before any FHE interaction can occur, the DApp must initialize a <code>FhevmInstance</code>. This instance performs an async network request to retrieve the Zama testnet's public cryptographic key. Without this key, it is impossible to generate valid TFHE ciphertexts.
+                    Before any FHE interaction can occur, the DApp must initialize a <code>FhevmInstance</code>. This instance performs an async network request to retrieve the Fhenix testnet's public cryptographic key. Without this key, it is impossible to generate valid FHE ciphertexts.
                 </p>
 
                 <CodeBlock
@@ -141,8 +141,8 @@ const initializeFHEVM = async (provider: BrowserProvider): Promise<FhevmInstance
     try {
         const network = await provider.getNetwork();
 
-        // Fetches the Zama network's FHE public key via an eth_call to the
-        // precompile address. Returns a 2048-byte TFHE bootstrapping key.
+        // Fetches the Fhenix network's FHE public key via an eth_call to the
+        // precompile address. Returns a 2048-byte FHE bootstrapping key.
         const instance = await createInstance({
             chainId: Number(network.chainId),
             // networkUrl is optional — fhevmjs derives it from the provider
@@ -169,7 +169,7 @@ useEffect(() => {
                 />
 
                 <Callout type="warning" title="Chain Compatibility Gate">
-                    If the user is connected to a chain that doesn't support the Zama FHE precompile (e.g., Ethereum mainnet, Polygon), <code>createInstance</code> will fail. MedVault enforces a strict <code>isFHEReady</code> flag in the global context. All sensitive dashboard views are wrapped in a check gate that blocks rendering until the FHE instance is valid.
+                    If the user is connected to a chain that doesn't support the Fhenix FHE precompile (e.g., Ethereum mainnet, Polygon), <code>createInstance</code> will fail. MedVault enforces a strict <code>isFHEReady</code> flag in the global context. All sensitive dashboard views are wrapped in a check gate that blocks rendering until the FHE instance is valid.
                 </Callout>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -243,7 +243,7 @@ useEffect(() => {
                             <tbody>
                                 {sdkMethods.map((m, i) => (
                                     <tr key={m.method} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-mono text-teal-600 dark:text-teal-400 text-xs align-top">{m.method}</td>
+                                        <td className="px-4 py-3 font-mono text-blue-600 dark:text-blue-400 text-xs align-top">{m.method}</td>
                                         <td className="px-4 py-3 font-mono text-purple-600 dark:text-purple-400 text-xs align-top whitespace-nowrap">{m.returns}</td>
                                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">{m.desc}</td>
                                     </tr>
@@ -263,12 +263,12 @@ useEffect(() => {
                 <div className="not-prose grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
                     <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 text-white">
                         <div className="flex items-center gap-3 mb-4">
-                            <Database className="w-5 h-5 text-teal-400" />
-                            <span className="font-bold text-teal-400">Blockchain Layer</span>
+                            <Database className="w-5 h-5 text-blue-400" />
+                            <span className="font-bold text-blue-400">Blockchain Layer</span>
                         </div>
                         <div className="text-sm text-slate-300 space-y-2">
                             <p>• <strong className="text-white">Source of truth for computation</strong> — the FHE engine reads ciphertexts from chain, never from local storage.</p>
-                            <p>• Ciphertext handles stored permanently in <code className="text-teal-300">PatientRegistry</code> mappings.</p>
+                            <p>• Ciphertext handles stored permanently in <code className="text-blue-300">PatientRegistry</code> mappings.</p>
                             <p>• Decryption of results requires an on-chain EIP-712 token grant.</p>
                         </div>
                     </div>

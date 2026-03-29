@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useWeb3 } from "../../lib/Web3Context";
 import { getConfidentialETH } from "../../lib/contracts";
-import { reencryptUint32 } from "../../lib/fhe";
+import { reencryptUint64 } from "../../lib/fhe";
 import addresses from "../../lib/contracts/addresses.json";
 import { ethers } from "ethers";
 import { useStaking } from "../../hooks/useStaking";
@@ -77,7 +77,7 @@ export function RewardsCard() {
         setIsDecrypting(true);
         setStatus("Waiting for secure signature... Check your wallet.");
         try {
-            const clearValue = await reencryptUint32(cETHAddress, account, normalizedHandle);
+            const clearValue = await reencryptUint64(cETHAddress, account, normalizedHandle);
             setDecryptedBalance(Number(clearValue));
             setStatus("Balance successfully revealed.");
         } catch (err: any) {
@@ -129,43 +129,43 @@ export function RewardsCard() {
     const ethValue = decryptedBalance ? (decryptedBalance * 1e-6).toFixed(6) : "0.000000";
 
     return (
-        <Card className="relative overflow-hidden border-slate-200/60 dark:border-slate-800/60 bg-white dark:bg-slate-900/40 shadow-xl group">
+        <Card className="relative overflow-hidden border-white/10 glass-panel shadow-2xl group transition-all duration-500 hover:shadow-[0_0_30px_rgba(var(--color-accent),0.1)] hover:border-accent/30">
             {/* Background pattern - Added pointer-events-none to prevent blocking clicks */}
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
-                <Coins className="h-32 w-32 rotate-12" />
+            <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity pointer-events-none">
+                <Coins className="h-32 w-32 rotate-12 text-white" />
             </div>
 
             <CardContent className="p-8 relative z-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                     <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                            <ShieldCheck className="h-3 w-3" />
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 border border-accent/20 text-[10px] font-bold uppercase tracking-widest text-accent shadow-[0_0_10px_var(--color-accent)]">
+                            <ShieldCheck className="h-3 w-3 drop-shadow-[0_0_5px_var(--color-accent)]" />
                             Confidential Payouts
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Wallet className="h-6 w-6 text-slate-400" />
+                            <h3 className="text-2xl font-bold text-white flex items-center gap-2 drop-shadow-sm">
+                                <Wallet className="h-6 w-6 text-accent drop-shadow-[0_0_8px_var(--color-accent)]" />
                                 Reward Enclave
                             </h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-slate-400">
                                 Your clinical trial incentives are protected by FHE.
                             </p>
                         </div>
 
                         <div className="flex items-center gap-6 pt-2">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</p>
                                 <div className="flex items-center gap-2">
-                                    <div className={`h-2 w-2 rounded-full ${decryptedBalance !== null ? "bg-emerald-500" : "bg-amber-500"} animate-pulse`} />
-                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                    <div className={`h-2 w-2 rounded-full ${decryptedBalance !== null ? "bg-accent shadow-[0_0_5px_var(--color-accent)]" : "bg-amber-500"} animate-pulse`} />
+                                    <span className="text-xs font-bold text-slate-200">
                                         {decryptedBalance !== null ? "Revealed" : "Encrypted"}
                                     </span>
                                 </div>
                             </div>
-                            <div className="h-10 w-[1px] bg-slate-100 dark:bg-slate-800" />
+                            <div className="h-10 w-[1px] bg-white/10" />
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Units</p>
-                                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Units</p>
+                                <p className="text-xs font-bold text-slate-200">
                                     micro-ETH (μETH)
                                 </p>
                             </div>
@@ -174,7 +174,7 @@ export function RewardsCard() {
 
                     <div className="flex flex-col items-center md:items-end gap-6 relative z-20">
                         <div className="text-center md:text-right space-y-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Your Private Balance</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Your Private Balance</p>
                             <div className="flex items-center gap-3">
                                 {decryptedBalance !== null ? (
                                     <motion.div
@@ -182,14 +182,14 @@ export function RewardsCard() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         className="flex items-baseline gap-2"
                                     >
-                                        <span className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
+                                        <span className="text-4xl font-black tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                                             {ethValue}
                                         </span>
-                                        <span className="text-lg font-bold text-slate-400">ETH</span>
+                                        <span className="text-lg font-bold text-accent">ETH</span>
                                     </motion.div>
                                 ) : (
-                                    <div className="h-12 w-48 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse flex items-center justify-center">
-                                        <Lock className="h-5 w-5 text-slate-300" />
+                                    <div className="h-12 w-48 bg-blue-950/40 border border-white/5 rounded-2xl animate-pulse flex items-center justify-center">
+                                        <Lock className="h-5 w-5 text-slate-500" />
                                     </div>
                                 )}
                             </div>
@@ -201,10 +201,10 @@ export function RewardsCard() {
                                     key="reveal-button"
                                     onClick={handleReveal}
                                     disabled={isDecrypting || !encryptedBalance || !isFHEReady}
-                                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-xl h-12 px-6 font-bold shadow-lg shadow-black/5 flex gap-2 relative z-30"
+                                    className="bg-white hover:bg-slate-100 text-black border border-transparent rounded-xl h-12 px-6 font-bold shadow-[0_0_20px_rgba(255,255,255,0.2)] flex gap-2 relative z-30 transition-all hover:scale-105"
                                 >
                                     {isDecrypting || !isFHEReady ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <Loader2 className="h-4 w-4 animate-spin text-accent" />
                                     ) : (
                                         <Unlock className="h-4 w-4" />
                                     )}
@@ -248,18 +248,18 @@ export function RewardsCard() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`mt-6 p-4 rounded-xl flex items-center gap-3 text-xs font-bold ${status.includes("Error") || status.includes("failed")
-                            ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"
+                        className={`mt-6 p-4 rounded-xl border flex items-center gap-3 text-xs font-bold shadow-lg backdrop-blur-md ${status.includes("Error") || status.includes("failed")
+                            ? "bg-red-950/40 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
                             : status.includes("successful") || status.includes("Success")
-                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400"
-                                : "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
+                                ? "bg-accent/10 border-accent/20 text-white shadow-[0_0_15px_rgba(var(--color-accent),0.1)]"
+                                : "bg-blue-950/40 border border-white/5 text-slate-300"
                             }`}
                     >
-                        {status.includes("successful") ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                        {status.includes("successful") ? <CheckCircle2 className="h-4 w-4 text-accent drop-shadow-[0_0_5px_var(--color-accent)]" /> : <AlertCircle className="h-4 w-4" />}
                         {status}
                     </motion.div>
                 )}
             </CardContent>
-        </Card >
+        </Card>
     );
 }

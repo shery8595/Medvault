@@ -98,29 +98,6 @@ export class PatientRegistry extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  confidentialProtocolId(): BigInt {
-    let result = super.call(
-      "confidentialProtocolId",
-      "confidentialProtocolId():(uint256)",
-      []
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "confidentialProtocolId",
-      "confidentialProtocolId():(uint256)",
-      []
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
   dataAccessLog(): Address {
     let result = super.call("dataAccessLog", "dataAccessLog():(address)", []);
 
@@ -364,68 +341,52 @@ export class SubmitEncryptedProfileCall__Inputs {
     this._call = call;
   }
 
-  get _age(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
+  get _age(): SubmitEncryptedProfileCall_ageStruct {
+    return changetype<SubmitEncryptedProfileCall_ageStruct>(
+      this._call.inputValues[0].value.toTuple()
+    );
   }
 
-  get _ageProof(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
+  get _gender(): SubmitEncryptedProfileCall_genderStruct {
+    return changetype<SubmitEncryptedProfileCall_genderStruct>(
+      this._call.inputValues[1].value.toTuple()
+    );
   }
 
-  get _gender(): Bytes {
-    return this._call.inputValues[2].value.toBytes();
+  get _weight(): SubmitEncryptedProfileCall_weightStruct {
+    return changetype<SubmitEncryptedProfileCall_weightStruct>(
+      this._call.inputValues[2].value.toTuple()
+    );
   }
 
-  get _genderProof(): Bytes {
-    return this._call.inputValues[3].value.toBytes();
+  get _height(): SubmitEncryptedProfileCall_heightStruct {
+    return changetype<SubmitEncryptedProfileCall_heightStruct>(
+      this._call.inputValues[3].value.toTuple()
+    );
   }
 
-  get _weight(): Bytes {
-    return this._call.inputValues[4].value.toBytes();
+  get _hasDiabetes(): SubmitEncryptedProfileCall_hasDiabetesStruct {
+    return changetype<SubmitEncryptedProfileCall_hasDiabetesStruct>(
+      this._call.inputValues[4].value.toTuple()
+    );
   }
 
-  get _weightProof(): Bytes {
-    return this._call.inputValues[5].value.toBytes();
+  get _hbLevel(): SubmitEncryptedProfileCall_hbLevelStruct {
+    return changetype<SubmitEncryptedProfileCall_hbLevelStruct>(
+      this._call.inputValues[5].value.toTuple()
+    );
   }
 
-  get _height(): Bytes {
-    return this._call.inputValues[6].value.toBytes();
+  get _isSmoker(): SubmitEncryptedProfileCall_isSmokerStruct {
+    return changetype<SubmitEncryptedProfileCall_isSmokerStruct>(
+      this._call.inputValues[6].value.toTuple()
+    );
   }
 
-  get _heightProof(): Bytes {
-    return this._call.inputValues[7].value.toBytes();
-  }
-
-  get _hasDiabetes(): Bytes {
-    return this._call.inputValues[8].value.toBytes();
-  }
-
-  get _diabetesProof(): Bytes {
-    return this._call.inputValues[9].value.toBytes();
-  }
-
-  get _hbLevel(): Bytes {
-    return this._call.inputValues[10].value.toBytes();
-  }
-
-  get _hbProof(): Bytes {
-    return this._call.inputValues[11].value.toBytes();
-  }
-
-  get _isSmoker(): Bytes {
-    return this._call.inputValues[12].value.toBytes();
-  }
-
-  get _isSmokerProof(): Bytes {
-    return this._call.inputValues[13].value.toBytes();
-  }
-
-  get _hasHypertension(): Bytes {
-    return this._call.inputValues[14].value.toBytes();
-  }
-
-  get _hasHypertensionProof(): Bytes {
-    return this._call.inputValues[15].value.toBytes();
+  get _hasHypertension(): SubmitEncryptedProfileCall_hasHypertensionStruct {
+    return changetype<SubmitEncryptedProfileCall_hasHypertensionStruct>(
+      this._call.inputValues[7].value.toTuple()
+    );
   }
 }
 
@@ -434,5 +395,149 @@ export class SubmitEncryptedProfileCall__Outputs {
 
   constructor(call: SubmitEncryptedProfileCall) {
     this._call = call;
+  }
+}
+
+export class SubmitEncryptedProfileCall_ageStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_genderStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_weightStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_heightStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_hasDiabetesStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_hbLevelStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_isSmokerStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
+  }
+}
+
+export class SubmitEncryptedProfileCall_hasHypertensionStruct extends ethereum.Tuple {
+  get ctHash(): BigInt {
+    return this[0].toBigInt();
+  }
+
+  get securityZone(): i32 {
+    return this[1].toI32();
+  }
+
+  get utype(): i32 {
+    return this[2].toI32();
+  }
+
+  get signature(): Bytes {
+    return this[3].toBytes();
   }
 }

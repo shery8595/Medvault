@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['keccak', 'buffer', 'fetch-retry', 'stream-browserify', 'crypto-browserify'], // Update to include stream-browserify and crypto-browserify
-      exclude: ['@zama-fhe/relayer-sdk', 'tfhe', 'tkms'],
+      exclude: ['@fhenix-fhe/relayer-sdk', 'tfhe', 'tkms'],
       esbuildOptions: {
         target: 'esnext',
       },
@@ -56,6 +56,9 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',
       },
+    },
+    worker: {
+      format: 'es',
     },
     assetsInclude: ['**/*.wasm'],
   };

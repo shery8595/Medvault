@@ -39,8 +39,8 @@ const config: Record<CalloutType, { icon: React.ComponentType<{ className?: stri
     },
     tip: {
         icon: Lightbulb,
-        classes: "bg-teal-50/50 text-teal-900 border-teal-200/50 dark:bg-teal-950/20 dark:text-teal-200 dark:border-teal-900/50",
-        iconColor: "text-teal-500 dark:text-teal-400"
+        classes: "bg-blue-50/50 text-blue-900 border-blue-200/50 dark:bg-blue-950/20 dark:text-blue-200 dark:border-blue-900/50",
+        iconColor: "text-blue-500 dark:text-blue-400"
     }
 };
 

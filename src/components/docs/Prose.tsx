@@ -17,13 +17,13 @@ export function Prose({ children, className }: ProseProps) {
             "prose-h3:text-xl prose-h3:text-slate-800 dark:prose-h3:text-slate-200",
             // Text & Paragraphs
             "prose-p:leading-relaxed prose-p:text-slate-600 dark:prose-p:text-slate-300",
-            "prose-a:text-teal-600 dark:prose-a:text-teal-400 prose-a:no-underline hover:prose-a:underline",
+            "prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline",
             "prose-strong:font-bold prose-strong:text-slate-900 dark:prose-strong:text-white",
             // Lists
             "prose-ul:list-disc prose-ol:list-decimal",
             "prose-li:text-slate-600 dark:prose-li:text-slate-300",
             // Code
-            "prose-code:text-teal-600 dark:prose-code:text-teal-400 prose-code:bg-teal-50 dark:prose-code:bg-teal-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none",
+            "prose-code:text-blue-600 dark:prose-code:text-blue-400 prose-code:bg-blue-50 dark:prose-code:bg-blue-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none",
             className
         )}>
             {children}

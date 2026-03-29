@@ -56,7 +56,7 @@ export function SecurityPage() {
             {
               icon: AlertCircle,
               title: "Threshold Decryption",
-              desc: "Decryption requires a threshold of validator nodes to collaborate using Zama's KMS, ensuring no single entity ever holds the full decryption key."
+              desc: "Decryption requires a threshold of validator nodes to collaborate using Fhenix's KMS, ensuring no single entity ever holds the full decryption key."
             }
           ].map((item, i) => (
             <motion.div 

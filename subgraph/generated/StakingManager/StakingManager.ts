@@ -119,29 +119,6 @@ export class StakingManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  confidentialProtocolId(): BigInt {
-    let result = super.call(
-      "confidentialProtocolId",
-      "confidentialProtocolId():(uint256)",
-      []
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "confidentialProtocolId",
-      "confidentialProtocolId():(uint256)",
-      []
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
   getEncryptedTotalStaked(user: Address): Bytes {
     let result = super.call(
       "getEncryptedTotalStaked",

@@ -111,7 +111,7 @@ export function PatientDashboard() {
       {/* ── Hero Banner ── */}
       <motion.section
         {...fadeIn(0)}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-[#0f172a] to-[#0c1628] p-8 md:p-10 lg:p-14 text-white shadow-2xl"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a192f] via-[#0d2142] to-[#020617] p-8 md:p-10 lg:p-14 text-white shadow-2xl border border-white/10"
       >
         {/* Ambient glows */}
         <div className="absolute top-0 right-0 h-[28rem] w-[28rem] -translate-y-1/2 translate-x-1/3 rounded-full bg-accent/20 blur-[140px] pointer-events-none" />
@@ -127,12 +127,12 @@ export function PatientDashboard() {
         />
 
         {/* Thin top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-10">
           {/* Greeting */}
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.07] border border-white/[0.10] text-[11px] font-bold uppercase tracking-widest text-teal-300 mb-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.07] border border-white/[0.10] text-[11px] font-bold uppercase tracking-widest text-blue-300 mb-6">
               <Sparkles className="h-3 w-3" />
               FHE Encryption Active
             </div>
@@ -192,8 +192,8 @@ export function PatientDashboard() {
         />
         <StatCard
           icon={ShieldCheck}
-          iconBg="bg-teal-50 dark:bg-teal-950/60"
-          iconColor="text-teal-500 dark:text-teal-400"
+          iconBg="bg-blue-50 dark:bg-blue-950/60"
+          iconColor="text-blue-500 dark:text-blue-400"
           label="Active trial consents"
           value={appliedTrials.length}
           tag="Authorized"
@@ -227,29 +227,29 @@ export function PatientDashboard() {
 
         {/* ── Privacy Pulse (Full Width Utility) ── */}
         <motion.div {...fadeUp(0.35)} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-teal-500/20 via-blue-500/20 to-teal-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-700" />
-          <div className="relative p-8 md:p-10 rounded-[2.5rem] bg-slate-950 border border-slate-800/60 overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-teal-500/[0.03] to-transparent pointer-events-none" />
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/30 via-indigo-500/20 to-blue-600/30 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-700" />
+          <div className="relative p-8 md:p-10 rounded-[2.5rem] bg-[#0a192f]/60 backdrop-blur-2xl border border-white/10 overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/[0.03] to-transparent pointer-events-none" />
             <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-              <ShieldCheck className="h-32 w-32 text-teal-400" />
+              <ShieldCheck className="h-32 w-32 text-blue-400" />
             </div>
 
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
               <div className="flex items-start gap-6">
                 <div className="relative shrink-0">
-                  <div className="p-4 rounded-2xl bg-teal-400/10 border border-teal-500/20">
-                    <ShieldCheck className="h-8 w-8 text-teal-400" />
+                  <div className="p-4 rounded-2xl bg-blue-400/10 border border-blue-500/20">
+                    <ShieldCheck className="h-8 w-8 text-blue-400" />
                   </div>
                   <motion.div
                     animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }}
                     transition={{ repeat: Infinity, duration: 2.5 }}
-                    className="absolute inset-0 bg-teal-400/20 rounded-full"
+                    className="absolute inset-0 bg-blue-400/20 rounded-full"
                   />
                 </div>
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-teal-400">Security Engine</span>
-                    <span className="px-2 py-0.5 rounded-md bg-teal-400/10 text-[9px] font-bold text-teal-400 border border-teal-500/20">FHE ACTIVE</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-400">Security Engine</span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-400/10 text-[9px] font-bold text-blue-400 border border-blue-500/20">FHE ACTIVE</span>
                   </div>
                   <h2 className="text-2xl font-bold text-white mb-2">Global Privacy Pulse</h2>
                   <p className="text-slate-400 text-sm max-w-md leading-relaxed">
@@ -268,7 +268,7 @@ export function PatientDashboard() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ZKP Proofs</p>
-                  <p className="text-3xl font-bold text-teal-400">Verified</p>
+                  <p className="text-3xl font-bold text-blue-400">Verified</p>
                 </div>
                 <div className="space-y-2 hidden sm:block">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Network Status</p>

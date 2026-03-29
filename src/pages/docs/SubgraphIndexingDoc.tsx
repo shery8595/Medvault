@@ -7,7 +7,7 @@ import { Database, Zap, GitMerge, RefreshCcw } from "lucide-react";
 
 const indexingFlowChart = `
 graph LR
-    A[Zama Sepolia Node] -->|Emits Event| B[Graph Node Listener]
+    A[Fhenix Sepolia Node] -->|Emits Event| B[Graph Node Listener]
     B -->|Triggers Handler| C[AssemblyScript Mapping]
     C -->|Creates / Updates Entity| D[(PostgreSQL Store)]
     D -->|Serves| E[GraphQL API]
@@ -99,7 +99,7 @@ export function SubgraphIndexingDoc() {
                 {events.map((e, i) => (
                   <tr key={e.event} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{e.contract}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-teal-600 dark:text-teal-400 font-bold">{e.event}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-blue-600 dark:text-blue-400 font-bold">{e.event}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{e.fields}</td>
                     <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">{e.entity}</td>
                   </tr>

@@ -47,7 +47,7 @@ export function PatientVaultPage() {
         className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 p-10 md:p-14 text-white shadow-2xl"
       >
         <div className="absolute top-0 right-0 h-[30rem] w-[30rem] -translate-y-1/2 translate-x-1/3 rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 h-48 w-80 -translate-y-1/4 -translate-x-1/4 rounded-full bg-teal-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 h-48 w-80 -translate-y-1/4 -translate-x-1/4 rounded-full bg-blue-500/10 blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
           <div className="max-w-xl">

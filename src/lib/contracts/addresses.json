@@ -1,15 +1,15 @@
 {
     "sepolia": {
-        "DataAccessLog": "0x6835FfEE1b26E9ed0D292e3d76995Af591Cd7c7e",
-        "PatientRegistry": "0xa923306a2E0AEA46e0a6622167fB30aD950fa2F5",
-        "TrialManager": "0x1c8199Af6dA98FF10986A462111Efd06BB939183",
-        "TrialMilestoneManager": "0xBb605f24Dd439ba2ECB4A5B2F7caBd6932e48A6F",
-        "ConsentManager": "0x5D0F6f8d10f742845EB79d34760cf9ebA04C9795",
-        "EligibilityEngine": "0x07836d00D9B6f756D563852bd483D155c279c976",
-        "MedVaultAutomation": "0x47A766b8C292F36c988F47cb1eF06B8390F91a91",
-        "ConfidentialETH": "0x4CaD201830c9250FA856B1b8Ca2A007c0E14F45C",
-        "SponsorIncentiveVault": "0x7DE14F44035d41C97a284E9E426Dc1669A9009c7",
-        "SponsorRegistry": "0x11B247232406F87E9de7a2Bf1F2bf7439A88F511",
-        "StakingManager": "0x0BA95f8941E9954Bd515570861b27b394467f2e1"
+        "DataAccessLog": "0x69396B26Ce11c1B74B1203ca44cf7ba7ED12Bbb0",
+        "PatientRegistry": "0xE759A21B97819fD12aAB1E6f7019D8148F11bbC3",
+        "TrialManager": "0x90A340c7C09Fa72243F23AB6A3310610649384b2",
+        "TrialMilestoneManager": "0x15CDC92dfFAE9543636FdB611f3A8Cc74ba44b7e",
+        "ConsentManager": "0x0f2042a1e50d566959B010eaCDfF51be1024EA68",
+        "EligibilityEngine": "0x9ce11CA3E61AbE27B83d38053739F2a0F825C00b",
+        "MedVaultAutomation": "0x81707CA3815EE4403cDDE42162A328fb6b17A413",
+        "ConfidentialETH": "0xcBe41f0A25A9D4c5Cb41Ed6fbC148906866a4726",
+        "SponsorIncentiveVault": "0x10cF533eb4337deBf8F682D20E56246865787393",
+        "SponsorRegistry": "0x4F5d99b08EC26903d2CEDBee06CA1867E4b682b3",
+        "StakingManager": "0x946e1C0C73dd643ebab62fd52c2e354c831fcc4a"
     }
 }

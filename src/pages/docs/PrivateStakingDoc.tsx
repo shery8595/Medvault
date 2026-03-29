@@ -20,11 +20,11 @@ export function PrivateStakingDoc() {
     return (
         <motion.div>
             <Prose className="max-w-none">
-                <span className="text-teal-500 font-bold tracking-widest uppercase text-xs">Operations &amp; Guides</span>
+                <span className="text-blue-500 font-bold tracking-widest uppercase text-xs">Operations &amp; Guides</span>
                 <h1 className="mt-2 text-5xl">Private Yield Staking (Aave V3 Integration)</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-6 max-w-prose">
-                    MedVault enables patients to earn yield on their clinical trial rewards without exposing their financial activity or balances on the public blockchain. By leveraging Zama's FHEVM and Aave V3, we maintain a "Confidential Enclave" for patient payouts.
+                    MedVault enables patients to earn yield on their clinical trial rewards without exposing their financial activity or balances on the public blockchain. By leveraging Fhenix's FHEVM and Aave V3, we maintain a "Confidential Enclave" for patient payouts.
                 </p>
 
                 {/* Feature Cards */}
@@ -34,7 +34,7 @@ export function PrivateStakingDoc() {
                         <h3 className="text-xl font-black mb-2">Privacy First</h3>
                         <p className="text-sm opacity-90 font-medium">Staked balances are stored as <code>euint64</code>. No one, not even Aave, can see how much you have staked.</p>
                     </div>
-                    <div className="p-8 rounded-[32px] bg-gradient-to-br from-teal-500 to-emerald-600 shadow-xl shadow-emerald-500/20">
+                    <div className="p-8 rounded-[32px] bg-gradient-to-br from-blue-500 to-emerald-600 shadow-xl shadow-emerald-500/20">
                         <TrendingUp className="w-10 h-10 mb-4 opacity-80" />
                         <h3 className="text-xl font-black mb-2">Passive Yield</h3>
                         <p className="text-sm opacity-90 font-medium">Rewards are automatically converted to aWETH behind a gateway, collecting real-time interest from Aave V3.</p>
@@ -88,7 +88,7 @@ export function PrivateStakingDoc() {
                     code={`// SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import "@zama-ai/fhevm/contracts/lib/TFHE.sol";
+import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 contract StakingManager {
     // Encrypted balance mapping (User => euint64)
@@ -104,9 +104,9 @@ contract StakingManager {
         // 3. Supply WETH to Aave V3 Pool
         // 4. Update the patient's encrypted stake record
         euint64 current = _stakedBalances[msg.sender];
-        _stakedBalances[msg.sender] = TFHE.add(current, amountUnits);
+        _stakedBalances[msg.sender] = FHE.add(current, amountUnits);
         
-        TFHE.allow(_stakedBalances[msg.sender], msg.sender);
+        FHE.allow(_stakedBalances[msg.sender], msg.sender);
     }
 }`}
                 />
@@ -121,19 +121,19 @@ contract StakingManager {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 my-8">
                     <div className="space-y-4">
                         <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-teal-500/10 text-teal-600 flex items-center justify-center shrink-0 font-bold">1</div>
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 font-bold">1</div>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
                                 <strong>Claim Choice:</strong> When a trial payment is released, the patient sees a "Secure Payout" modal. They can choose to withdraw to their wallet or "Stake &amp; Earn".
                             </p>
                         </div>
                         <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-teal-500/10 text-teal-600 flex items-center justify-center shrink-0 font-bold">2</div>
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 font-bold">2</div>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
                                 <strong>Confidential Vault:</strong> The "Private Staking Vault" card on the dashboard remains locked until the user requests decryption via a re-encryption request.
                             </p>
                         </div>
                         <div className="flex items-start gap-4">
-                            <div className="w-8 h-8 rounded-full bg-teal-500/10 text-teal-600 flex items-center justify-center shrink-0 font-bold">3</div>
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 font-bold">3</div>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
                                 <strong>Manual Deposits:</strong> Users can also top up their vault using public ETH, which is automatically converted and added to their private balance.
                             </p>
@@ -144,14 +144,14 @@ contract StakingManager {
                             <Coins className="w-24 h-24" />
                         </div>
                         <div className="relative z-10">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-teal-500 mb-2">Dashboard Preview</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-2">Dashboard Preview</div>
                             <div className="h-6 w-32 bg-slate-800 rounded mb-4" />
                             <div className="space-y-2">
                                 <div className="h-2 w-full bg-slate-800 rounded" />
                                 <div className="h-2 w-3/4 bg-slate-800 rounded" />
                             </div>
                             <div className="mt-8 flex gap-2">
-                                <div className="h-8 flex-1 bg-teal-500 rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.2)]" />
+                                <div className="h-8 flex-1 bg-blue-500 rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.2)]" />
                                 <div className="h-8 flex-1 bg-slate-800 rounded-lg" />
                             </div>
                         </div>
@@ -188,7 +188,7 @@ contract StakingManager {
 
                 <h2>V. ConfidentialETH Scaling</h2>
                 <p>
-                    The <code>ConfidentialETH</code> wrapper uses a critical scaling factor to bridge between Ethereum's 18-decimal wei representation and the TFHE type system:
+                    The <code>ConfidentialETH</code> wrapper uses a critical scaling factor to bridge between Ethereum's 18-decimal wei representation and the FHE type system:
                 </p>
 
                 <ul>
@@ -212,7 +212,7 @@ contract StakingManager {
                     {[
                         { title: "Aave Protocol Risk", desc: "Yield generation depends on Aave V3's continued operation and solvency. In the unlikely event of an Aave pool exploit or WETH liquidity crisis, staked funds could be partially or fully lost.", severity: "Medium" },
                         { title: "Smart Contract Risk", desc: "The StakingManager, ConfidentialETH, and their interactions with Aave introduce additional smart contract surface area. Each contract has been tested with 100+ test cases, but formal verification has not been completed.", severity: "Medium" },
-                        { title: "FHE Liveness Dependency", desc: "If the Zama coprocessor experiences downtime, encrypted staking operations (deposits, withdrawals) will be blocked. Public ETH operations remain unaffected.", severity: "Low" },
+                        { title: "FHE Liveness Dependency", desc: "If the Fhenix coprocessor experiences downtime, encrypted staking operations (deposits, withdrawals) will be blocked. Public ETH operations remain unaffected.", severity: "Low" },
                         { title: "Scaling Truncation", desc: "The 1e12 scaling factor means very small yield amounts may be lost to truncation. Over long staking periods with small balances, this can result in slightly lower effective APY than quoted.", severity: "Low" },
                     ].map(risk => {
                         const styles = severityStyles[risk.severity];

@@ -87,7 +87,7 @@ export function DocsSidebar() {
                         <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
                             MedVault
                         </span>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-teal-500">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-500">
                             Technical Docs
                         </span>
                     </div>
@@ -152,20 +152,20 @@ export function DocsSidebar() {
                                                         className={cn(
                                                             "group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300",
                                                             isActive
-                                                                ? "text-teal-500 bg-teal-500/5 dark:bg-teal-500/10 border border-teal-500/10 shadow-sm"
+                                                                ? "text-blue-500 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/10 shadow-sm"
                                                                 : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.02]"
                                                         )}
                                                     >
                                                         {isActive && (
                                                             <motion.div
                                                                 layoutId="docs-sidebar-active-indicator"
-                                                                className="absolute left-0 w-1.5 h-5 bg-teal-500 rounded-r-full shadow-[0_0_8px_rgba(20,184,166,0.5)]"
+                                                                className="absolute left-0 w-1.5 h-5 bg-blue-500 rounded-r-full shadow-[0_0_8px_rgba(20,184,166,0.5)]"
                                                                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                                             />
                                                         )}
                                                         <Icon className={cn(
                                                             "h-4.5 w-4.5 transition-all duration-300 group-hover:scale-110",
-                                                            isActive ? "text-teal-500" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                                                            isActive ? "text-blue-500" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
                                                         )} />
                                                         <span className="flex-1 tracking-tight pr-2 truncate">{item.title}</span>
                                                     </Link>

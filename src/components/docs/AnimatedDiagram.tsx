@@ -28,15 +28,15 @@ interface AnimatedDiagramProps {
 export function AnimatedDiagram({ nodes, edges, height = 400, className }: AnimatedDiagramProps) {
 
     const colorMap = {
-        teal: "from-teal-500 to-emerald-400 shadow-teal-500/20 text-teal-600 dark:text-teal-400",
+        teal: "from-blue-500 to-emerald-400 shadow-blue-500/20 text-blue-600 dark:text-blue-400",
         purple: "from-purple-500 to-fuchsia-400 shadow-purple-500/20 text-purple-600 dark:text-purple-400",
         blue: "from-blue-500 to-cyan-400 shadow-blue-500/20 text-blue-600 dark:text-blue-400",
-        emerald: "from-emerald-500 to-teal-400 shadow-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+        emerald: "from-emerald-500 to-blue-400 shadow-emerald-500/20 text-emerald-600 dark:text-emerald-400",
         amber: "from-amber-500 to-orange-400 shadow-amber-500/20 text-amber-600 dark:text-amber-400",
     };
 
     const bgMap = {
-        teal: "bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/20",
+        teal: "bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20",
         purple: "bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20",
         blue: "bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20",
         emerald: "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20",
@@ -88,7 +88,7 @@ export function AnimatedDiagram({ nodes, edges, height = 400, className }: Anima
                                 <motion.path
                                     d={pathData}
                                     fill="none"
-                                    className="stroke-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.8)]"
+                                    className="stroke-blue-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.8)]"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                     strokeDasharray="8 8"

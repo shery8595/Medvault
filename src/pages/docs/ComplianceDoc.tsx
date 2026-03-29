@@ -5,10 +5,10 @@ import { motion } from "framer-motion";
 import { Scale, Shield, Database, FileText, CheckCircle2, Lock, Eye, UserX, Clock, Globe } from "lucide-react";
 
 const hipaaMapping = [
-    { requirement: "§164.312(a)(1) — Access Control", implementation: "TFHE ACL system (`TFHE.allow()`) restricts ciphertext decryption to authorized addresses only. `ConsentManager` enforces patient-signed EIP-712 tokens before any data access.", status: "Satisfied" },
-    { requirement: "§164.312(a)(2)(iv) — Encryption", implementation: "All patient health data is encrypted using TFHE (Fully Homomorphic Encryption) with 128-bit security level. Data is encrypted client-side before transmission and remains encrypted on-chain.", status: "Satisfied" },
+    { requirement: "§164.312(a)(1) — Access Control", implementation: "FHE ACL system (`FHE.allow()`) restricts ciphertext decryption to authorized addresses only. `ConsentManager` enforces patient-signed EIP-712 tokens before any data access.", status: "Satisfied" },
+    { requirement: "§164.312(a)(2)(iv) — Encryption", implementation: "All patient health data is encrypted using FHE (Fully Homomorphic Encryption) with 128-bit security level. Data is encrypted client-side before transmission and remains encrypted on-chain.", status: "Satisfied" },
     { requirement: "§164.312(c)(1) — Integrity Controls", implementation: "Blockchain immutability guarantees data integrity. ZK input proofs validate ciphertext well-formedness. Smart contract logic is deterministic and verifiable.", status: "Satisfied" },
-    { requirement: "§164.312(e)(1) — Transmission Security", implementation: "All data transmitted to the blockchain is TFHE-encrypted. Even if RPC traffic is intercepted, only opaque ciphertext blobs are visible. No plaintext health data exists in any network packet.", status: "Satisfied" },
+    { requirement: "§164.312(e)(1) — Transmission Security", implementation: "All data transmitted to the blockchain is FHE-encrypted. Even if RPC traffic is intercepted, only opaque ciphertext blobs are visible. No plaintext health data exists in any network packet.", status: "Satisfied" },
     { requirement: "§164.312(b) — Audit Controls", implementation: "`DataAccessLog.sol` records every sensitive operation with anonymized `keccak256(patient, timestamp)` hashes. Immutable on-chain storage provides tamper-proof audit trail.", status: "Satisfied" },
     { requirement: "§164.530 — Notice of Privacy Practices", implementation: "Smart contract source code is publicly verifiable on-chain. Patients can audit exactly what operations are performed on their data by reading the contract logic.", status: "Satisfied" },
     { requirement: "§164.522 — Minimum Necessary Standard", implementation: "The `EligibilityEngine` only accesses the specific encrypted metrics required for a given trial's criteria. No bulk data access is possible — each computation is scoped to (patient, trialId).", status: "Satisfied" },
@@ -18,17 +18,17 @@ const gdprMapping = [
     { article: "Art. 17 — Right to Erasure", implementation: "Patients can call `unregister()` on the `PatientRegistry` to delete their ciphertext handles from on-chain contract state. The `DataAccessLog` retains anonymized hashes but no personally identifiable information.", compliance: "Partial — blockchain immutability means structural event metadata persists" },
     { article: "Art. 20 — Data Portability", implementation: "Patient ciphertext handles are stored in public contract mappings accessible by the patient's wallet. The patient can export their encrypted profile by reading their own mappings.", compliance: "Supported via on-chain data sovereignty" },
     { article: "Art. 25 — Data Protection by Design", implementation: "FHE encryption is applied at the earliest possible point (browser DOM). The entire protocol is designed around the principle that plaintext health data never exists outside the patient's browser.", compliance: "Core architectural principle" },
-    { article: "Art. 32 — Security of Processing", implementation: "128-bit FHE security level (TFHE). OpenZeppelin security patterns. Formal threat model with 8 identified vectors and mitigations. 100-case test verification suite.", compliance: "Exceeded — provable mathematical guarantees" },
+    { article: "Art. 32 — Security of Processing", implementation: "128-bit FHE security level (FHE). OpenZeppelin security patterns. Formal threat model with 8 identified vectors and mitigations. 100-case test verification suite.", compliance: "Exceeded — provable mathematical guarantees" },
     { article: "Art. 35 — Data Protection Impact Assessment", implementation: "This documentation serves as the technical DPIA for MedVault. Risk assessment is documented in the Security Model page with severity ratings and mitigation status.", compliance: "Documented" },
     { article: "Art. 7 — Conditions for Consent", implementation: "The `ConsentManager` contract requires explicit EIP-712 signatures from the patient before any data can be re-encrypted for a sponsor. Consent is granular (per-trial, per-sponsor) and revocable.", compliance: "Fully implemented on-chain" },
 ];
 
 const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string }> = {
     teal: {
-        iconBg: "bg-teal-100 dark:bg-teal-900/30",
-        iconText: "text-teal-600 dark:text-teal-400",
-        cardBorder: "border-teal-200 dark:border-teal-900/40",
-         cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+         cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
     },
     purple: {
         iconBg: "bg-purple-100 dark:bg-purple-900/30",
@@ -193,7 +193,7 @@ export function ComplianceDoc() {
                                     { action: "REWARD_DISTRIBUTED", trigger: "Milestone payout executed via Chainlink", data: "keccak256(patient, trialId, milestoneId)" },
                                 ].map((row, i) => (
                                     <tr key={row.action} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-mono text-xs text-teal-600 dark:text-teal-400 font-bold">{row.action}</td>
+                                        <td className="px-4 py-3 font-mono text-xs text-blue-600 dark:text-blue-400 font-bold">{row.action}</td>
                                         <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">{row.trigger}</td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.data}</td>
                                     </tr>
@@ -258,7 +258,7 @@ dataAccessLog.log(
                 <div className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Compliance Assessment</div>
-                        <div className="text-slate-900 dark:text-white font-medium">March 2026 — Zama Sepolia Testnet</div>
+                        <div className="text-slate-900 dark:text-white font-medium">March 2026 — Fhenix Sepolia Testnet</div>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-full text-xs font-bold border border-emerald-500/20">
                         <CheckCircle2 className="w-4 h-4" />

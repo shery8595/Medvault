@@ -34,16 +34,16 @@ stateDiagram-v2
 `;
 
 const patientSteps = [
-    { icon: <Fingerprint />, step: "1", title: "Connect & Register", color: "blue", desc: "Connect your MetaMask wallet to the Zama Sepolia testnet. In the Patient Dashboard, click 'Update Vault' and enter your medical metrics (Age, Blood Pressure, HbA1c, Weight). These are encrypted by `fhevmjs` in your browser before being sent on-chain." },
+    { icon: <Fingerprint />, step: "1", title: "Connect & Register", color: "blue", desc: "Connect your MetaMask wallet to the Fhenix Sepolia testnet. In the Patient Dashboard, click 'Update Vault' and enter your medical metrics (Age, Blood Pressure, HbA1c, Weight). These are encrypted by `fhevmjs` in your browser before being sent on-chain." },
     { icon: <Stethoscope />, step: "2", title: "Browse & Apply", color: "teal", desc: "Navigate to the Trials tab to browse all active trials indexed by The Graph Subgraph. Click 'Apply' on any trial that might match your profile. The `EligibilityEngine` will immediately compute a score by comparing your encrypted metrics against the trial's encrypted requirements." },
-    { icon: <ShieldAlert />, step: "3", title: "Request Result (EIP-712)", color: "purple", desc: "In your Applications list, click 'Reveal Score'. This triggers MetaMask to show an EIP-712 signing request. You are not signing a transaction — you are generating a cryptographic viewing key that proves you own the wallet. The Zama network uses this key to decrypt your specific score mapping slot." },
+    { icon: <ShieldAlert />, step: "3", title: "Request Result (EIP-712)", color: "purple", desc: "In your Applications list, click 'Reveal Score'. This triggers MetaMask to show an EIP-712 signing request. You are not signing a transaction — you are generating a cryptographic viewing key that proves you own the wallet. The Fhenix network uses this key to decrypt your specific score mapping slot." },
     { icon: <BadgeCheck />, step: "4", title: "Grant Consent (Optional)", color: "emerald", desc: "If your score is 100 (perfect match), you may optionally choose to reveal your identity to the sponsor by clicking 'Grant Access'. This records a time-locked access token on-chain. The sponsor can now contact you directly through the DApp's encrypted messaging system." },
 ];
 
 const edgeCases = [
     { icon: <DatabaseBackup />, title: "Data Revocation / Un-registration", color: "purple", desc: "To revoke your data, call `unregister()` in the Patient Registry. This deletes your ciphertext mappings on-chain. However, public structural metadata (application events) may still exist in the Subgraph. MedVault uses an `active` boolean in the GraphQL schema to filter these out from the UI." },
     { icon: <Lock />, title: "Sponsor Key Compromise", color: "rose", desc: "If a sponsor's private key is leaked, the attacker gains the ability to read decrypted profiles of patients who previously granted consent to that specific sponsor wallet. MedVault's `SponsorRegistry` admin can call `emergencyRemoveSponsor()` to instantly terminate all trial activity associated with the compromised wallet." },
-    { icon: <Building2 />, title: "FHE Node Downtime", color: "amber", desc: "The Zama Sepolia testnet is a research network and may experience downtime. When the FHE coprocessor is unavailable, `computeEligibility()` transactions will simply fail at the RPC level. The MedVault frontend catches these failures and shows a clear 'Network Unavailable' banner rather than silently freezing." },
+    { icon: <Building2 />, title: "FHE Node Downtime", color: "amber", desc: "The Fhenix Sepolia testnet is a research network and may experience downtime. When the FHE coprocessor is unavailable, `computeEligibility()` transactions will simply fail at the RPC level. The MedVault frontend catches these failures and shows a clear 'Network Unavailable' banner rather than silently freezing." },
 ];
 const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder: string; cardBg: string; stepBadge?: string }> = {
     blue: {
@@ -54,11 +54,11 @@ const colorStyles: Record<string, { iconBg: string; iconText: string; cardBorder
         stepBadge: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
     },
     teal: {
-        iconBg: "bg-teal-100 dark:bg-teal-900/30",
-        iconText: "text-teal-600 dark:text-teal-400",
-        cardBorder: "border-teal-200 dark:border-teal-900/40",
-        cardBg: "bg-teal-50/50 dark:bg-teal-950/10",
-        stepBadge: "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400",
+        iconBg: "bg-blue-100 dark:bg-blue-900/30",
+        iconText: "text-blue-600 dark:text-blue-400",
+        cardBorder: "border-blue-200 dark:border-blue-900/40",
+        cardBg: "bg-blue-50/50 dark:bg-blue-950/10",
+        stepBadge: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
     },
     purple: {
         iconBg: "bg-purple-100 dark:bg-purple-900/30",

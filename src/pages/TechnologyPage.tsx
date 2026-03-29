@@ -28,7 +28,7 @@ export function TechnologyPage() {
           <div 
             className="absolute inset-0 opacity-[0.03]"
             style={{ 
-              backgroundImage: 'radial-gradient(circle, #2dd4bf 1px, transparent 1px)',
+              backgroundImage: 'radial-gradient(circle, #3b82f6 1px, transparent 1px)',
               backgroundSize: '40px 40px'
             }}
           />
@@ -74,10 +74,10 @@ export function TechnologyPage() {
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-6 tracking-tight">Fully Homomorphic Encryption</h2>
                 <p className="text-lg text-slate-400 leading-relaxed max-w-xl mb-8">
-                  Unlike traditional encryption where data must be decrypted to be processed, FHE allows us to perform mathematical operations directly on the ciphertext. MedVault utilizes <span className="text-white font-semibold">tfhe-rs</span>, the industry-standard Rust implementation of TFHE.
+                  Unlike traditional encryption where data must be decrypted to be processed, FHE allows us to perform mathematical operations directly on the ciphertext. MedVault utilizes <span className="text-white font-semibold">Fhenix FHE</span>, the industry-standard implementation of FHE.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  {["fhEVM Integration", "Programmable Bootstrapping", "TFHE Gates", "Encrypted Booleans", "Bivariate Logic", "Provable Integrity"].map((tag) => (
+                  {["fhEVM Integration", "Programmable Bootstrapping", "FHE Gates", "Encrypted Booleans", "Bivariate Logic", "Provable Integrity"].map((tag) => (
                     <span key={tag} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-accent">
                       {tag}
                     </span>
@@ -124,7 +124,7 @@ export function TechnologyPage() {
               </p>
             </motion.div>
 
-            {/* Zama Stack Section */}
+            {/* Fhenix Stack Section */}
             <motion.div 
               {...fadeUp(0.3)} 
               className="md:col-span-12 rounded-[2.5rem] p-10 border border-white/5 bg-gradient-to-r from-slate-900/40 via-blue-900/10 to-transparent flex flex-col items-center text-center lg:text-left lg:flex-row gap-12"
@@ -133,9 +133,9 @@ export function TechnologyPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white mb-8 mx-auto lg:mx-0">
                   <CircuitBoard className="h-6 w-6" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4 tracking-tight">Powered by Zama's fhEVM</h3>
+                <h3 className="text-3xl font-bold mb-4 tracking-tight">Powered by Fhenix's fhEVM</h3>
                 <p className="text-slate-400 leading-relaxed text-lg max-w-2xl">
-                  MedVault runs on Zama's fhEVM, bringing on-chain confidentiality to Ethereum. Smart contracts can now store and process private states using encrypted types like <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">ebool</code>, <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">euint32</code>, and <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">eaddress</code>, ensuring that only the final authorized result is ever visible.
+                  MedVault runs on Fhenix's fhEVM, bringing on-chain confidentiality to Ethereum. Smart contracts can now store and process private states using encrypted types like <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">ebool</code>, <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">euint32</code>, and <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">eaddress</code>, ensuring that only the final authorized result is ever visible.
                 </p>
               </div>
               <div className="flex-shrink-0 grid grid-cols-2 gap-4">

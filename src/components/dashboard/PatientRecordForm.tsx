@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "../ui/Button";
 import { useWeb3 } from "../../lib/Web3Context";
-import { encryptUint8, encryptUint16, encryptBool, toHex } from "../../lib/fhe";
+import { encryptUint8, encryptUint16, encryptBool } from "../../lib/fhe";
 import { getPatientRegistry } from "../../lib/contracts";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -128,19 +128,19 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
             setStatus("Verification: Preparing blockchain transaction...");
             await pause(500);
 
-            // Log parameters for debugging
+            // Prepare parameters for the contract
             const params = [
-                toHex(rawAge.handle), toHex(rawAge.proof),
-                toHex(rawGender.handle), toHex(rawGender.proof),
-                toHex(rawWeight.handle), toHex(rawWeight.proof),
-                toHex(rawHeight.handle), toHex(rawHeight.proof),
-                toHex(rawDiabetes.handle), toHex(rawDiabetes.proof),
-                toHex(rawHb.handle), toHex(rawHb.proof),
-                toHex(rawSmoker.handle), toHex(rawSmoker.proof),
-                toHex(rawHypertension.handle), toHex(rawHypertension.proof)
+                rawAge,
+                rawGender,
+                rawWeight,
+                rawHeight,
+                rawDiabetes,
+                rawHb,
+                rawSmoker,
+                rawHypertension
             ];
 
-            console.log("Submitting with FHE Handles (Hex):", params.filter((_, i) => i % 2 === 0));
+            console.log("Submitting with FHE handles:", params);
 
             const tx = await registry.submitEncryptedProfile(...params);
 
@@ -169,11 +169,11 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
     };
 
     return (
-        <div className="bg-white dark:bg-[#0a1628] rounded-3xl border border-slate-200 dark:border-[#2dd4bf]/10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.4)] overflow-hidden">
+        <div className="bg-white dark:bg-[#0a1628] rounded-3xl border border-slate-200 dark:border-[#3b82f6]/10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.4)] overflow-hidden">
             {/* Header / Info */}
-            <div className="bg-slate-50 dark:bg-[#2dd4bf]/5 p-6 border-b border-slate-100 dark:border-[#2dd4bf]/10">
+            <div className="bg-slate-50 dark:bg-[#3b82f6]/5 p-6 border-b border-slate-100 dark:border-[#3b82f6]/10">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 dark:bg-[#2dd4bf]/20 dark:text-[#2dd4bf]">
+                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 dark:bg-[#3b82f6]/20 dark:text-[#3b82f6]">
                         <ShieldCheck className="h-6 w-6" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Secure Record Upload</h2>
@@ -192,7 +192,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                 <div className={cn(
                                     "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300",
                                     isActive
-                                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20 dark:bg-[#2dd4bf] dark:text-[#020810] dark:shadow-[#2dd4bf]/20"
+                                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20 dark:bg-[#3b82f6] dark:text-[#020810] dark:shadow-[#3b82f6]/20"
                                         : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-600"
                                 )}>
                                     <Icon className="h-5 w-5" />
@@ -226,7 +226,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             type="number"
                                             value={age}
                                             onChange={(e) => setAge(parseInt(e.target.value))}
-                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#2dd4bf]/20 transition-all font-bold"
+                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#3b82f6]/20 transition-all font-bold"
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">YRS</span>
                                     </div>
@@ -240,7 +240,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             onClick={() => setGender(true)}
                                             className={cn(
                                                 "flex-1 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-                                                gender ? "bg-white dark:bg-[#2dd4bf] text-blue-500 dark:text-[#020810] shadow-sm" : "text-slate-400"
+                                                gender ? "bg-white dark:bg-[#3b82f6] text-blue-500 dark:text-[#020810] shadow-sm" : "text-slate-400"
                                             )}
                                         >
                                             Male
@@ -250,7 +250,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             onClick={() => setGender(false)}
                                             className={cn(
                                                 "flex-1 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
-                                                !gender ? "bg-white dark:bg-[#2dd4bf] text-blue-500 dark:text-[#020810] shadow-sm" : "text-slate-400"
+                                                !gender ? "bg-white dark:bg-[#3b82f6] text-blue-500 dark:text-[#020810] shadow-sm" : "text-slate-400"
                                             )}
                                         >
                                             Female
@@ -267,7 +267,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             type="number"
                                             value={height}
                                             onChange={(e) => setHeight(parseInt(e.target.value))}
-                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#2dd4bf]/20 transition-all font-bold"
+                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#3b82f6]/20 transition-all font-bold"
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">CM</span>
                                     </div>
@@ -282,7 +282,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             type="number"
                                             value={weight}
                                             onChange={(e) => setWeight(parseInt(e.target.value))}
-                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#2dd4bf]/20 transition-all font-bold"
+                                            className="w-full h-12 pl-4 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-[#3b82f6]/20 transition-all font-bold"
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">KG</span>
                                     </div>
@@ -292,10 +292,10 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
 
                         {currentStep === 1 && (
                             <div className="space-y-6">
-                                <div className="p-6 rounded-2xl bg-blue-50/50 dark:bg-[#2dd4bf]/5 border border-blue-100 dark:border-[#2dd4bf]/10 space-y-4">
+                                <div className="p-6 rounded-2xl bg-blue-50/50 dark:bg-[#3b82f6]/5 border border-blue-100 dark:border-[#3b82f6]/10 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-blue-500 dark:text-[#2dd4bf]">
+                                            <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-blue-500 dark:text-[#3b82f6]">
                                                 <Droplets className="h-5 w-5" />
                                             </div>
                                             <div>
@@ -308,7 +308,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                             onClick={() => setHasDiabetes(!hasDiabetes)}
                                             className={cn(
                                                 "h-6 w-11 rounded-full relative transition-colors duration-200",
-                                                hasDiabetes ? "bg-blue-500 dark:bg-[#2dd4bf]" : "bg-slate-200 dark:bg-slate-800"
+                                                hasDiabetes ? "bg-blue-500 dark:bg-[#3b82f6]" : "bg-slate-200 dark:bg-slate-800"
                                             )}
                                         >
                                             <div className={cn(
@@ -393,7 +393,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
 
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 flex items-start gap-3">
                                     <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" />
-                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">All data will be encrypted into Zama FHE handles before leaving your browser. No plaintext data is ever stored on-chain.</p>
+                                    <p className="text-xs text-slate-500 leading-relaxed font-medium">All data will be encrypted into secure FHE handles before leaving your browser. No plaintext data is ever stored on-chain.</p>
                                 </div>
                             </div>
                         )}
@@ -417,7 +417,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                 key="btn-next"
                                 type="button"
                                 onClick={nextStep}
-                                className="bg-slate-900 dark:bg-[#2dd4bf] text-white dark:text-[#020810] h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-xs"
+                                className="bg-slate-900 dark:bg-[#3b82f6] text-white dark:text-[#020810] h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-xs"
                             >
                                 Next Step <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
@@ -427,7 +427,7 @@ export function PatientRecordForm({ onSuccess, onCancel }: PatientRecordFormProp
                                 type="button"
                                 onClick={() => handleSubmit()}
                                 disabled={isSubmitting || !isFHEReady}
-                                className="bg-blue-500 dark:bg-[#2dd4bf] text-white dark:text-[#020810] h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-blue-500/20"
+                                className="bg-blue-500 dark:bg-[#3b82f6] text-white dark:text-[#020810] h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-blue-500/20"
                             >
                                 {isSubmitting ? "Securing Data..." : "Finalize & Upload"}
                             </Button>

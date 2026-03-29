@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool, euint16} from "@fhevm/solidity/lib/FHE.sol";
-import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {FHE, euint8, ebool, euint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./PatientRegistry.sol";
 import "./TrialManager.sol";
 import "./ConsentManager.sol";
@@ -12,7 +11,7 @@ import "./DataAccessLog.sol";
  * @title EligibilityEngine
  * @notice Performs privacy-preserving eligibility computation with expanded medical fields
  */
-contract EligibilityEngine is ZamaEthereumConfig {
+contract EligibilityEngine {
     PatientRegistry public patientRegistry;
     TrialManager public trialManager;
     ConsentManager public consentManager;
@@ -80,7 +79,7 @@ contract EligibilityEngine is ZamaEthereumConfig {
         ebool diabetesOk = trial.requiresDiabetes ? FHE.eq(patient.hasDiabetes, FHE.asEbool(true)) : FHE.asEbool(true);
         
         // 3. Hb level check
-        ebool hbOk = FHE.ge(patient.hbLevel, FHE.asEuint16(trial.minHb));
+        ebool hbOk = FHE.gte(patient.hbLevel, FHE.asEuint16(trial.minHb));
 
         // 4. Gender check
         ebool genderOk;
@@ -93,8 +92,8 @@ contract EligibilityEngine is ZamaEthereumConfig {
         }
 
         // 5. Vital Bio-Metrics
-        ebool heightOk = trial.minHeight > 0 ? FHE.ge(patient.height, FHE.asEuint8(trial.minHeight)) : FHE.asEbool(true);
-        ebool weightOk = trial.maxWeight > 0 ? FHE.le(patient.weight, FHE.asEuint16(trial.maxWeight)) : FHE.asEbool(true);
+        ebool heightOk = trial.minHeight > 0 ? FHE.gte(patient.height, FHE.asEuint8(trial.minHeight)) : FHE.asEbool(true);
+        ebool weightOk = trial.maxWeight > 0 ? FHE.lte(patient.weight, FHE.asEuint16(trial.maxWeight)) : FHE.asEbool(true);
         
         // 6. Lifestyle & Co-morbidities
         ebool smokingOk = trial.requiresNonSmoker ? FHE.eq(patient.isSmoker, FHE.asEbool(false)) : FHE.asEbool(true);
@@ -115,10 +114,10 @@ contract EligibilityEngine is ZamaEthereumConfig {
         // Total checks = 8. Scale to 0-100 (passCount * 12.5)
         // workaround for lack of FHE.div: 12*passCount + passCount/2
         euint8 score = FHE.mul(passCount, FHE.asEuint8(12));
-        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(2)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(4)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(6)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(8)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(2)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(4)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(6)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(8)), FHE.asEuint8(1), FHE.asEuint8(0)));
 
         // --- ENCRYPTED RESULTS ---
         ebool finalResult = FHE.and(ageOk, diabetesOk);

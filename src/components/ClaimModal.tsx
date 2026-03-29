@@ -119,7 +119,7 @@ export function ClaimModal({ isOpen, onClose, amountEth }: ClaimModalProps) {
                             <ShieldCheck className="h-5 w-5 shrink-0" />
                             <div className="flex-1">
                                 <p className="text-xs font-bold leading-tight">Privacy Guard Enabled</p>
-                                <p className="text-[10px] font-medium opacity-80">Your intent is hidden using Zama FHE.</p>
+                                <p className="text-[10px] font-medium opacity-80">Your intent is hidden using secure FHE.</p>
                             </div>
                         </div>
                     </div>

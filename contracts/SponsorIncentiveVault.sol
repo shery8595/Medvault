@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint32, euint64, ebool, externalEuint32, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
-import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./ConfidentialETH.sol";
 import "./TrialManager.sol";
 import "./EligibilityEngine.sol";
@@ -18,7 +16,7 @@ import "./DataAccessLog.sol";
  *   - No global lock after screening distribution, so post-trial promotion still works.
  *   - Fallback: If no milestones are set, full share is distributed (legacy behavior).
  */
-contract SponsorIncentiveVault is ZamaEthereumConfig {
+contract SponsorIncentiveVault {
     ConfidentialETH public cETH;
     TrialManager public trialManager;
     EligibilityEngine public eligibilityEngine;

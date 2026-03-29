@@ -48,7 +48,7 @@ export function SponsorDashboard() {
           </p>
         </div>
         <Link to="/sponsor/trials/create">
-          <Button size="lg" className="gap-2 shadow-xl shadow-teal-500/20 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl px-6">
+          <Button size="lg" className="gap-2 shadow-xl shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6">
             <Plus className="h-5 w-5" /> Create New Trial
           </Button>
         </Link>
@@ -59,7 +59,7 @@ export function SponsorDashboard() {
         <MetricCard
           title="Active Trials"
           value={stats.activeTrials}
-          icon={<Activity className="h-5 w-5 text-teal-500" />}
+          icon={<Activity className="h-5 w-5 text-blue-500" />}
           description="Live recruitment"
         />
         <MetricCard
@@ -87,9 +87,9 @@ export function SponsorDashboard() {
         <div className="lg:col-span-2 space-y-8">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-teal-600" /> Enrollment Hub
+              <Activity className="h-5 w-5 text-blue-600" /> Enrollment Hub
             </h3>
-            <Link to="/sponsor/analytics" className="text-sm font-semibold text-teal-600 hover:text-teal-700 transition-colors flex items-center gap-1">
+            <Link to="/sponsor/analytics" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
               Deep Dive <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -129,12 +129,12 @@ export function SponsorDashboard() {
             </Card>
 
             <Card className="border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
               <CardHeader className="pb-2 border-b border-slate-100/50 dark:border-slate-800/50 flex flex-row items-center justify-between">
                 <CardTitle className="text-lg font-bold tracking-tight">Active Recruitment</CardTitle>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 ">
-                  <div className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest">Real-time</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 ">
+                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Real-time</span>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -148,11 +148,11 @@ export function SponsorDashboard() {
                       <div className="relative z-10">
                         <div className="flex justify-between items-start mb-4">
                           <div className="space-y-1.5">
-                            <span className="text-sm font-black text-slate-900 dark:text-slate-50 group-hover:text-teal-600 transition-colors tracking-tight block">
+                            <span className="text-sm font-black text-slate-900 dark:text-slate-50 group-hover:text-blue-600 transition-colors tracking-tight block">
                               {trial.name}
                             </span>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-[9px] h-4.5 px-2 uppercase font-black tracking-widest text-teal-600 border-teal-500/20 bg-teal-500/5 dark:text-teal-400">
+                              <Badge variant="outline" className="text-[9px] h-4.5 px-2 uppercase font-black tracking-widest text-blue-600 border-blue-500/20 bg-blue-500/5 dark:text-blue-400">
                                 {trial.phase}
                               </Badge>
                               <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
@@ -173,12 +173,12 @@ export function SponsorDashboard() {
                         <div className="space-y-3">
                           <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden p-[1px]">
                             {/* Inner background glow */}
-                            <div className="absolute inset-x-0 h-full bg-teal-500/5 animate-pulse" />
+                            <div className="absolute inset-x-0 h-full bg-blue-500/5 animate-pulse" />
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${Math.min(((trial.matchCount || 0) / 50) * 100, 100)}%` }}
                               transition={{ duration: 1.5, ease: "easeOut" }}
-                              className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)] relative overflow-hidden"
+                              className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)] relative overflow-hidden"
                             >
                               {/* Shimmer effect */}
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
@@ -189,7 +189,7 @@ export function SponsorDashboard() {
                               <Users className="h-3 w-3 text-slate-300" />
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Protocol Capacity</span>
                             </div>
-                            <div className="px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-black tracking-tighter">
+                            <div className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-tighter">
                               {Math.round(Math.min(((trial.matchCount || 0) / 50) * 100, 100))}% REACHED
                             </div>
                           </div>
@@ -197,7 +197,7 @@ export function SponsorDashboard() {
                       </div>
 
                       {/* Interactive background highlight */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/[0.02] to-teal-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/[0.02] to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                     </Link>
                   )) : (
                     <div className="py-20 text-center space-y-3">
@@ -210,7 +210,7 @@ export function SponsorDashboard() {
                 </div>
               </CardContent>
               <div className="p-4 border-t border-slate-100/50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-transparent">
-                <Button variant="ghost" size="sm" className="w-full text-xs font-bold text-slate-500 hover:text-teal-600 gap-2 rounded-xl group/btn">
+                <Button variant="ghost" size="sm" className="w-full text-xs font-bold text-slate-500 hover:text-blue-600 gap-2 rounded-xl group/btn">
                   Manage Pipeline <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-1" />
                 </Button>
               </div>
@@ -315,12 +315,12 @@ export function SponsorDashboard() {
           </div>
 
           <Card className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white border-none p-6 relative overflow-hidden rounded-3xl group">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/10 blur-[80px] rounded-full group-hover:bg-teal-500/20 transition-all duration-700" />
+            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full group-hover:bg-blue-500/20 transition-all duration-700" />
             <div className="relative z-10">
               <div className="p-2 bg-white/10 w-fit rounded-xl mb-4 backdrop-blur-md">
-                <ShieldCheck className="h-6 w-6 text-teal-400" />
+                <ShieldCheck className="h-6 w-6 text-blue-400" />
               </div>
-              <h4 className="text-teal-400 font-bold uppercase tracking-widest text-[10px] mb-2">FHE Infrastructure Active</h4>
+              <h4 className="text-blue-400 font-bold uppercase tracking-widest text-[10px] mb-2">FHE Infrastructure Active</h4>
               <p className="text-xl font-bold mb-3 leading-tight tracking-tight">Enterprise Grade Privacy Protection</p>
               <p className="text-slate-400 text-xs leading-relaxed mb-6">
                 MedVault employs Fully Homomorphic Encryption. Patient identities remain shielded until you both securely establish contact.
@@ -348,7 +348,7 @@ function MetricCard({ title, value, icon, description }: { title: string, value:
       isEmerald ? 'rgba(16, 185, 129, 0.15)' :
         'rgba(245, 158, 11, 0.15)';
 
-  const accentColor = isTeal ? 'bg-teal-500' :
+  const accentColor = isTeal ? 'bg-blue-500' :
     isIndigo ? 'bg-indigo-500' :
       isEmerald ? 'bg-emerald-500' :
         'bg-amber-500';

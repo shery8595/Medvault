@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint64} from "@fhevm/solidity/lib/FHE.sol";
-import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./ConfidentialETH.sol";
 
 interface IWrappedTokenGatewayV3 {
@@ -16,7 +15,7 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-contract StakingManager is ZamaEthereumConfig {
+contract StakingManager {
     address public constant AAVE_POOL = 0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951;
     address public constant WETH_GATEWAY = 0x387d311e47e80b498169e6fb51d3193167d89F7D;
     address public constant AWETH = 0x5B071B590a59395FE4025a0CCc1Fcc931EaC2323;
@@ -59,7 +58,7 @@ contract StakingManager is ZamaEthereumConfig {
 
         // Encrypt and store the staked amount securely in Gwei to fit euint64 safety
         euint64 encAmount = FHE.asEuint64(uint64(msg.value / 1e9)); 
-        if (FHE.isInitialized(_encryptedTotalStaked[msg.sender])) {
+        if (euint64.unwrap(_encryptedTotalStaked[msg.sender]) != 0) {
             _encryptedTotalStaked[msg.sender] = FHE.add(_encryptedTotalStaked[msg.sender], encAmount);
         } else {
             _encryptedTotalStaked[msg.sender] = encAmount;
@@ -90,7 +89,7 @@ contract StakingManager is ZamaEthereumConfig {
 
         // Deduct from encrypted balance
         euint64 encAmount = FHE.asEuint64(uint64(amount / 1e9));
-        if (FHE.isInitialized(_encryptedTotalStaked[msg.sender])) {
+        if (euint64.unwrap(_encryptedTotalStaked[msg.sender]) != 0) {
             _encryptedTotalStaked[msg.sender] = FHE.sub(_encryptedTotalStaked[msg.sender], encAmount);
             FHE.allow(_encryptedTotalStaked[msg.sender], msg.sender);
             FHE.allowThis(_encryptedTotalStaked[msg.sender]);
@@ -121,7 +120,7 @@ contract StakingManager is ZamaEthereumConfig {
         );
 
         euint64 encAmount = FHE.asEuint64(uint64(weiAmount / 1e9)); 
-        if (FHE.isInitialized(_encryptedTotalStaked[msg.sender])) {
+        if (euint64.unwrap(_encryptedTotalStaked[msg.sender]) != 0) {
             _encryptedTotalStaked[msg.sender] = FHE.add(_encryptedTotalStaked[msg.sender], encAmount);
         } else {
             _encryptedTotalStaked[msg.sender] = encAmount;

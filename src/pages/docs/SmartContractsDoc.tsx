@@ -11,11 +11,11 @@ export function SmartContractsDoc() {
                 <h1 className="mt-2 text-5xl">Core Logic Contracts</h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-12 max-w-prose">
-                    MedVault's logic is distributed across <strong>11 specialized smart contracts</strong>, ensuring strict separation of concerns and minimizing gas vulnerabilities while executing operations on the Zama fhEVM coprocessor. This page serves as a complete reference for every deployed contract.
+                    MedVault's logic is distributed across <strong>11 specialized smart contracts</strong>, ensuring strict separation of concerns and minimizing gas vulnerabilities while executing operations on the Fhenix fhEVM coprocessor. This page serves as a complete reference for every deployed contract.
                 </p>
 
                 <Callout type="info" title="Deployment Environment">
-                    All contracts are deployed on the <strong>Zama Sepolia Testnet</strong> chain. Connecting to the network requires RPC URLs pointing to Zama infrastructure. Contracts are compiled with Solidity 0.8.24+ and use the <code>@zama-ai/fhevm</code> SDK for encrypted type support.
+                    All contracts are deployed on the <strong>Fhenix Sepolia Testnet</strong> chain. Connecting to the network requires RPC URLs pointing to Fhenix infrastructure. Contracts are compiled with Solidity 0.8.24+ and use the <code>@fhenixprotocol/cofhe-contracts</code> SDK for encrypted type support.
                 </Callout>
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
@@ -78,7 +78,7 @@ export function SmartContractsDoc() {
                             <h2 className="m-0 border-0 pb-0">PatientRegistry.sol</h2>
                         </div>
                         <p className="max-w-prose">
-                            The <code>PatientRegistry</code> handles the storage and updating of patient health metrics. It manages the <code>PatientInfo</code> struct which holds exclusively Zama <code>euint32</code> data types. On registration, ZK input proofs are validated via the TFHE precompile, ciphertext handles are stored with ACL permissions granted to this contract and the <code>EligibilityEngine</code>, and a <code>DataAccessLog</code> entry is recorded.
+                            The <code>PatientRegistry</code> handles the storage and updating of patient health metrics. It manages the <code>PatientInfo</code> struct which holds exclusively Fhenix encrypted data types. On registration, ZK input proofs are validated via the FHE precompile, ciphertext handles are stored with ACL permissions granted to this contract and the <code>EligibilityEngine</code>, and a <code>DataAccessLog</code> entry is recorded.
                         </p>
                         <Callout type="warning" title="Reentrancy Protections">
                             Because the patient registry interfaces with the <code>EligibilityEngine</code> and the <code>ConsentManager</code> directly upon state updates, it utilizes standard OpenZeppelin <code>ReentrancyGuard</code> modifiers to prevent recursive calls during FHE evaluations.
@@ -87,7 +87,7 @@ export function SmartContractsDoc() {
                         <CodeBlock
                             filename="PatientRegistry.sol (Structs)"
                             language="solidity"
-                            code={`import "@zama-ai/fhevm/contracts/lib/TFHE.sol";
+                            code={`import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 // All fields are fully homomorphically encrypted
 struct PatientInfo {
@@ -115,7 +115,7 @@ mapping(address => PatientInfo) private registry;`}
                             <h2 className="m-0 border-0 pb-0">EligibilityEngine.sol</h2>
                         </div>
                         <p className="max-w-prose">
-                            The <strong>computational core</strong> of MedVault. Reads encrypted patient metrics from <code>PatientRegistry</code> and encrypted trial bounds from <code>TrialManager</code>, then executes 5 TFHE comparison operations and 3 CMUX multiplexing operations to produce a weighted eligibility score (0-100) — all without decrypting any inputs. The score is stored in a private mapping keyed by <code>(trialId, patientAddress)</code> with TFHE ACL granting decryption rights only to the patient.
+                            The <strong>computational core</strong> of MedVault. Reads encrypted patient metrics from <code>PatientRegistry</code> and encrypted trial bounds from <code>TrialManager</code>, then executes 5 FHE comparison operations and 3 CMUX multiplexing operations to produce a weighted eligibility score (0-100) — all without decrypting any inputs. The score is stored in a private mapping keyed by <code>(trialId, patientAddress)</code> with FHE ACL granting decryption rights only to the patient.
                         </p>
                         <p>
                             <strong>Key functions:</strong> <code>computeEligibility(address patient, uint256 trialId)</code>, <code>getScore(uint256 trialId, address patient) → euint32</code>
@@ -144,7 +144,7 @@ mapping(address => PatientInfo) private registry;`}
                     {/* 05 — Consent Manager */}
                     <section>
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="p-3 bg-teal-500/10 text-teal-500 rounded-2xl border border-teal-500/20">
+                            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/20">
                                 <span className="font-mono font-bold text-lg leading-none">05</span>
                             </div>
                             <h2 className="m-0 border-0 pb-0">ConsentManager.sol</h2>
@@ -216,7 +216,7 @@ mapping(address => PatientInfo) private registry;`}
                             <h2 className="m-0 border-0 pb-0">ConfidentialETH.sol</h2>
                         </div>
                         <p className="max-w-prose">
-                            An <strong>encrypted ERC-20 wrapper</strong> for ETH. Users "shield" plaintext ETH into encrypted <code>euint32</code> balance representations. Transfers between addresses add and subtract encrypted values using <code>TFHE.add()</code> and <code>TFHE.sub()</code> — the blockchain computes the transfer without knowing the amounts. Uses a <code>1e12</code> scaling factor to convert between wei (18 decimals) and <code>euint32</code> (max ~4.29 billion).
+                            An <strong>encrypted ERC-20 wrapper</strong> for ETH. Users "shield" plaintext ETH into encrypted <code>euint32</code> balance representations. Transfers between addresses add and subtract encrypted values using <code>FHE.add()</code> and <code>FHE.sub()</code> — the blockchain computes the transfer without knowing the amounts. Uses a <code>1e12</code> scaling factor to convert between wei (18 decimals) and <code>euint32</code> (max ~4.29 billion).
                         </p>
                         <p>
                             <strong>Key functions:</strong> <code>shield(uint256)</code>, <code>unshield(uint256)</code>, <code>transferEncrypted(address, euint32)</code>
@@ -292,7 +292,7 @@ mapping(address => PatientInfo) private registry;`}
                                     { caller: "EligibilityEngine", callee: "DataAccessLog", purpose: "Log eligibility computation events" },
                                 ].map((row, i) => (
                                     <tr key={`${row.caller}-${row.callee}`} className={`border-b border-slate-100 dark:border-slate-800/50 ${i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                        <td className="px-4 py-3 font-mono text-xs text-teal-600 dark:text-teal-400 font-bold">{row.caller}</td>
+                                        <td className="px-4 py-3 font-mono text-xs text-blue-600 dark:text-blue-400 font-bold">{row.caller}</td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{row.callee}</td>
                                         <td className="px-4 py-3 text-xs text-slate-500">{row.purpose}</td>
                                     </tr>

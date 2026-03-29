@@ -1,37 +1,71 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@1,400;1,700&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", var(--font-sans);
+  --font-serif: "Playfair Display", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #0F172A;
-  --color-primary-foreground: #F8FAFC;
+  /* Professional Sapphire Blue Palette */
+  --color-primary: oklch(25% 0.12 250);
+  /* Deep core blue */
+  --color-primary-foreground: #FFFFFF;
 
-  --color-accent: #14B8A6;
+  --color-accent: oklch(65% 0.22 255);
+  /* Electric Sapphire 500 */
+  --color-accent-hover: oklch(58% 0.24 258);
+  /* Electric Sapphire 600 */
   --color-accent-foreground: #FFFFFF;
 
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
 
-  --color-background: #F8FAFC;
-  --color-foreground: #0F172A;
+  --color-background: #000000;
+  /* pure black */
+  --color-foreground: #F8FAFC;
+  --color-glass: rgba(15, 23, 42, 0.4);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
 
-  --shadow-neo: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-neo-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-neo: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-neo-lg: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 @layer base {
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground min-h-screen bg-black;
+    background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 50%);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
-  .dark body {
-    background-color: #0F172A;
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-display {
+      font-family: var(--font-display);
+      letter-spacing: -0.035em;
+    }
+
+    p,
+    .font-sans {
+      letter-spacing: -0.01em;
+      line-height: 1.6;
+    }
+
+    /* Utility class for our new glass panels */
+    .glass-panel {
+      @apply bg-glass backdrop-blur-xl border border-glass-border shadow-glass rounded-2xl;
+    }
+
+    .dark body {
+    background-color: #000000;
     color: #F8FAFC;
+    background-image: radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.1) 0%, transparent 50%);
   }
 
   /* Custom Premium Scrollbar */
@@ -63,5 +97,60 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.05);
+  /* slightly adapted for dark mode readability instead of 0.16 */
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 26px 13px rgba(255, 255, 255, 0.05);
+  /* reduced intense white glow for dark theme */
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.8),
+      transparent);
+}
+
+.glass-nav::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.8),
+      transparent,
+      rgba(255, 255, 255, 0.3));
+}
+
+@keyframes heroCursorBlink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
   }
 }
