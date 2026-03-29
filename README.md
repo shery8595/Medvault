@@ -7,8 +7,6 @@
 
 **MedVault** is a decentralized clinical trial platform leveraging **Fully Homomorphic Encryption (FHE)** to bridge the gap between medical privacy and decentralized research. Built on **Fhenix (CoFHE)**, it allows patients to match with life-saving trials while keeping their medical data mathematically encrypted at all times on **Arbitrum Sepolia**.
 
-</div>
-
 ---
 
 ## 🏗️ 1. Architecture Overview
@@ -206,9 +204,9 @@ graph TD
     end
 
     subgraph "Web3 & FHE"
-        Z[@cofhe/sdk]:::web3
-        W[WAGMI / Viem]:::web3
-        E[Ethers.js v6]:::web3
+        Z["@cofhe/sdk"]:::web3
+        W["WAGMI / Viem"]:::web3
+        E["Ethers.js v6"]:::web3
     end
 
     subgraph "Smart Contracts"
@@ -281,6 +279,4 @@ For deep technical dives, check out the following guides:
 
 <div align="center">
 Built with ❤️ for the future of Medical Privacy on Fhenix.
-</div>
-future of Medical Privacy.
 </div>
