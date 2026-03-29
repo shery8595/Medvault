@@ -232,7 +232,38 @@ graph TD
 
 ---
 
-## ✅ Verification & Assurance
+## 🚀 7. Future Roadmap: The Five Waves of MedVault
+
+MedVault is not just a matching engine; it is the foundation for an entirely new category of **Confidential Healthcare Infrastructure**. Our expansion is categorized into five distinct development waves:
+
+### 🌊 Wave 1: Foundation & Confidential Scaling
+*   **fhEVM Gas Optimization**: Specialized precompiles to reduce the computational cost of large-scale eligibility checks.
+*   **Automated Trial Expiry**: Autonomously revokes access permits and releases escrowed rewards upon trial completion.
+*   **Audit-Ready Logging**: Standardized compliance export tools for pharmaceutical sponsors to meet global regulatory requirements (FDA/EMA).
+
+### 🌊 Wave 2: Identity & Verifiable Sovereignty
+*   **ZKP-Hybrid Identity**: Combining FHE with **Zero-Knowledge Proofs** to allow patients to prove eligibility without revealing encrypted handles.
+*   **Advanced ACL (Access Control Lists)**: Granular permissions for patients to grant "Timed Visibility" to specific medical researchers.
+*   **Multisig Sponsor Portals**: Institutional-grade management for research organizations via Gnosis Safe integration.
+
+### 🌊 Wave 3: The Intelligence Layer
+*   **Confidential Model Training**: AI models that train on encrypted patient datasets without ever seeing individual records.
+*   **Encrypted Propensity Scoring**: AI-driven matching that calculates the probability of a trial's success while maintaining 100% confidentiality.
+*   **Bias Detection Protocols**: On-chain logic to ensure clinical trials are representative across demographics without violating privacy.
+
+### 🌊 Wave 4: EHR Integration & Modular Oracles
+*   **EHR-to-FHE Adapters**: Secure bridges to ingest data from legacy Electronic Health Records (using FHIR/HL7 standards) directly into FHE handle types.
+*   **Medical Attestation Oracles**: Integration with specialized oracle networks to verify professional credentials and lab results without leaking source data.
+*   **MPC Key Governance**: Multi-party computation to coordinate decryption keys between hospitals and research institutes for ultra-secure data sharing.
+
+### 🌊 Wave 5: The Global Medical Liquidity Layer
+*   **Cross-Chain Interoperability**: Utilizing Fhenix as the "Confidential Hub" to match patients from other chains like Arbitrum, Base, or Optimism.
+*   **Private Yield Aggregation**: Integrating with institutional DeFi to allow sponsors to earn yield on escrowed trial funds privately.
+*   **The MedVault DAO**: Transitioning protocol upgrades and ethics governance to a decentralized community of patients and researchers.
+
+---
+
+## ✅ 8. Verification & Assurance
 
 The system is verified by a **comprehensive stress test suite** that validates every edge case in the Fhenix CoFHE environment.
 
@@ -246,7 +277,7 @@ npx hardhat test test/comprehensive_medvault.test.js --network arbitrumSepolia
 
 ---
 
-## 🚀 Getting Started
+## 🚀 9. Getting Started
 
 ### Prerequisites
 *   Node.js (v20+)
@@ -269,7 +300,7 @@ MedVault is configured with `vercel.json` to handle the security headers require
 
 ---
 
-## 📄 Documentation
+## 📄 10. Documentation
 For deep technical dives, check out the following guides:
 *   [Testing & Verification Guide](docs/TESTING_GUIDE.md)
 *   [New Contract Development Guide](docs/NEW_CONTRACTS_GUIDE.md)
