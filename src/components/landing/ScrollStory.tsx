@@ -155,11 +155,11 @@ export function ScrollStory() {
                   <motion3d.group scale={chap1Scale} position-z={chap1Z}>
                     <MedicalSheetModel />
                     <Sparkles 
-                      count={160} 
+                      count={80} 
                       scale={4} 
-                      size={1.4} 
+                      size={1.2} 
                       speed={0.3} 
-                      opacity={0.6}
+                      opacity={0.4}
                       noise={1}
                       color="#ef4444" 
                     />
@@ -170,10 +170,10 @@ export function ScrollStory() {
                     <Octahedron args={[1.8, 0]}>
                       <MeshTransmissionMaterial 
                         backside
-                        samples={4}
+                        samples={2}
                         thickness={0.8}
-                        chromaticAberration={0.06}
-                        anisotropy={0.3}
+                        chromaticAberration={0.04}
+                        anisotropy={0.2}
                         distortion={0.2}
                         distortionScale={0.3}
                         temporalDistortion={0.1}

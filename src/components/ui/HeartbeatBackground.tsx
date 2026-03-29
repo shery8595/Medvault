@@ -85,6 +85,7 @@ export function HeartbeatBackground() {
             canvas!.width = w * dpr;
             canvas!.height = h * dpr;
             ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+            cachedSegments = buildSegments();
         }
         resize();
         window.addEventListener("resize", resize);
@@ -100,6 +101,7 @@ export function HeartbeatBackground() {
 
         let progress = 0;
         let lastTime: number | null = null;
+        let cachedSegments = buildSegments();
 
         function draw(ts: number) {
             if (lastTime === null) lastTime = ts;
@@ -108,7 +110,7 @@ export function HeartbeatBackground() {
 
             progress = (progress + SPEED * dt) % 1;
 
-            const { segs, totalLen } = buildSegments();
+            const { segs, totalLen } = cachedSegments;
             const headDist = progress * totalLen;
             const tailDist = Math.max(0, headDist - TAIL_FRAC * totalLen);
 

@@ -92,9 +92,11 @@ function BentoCard({
       className={`rounded-3xl p-6 lg:p-10 ${className} relative overflow-hidden group`}
       style={{
         background: "rgba(10, 22, 40, 0.45)",
-        backdropFilter: "blur(20px)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         border: "1px solid rgba(59, 130, 246, 0.15)",
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+        willChange: "transform, opacity",
         ...style,
       }}
     >
