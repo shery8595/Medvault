@@ -8,7 +8,7 @@ import { Shield, Key, Cpu, Database, AlertTriangle, CheckCircle2 } from "lucide-
 const encryptionFlowChart = `
 sequenceDiagram
     participant U as User Interface
-    participant SDK as fhevmjs SDK
+    participant SDK as @cofhe/sdk SDK
     participant MM as MetaMask
     participant RPC as Fhenix RPC
     participant C as Smart Contract
@@ -68,10 +68,10 @@ export function ClientEncryptionDoc() {
         <motion.div>
             <Prose className="max-w-none">
                 <span className="text-blue-500 font-bold tracking-widest uppercase text-xs">Integration</span>
-                <h1 className="mt-2 text-5xl">Client-Side Encryption with <code>fhevmjs</code></h1>
+                <h1 className="mt-2 text-5xl">Client-Side Encryption with <code>@cofhe/sdk</code></h1>
 
                 <p className="lead text-2xl text-slate-500 dark:text-slate-400 mt-6 mb-6 max-w-prose">
-                    The core security guarantee of MedVault is that <strong>raw medical data never leaves the browser unencrypted</strong>. The Fhenix <code>fhevmjs</code> SDK performs all FHE ciphertext generation on the client, before any transaction is submitted to the network.
+                    The core security guarantee of MedVault is that <strong>raw medical data never leaves the browser unencrypted</strong>. The Fhenix <code>@cofhe/sdk</code> SDK performs all FHE ciphertext generation on the client, before any transaction is submitted to the network.
                 </p>
 
                 {/* Key Guarantees */}
@@ -94,9 +94,9 @@ export function ClientEncryptionDoc() {
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 
-                <h2>I. Architecture of the <code>fhevmjs</code> Client</h2>
+                <h2>I. Architecture of the <code>@cofhe/sdk</code> Client</h2>
                 <p>
-                    Standard Ethereum libraries like Ethers.js or viem are designed to format ABI-encoded payloads for RPC calls. <code>fhevmjs</code> does something fundamentally different — it is a cryptographic library first, a blockchain connector second.
+                    Standard Ethereum libraries like Ethers.js or viem are designed to format ABI-encoded payloads for RPC calls. <code>@cofhe/sdk</code> does something fundamentally different — it is a cryptographic library first, a blockchain connector second.
                 </p>
                 <p>
                     The library has two distinct responsibilities at runtime:
@@ -114,9 +114,9 @@ export function ClientEncryptionDoc() {
                 </div>
 
                 <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 mb-8 mt-6">
-                    <h3 className="text-xl font-semibold text-slate-200 mb-4">fhevmjs Encryption & Decryption Lifecycle</h3>
+                    <h3 className="text-xl font-semibold text-slate-200 mb-4">@cofhe/sdk Encryption & Decryption Lifecycle</h3>
                     <div className="text-slate-300 space-y-4">
-                        <p>1. <strong>Frontend</strong> initializes fhevmjs instance using the network's public key.</p>
+                        <p>1. <strong>Frontend</strong> initializes @cofhe/sdk instance using the network's public key.</p>
                         <p>2. <strong>Frontend</strong> encrypts raw numbers into ciphertexts locally in the browser.</p>
                         <p>3. <strong>Frontend</strong> packages ciphertexts into a transaction and sends to blockchain.</p>
                         <p>4. <strong>Smart Contract</strong> processes ciphertexts homomorphically without ever decrypting.</p>
@@ -134,7 +134,7 @@ export function ClientEncryptionDoc() {
                 <CodeBlock
                     filename="src/context/Web3Context.tsx — Initialization"
                     language="typescript"
-                    code={`import { createInstance, FhevmInstance } from 'fhevmjs';
+                    code={`import { createInstance, FhevmInstance } from '@cofhe/sdk';
 import { BrowserProvider } from 'ethers';
 
 const initializeFHEVM = async (provider: BrowserProvider): Promise<FhevmInstance | null> => {
@@ -145,7 +145,7 @@ const initializeFHEVM = async (provider: BrowserProvider): Promise<FhevmInstance
         // precompile address. Returns a 2048-byte FHE bootstrapping key.
         const instance = await createInstance({
             chainId: Number(network.chainId),
-            // networkUrl is optional — fhevmjs derives it from the provider
+            // networkUrl is optional — @cofhe/sdk derives it from the provider
         });
 
         console.log("[FHE] Instance initialized. FHE ready.");
@@ -176,7 +176,7 @@ useEffect(() => {
 
                 <h2>III. Encrypting Medical Payloads</h2>
                 <p>
-                    When the patient fills out their health profile form and clicks "Save to Vault", the form data is never passed directly to any contract function. Instead, the raw values are intercepted and routed through the <code>fhevmjs</code> encryption pipeline.
+                    When the patient fills out their health profile form and clicks "Save to Vault", the form data is never passed directly to any contract function. Instead, the raw values are intercepted and routed through the <code>@cofhe/sdk</code> encryption pipeline.
                 </p>
 
                 <CodeBlock
@@ -227,8 +227,8 @@ useEffect(() => {
 
                 <hr className="my-12 border-slate-200 dark:border-slate-800" />
 
-                <h2>IV. <code>fhevmjs</code> SDK Method Reference</h2>
-                <p>The key methods used inside MedVault from the <code>fhevmjs</code> SDK:</p>
+                <h2>IV. <code>@cofhe/sdk</code> SDK Method Reference</h2>
+                <p>The key methods used inside MedVault from the <code>@cofhe/sdk</code> SDK:</p>
 
                 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="overflow-x-auto">

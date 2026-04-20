@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class ProfileUpdated extends ethereum.Event {
@@ -79,7 +79,7 @@ export class PatientRegistry extends ethereum.SmartContract {
     let result = super.call(
       "authorizedEngine",
       "authorizedEngine():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -89,7 +89,7 @@ export class PatientRegistry extends ethereum.SmartContract {
     let result = super.tryCall(
       "authorizedEngine",
       "authorizedEngine():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -108,7 +108,7 @@ export class PatientRegistry extends ethereum.SmartContract {
     let result = super.tryCall(
       "dataAccessLog",
       "dataAccessLog():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -121,21 +121,21 @@ export class PatientRegistry extends ethereum.SmartContract {
     let result = super.call(
       "getPatient",
       "getPatient(address):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
-      [ethereum.Value.fromAddress(_patient)]
+      [ethereum.Value.fromAddress(_patient)],
     );
 
     return changetype<PatientRegistry__getPatientResultValue0Struct>(
-      result[0].toTuple()
+      result[0].toTuple(),
     );
   }
 
   try_getPatient(
-    _patient: Address
+    _patient: Address,
   ): ethereum.CallResult<PatientRegistry__getPatientResultValue0Struct> {
     let result = super.tryCall(
       "getPatient",
       "getPatient(address):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
-      [ethereum.Value.fromAddress(_patient)]
+      [ethereum.Value.fromAddress(_patient)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -143,8 +143,8 @@ export class PatientRegistry extends ethereum.SmartContract {
     let value = result.value;
     return ethereum.CallResult.fromValue(
       changetype<PatientRegistry__getPatientResultValue0Struct>(
-        value[0].toTuple()
-      )
+        value[0].toTuple(),
+      ),
     );
   }
 
@@ -219,14 +219,14 @@ export class GetPatientCall__Outputs {
     this._call = call;
   }
 
-  get value0(): GetPatientCallValue0Struct {
-    return changetype<GetPatientCallValue0Struct>(
-      this._call.outputValues[0].value.toTuple()
+  get value0(): GetPatientCallValue0OutputStruct {
+    return changetype<GetPatientCallValue0OutputStruct>(
+      this._call.outputValues[0].value.toTuple(),
     );
   }
 }
 
-export class GetPatientCallValue0Struct extends ethereum.Tuple {
+export class GetPatientCallValue0OutputStruct extends ethereum.Tuple {
   get age(): Bytes {
     return this[0].toBytes();
   }
@@ -343,49 +343,49 @@ export class SubmitEncryptedProfileCall__Inputs {
 
   get _age(): SubmitEncryptedProfileCall_ageStruct {
     return changetype<SubmitEncryptedProfileCall_ageStruct>(
-      this._call.inputValues[0].value.toTuple()
+      this._call.inputValues[0].value.toTuple(),
     );
   }
 
   get _gender(): SubmitEncryptedProfileCall_genderStruct {
     return changetype<SubmitEncryptedProfileCall_genderStruct>(
-      this._call.inputValues[1].value.toTuple()
+      this._call.inputValues[1].value.toTuple(),
     );
   }
 
   get _weight(): SubmitEncryptedProfileCall_weightStruct {
     return changetype<SubmitEncryptedProfileCall_weightStruct>(
-      this._call.inputValues[2].value.toTuple()
+      this._call.inputValues[2].value.toTuple(),
     );
   }
 
   get _height(): SubmitEncryptedProfileCall_heightStruct {
     return changetype<SubmitEncryptedProfileCall_heightStruct>(
-      this._call.inputValues[3].value.toTuple()
+      this._call.inputValues[3].value.toTuple(),
     );
   }
 
   get _hasDiabetes(): SubmitEncryptedProfileCall_hasDiabetesStruct {
     return changetype<SubmitEncryptedProfileCall_hasDiabetesStruct>(
-      this._call.inputValues[4].value.toTuple()
+      this._call.inputValues[4].value.toTuple(),
     );
   }
 
   get _hbLevel(): SubmitEncryptedProfileCall_hbLevelStruct {
     return changetype<SubmitEncryptedProfileCall_hbLevelStruct>(
-      this._call.inputValues[5].value.toTuple()
+      this._call.inputValues[5].value.toTuple(),
     );
   }
 
   get _isSmoker(): SubmitEncryptedProfileCall_isSmokerStruct {
     return changetype<SubmitEncryptedProfileCall_isSmokerStruct>(
-      this._call.inputValues[6].value.toTuple()
+      this._call.inputValues[6].value.toTuple(),
     );
   }
 
   get _hasHypertension(): SubmitEncryptedProfileCall_hasHypertensionStruct {
     return changetype<SubmitEncryptedProfileCall_hasHypertensionStruct>(
-      this._call.inputValues[7].value.toTuple()
+      this._call.inputValues[7].value.toTuple(),
     );
   }
 }

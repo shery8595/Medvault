@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class IncentiveFunded extends ethereum.Event {
@@ -141,7 +141,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.call(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -151,7 +151,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -185,7 +185,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "dataAccessLog",
       "dataAccessLog():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -198,7 +198,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.call(
       "eligibilityEngine",
       "eligibilityEngine():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -208,7 +208,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "eligibilityEngine",
       "eligibilityEngine():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -221,7 +221,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.call(
       "getParticipantCount",
       "getParticipantCount(uint256):(uint256)",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
 
     return result[0].toBigInt();
@@ -231,7 +231,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "getParticipantCount",
       "getParticipantCount(uint256):(uint256)",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -244,7 +244,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.call(
       "getTotalDeposited",
       "getTotalDeposited(uint256):(uint256)",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
 
     return result[0].toBigInt();
@@ -254,7 +254,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "getTotalDeposited",
       "getTotalDeposited(uint256):(uint256)",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -265,7 +265,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
 
   isDistributed(_trialId: BigInt): boolean {
     let result = super.call("isDistributed", "isDistributed(uint256):(bool)", [
-      ethereum.Value.fromUnsignedBigInt(_trialId)
+      ethereum.Value.fromUnsignedBigInt(_trialId),
     ]);
 
     return result[0].toBoolean();
@@ -275,7 +275,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "isDistributed",
       "isDistributed(uint256):(bool)",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -286,7 +286,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
 
   isPoolFunded(_trialId: BigInt): boolean {
     let result = super.call("isPoolFunded", "isPoolFunded(uint256):(bool)", [
-      ethereum.Value.fromUnsignedBigInt(_trialId)
+      ethereum.Value.fromUnsignedBigInt(_trialId),
     ]);
 
     return result[0].toBoolean();
@@ -294,7 +294,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
 
   try_isPoolFunded(_trialId: BigInt): ethereum.CallResult<boolean> {
     let result = super.tryCall("isPoolFunded", "isPoolFunded(uint256):(bool)", [
-      ethereum.Value.fromUnsignedBigInt(_trialId)
+      ethereum.Value.fromUnsignedBigInt(_trialId),
     ]);
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -309,8 +309,8 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       "milestoneDistributed(uint256,uint256):(bool)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
 
     return result[0].toBoolean();
@@ -318,15 +318,15 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
 
   try_milestoneDistributed(
     param0: BigInt,
-    param1: BigInt
+    param1: BigInt,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
       "milestoneDistributed",
       "milestoneDistributed(uint256,uint256):(bool)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -339,7 +339,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.call(
       "milestoneManager",
       "milestoneManager():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -349,7 +349,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "milestoneManager",
       "milestoneManager():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -376,7 +376,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
   participantMilestonePaid(
     param0: BigInt,
     param1: Address,
-    param2: BigInt
+    param2: BigInt,
   ): boolean {
     let result = super.call(
       "participantMilestonePaid",
@@ -384,8 +384,8 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       [
         ethereum.Value.fromUnsignedBigInt(param0),
         ethereum.Value.fromAddress(param1),
-        ethereum.Value.fromUnsignedBigInt(param2)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
     );
 
     return result[0].toBoolean();
@@ -394,7 +394,7 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
   try_participantMilestonePaid(
     param0: BigInt,
     param1: Address,
-    param2: BigInt
+    param2: BigInt,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
       "participantMilestonePaid",
@@ -402,8 +402,8 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       [
         ethereum.Value.fromUnsignedBigInt(param0),
         ethereum.Value.fromAddress(param1),
-        ethereum.Value.fromUnsignedBigInt(param2)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();

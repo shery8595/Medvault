@@ -3,6 +3,8 @@ import { Encryptable, FheTypes } from "@cofhe/sdk";
 import { arbSepolia } from "@cofhe/sdk/chains";
 import { Ethers6Adapter } from "@cofhe/sdk/adapters";
 
+export { FheTypes };
+
 declare global {
     interface Window {
         ethereum: any;
@@ -62,10 +64,36 @@ export async function encryptBool(contractAddress: string, userAddress: string, 
 
 // --- DECRYPTION --- //
 
-export async function publicDecrypt(ciphertext: string) {
-    // Usually public read state variables don't need decryption if they are plaintext on-chain,
-    // but if it's an encrypted view, we use decryptForView.
-    return { value: 0, proof: "" }; 
+/**
+ * Decrypt a publicly-allowed ciphertext for use in a transaction.
+ * Call this for values marked FHE.allowPublic() on-chain.
+ * Returns { ctHash, decryptedValue (bigint), signature } — submit these
+ * to your contract via FHE.publishDecryptResult / FHE.verifyDecryptResult.
+ */
+export async function publicDecrypt(ctHash: bigint | string) {
+    const c = await getFHEClient();
+    const handle = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
+    const result = await c
+        .decryptForTx(handle)
+        .withoutPermit()
+        .execute();
+    return result; // { ctHash, decryptedValue: bigint, signature: string }
+}
+
+/**
+ * Decrypt a permit-scoped ciphertext for UI display only.
+ * Does NOT produce an on-chain-verifiable signature.
+ * utype must match the Solidity FHE type (e.g. FheTypes.Bool, FheTypes.Uint8).
+ */
+export async function decryptForView(ctHash: bigint | string, utype: FheTypes) {
+    const c = await getFHEClient();
+    const handle = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
+    const permit = await c.permits.getOrCreateSelfPermit();
+    const plaintext = await c
+        .decryptForView(handle, utype)
+        .withPermit(permit)
+        .execute();
+    return plaintext; // boolean | bigint | string depending on utype
 }
 
 async function genericReencrypt(contractAddress: string, ciphertext: string, type: any) {

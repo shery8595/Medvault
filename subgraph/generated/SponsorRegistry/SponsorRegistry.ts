@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class SponsorAdded extends ethereum.Event {
@@ -110,7 +110,7 @@ export class SponsorRegistry__requestsResult {
     map.set("value0", ethereum.Value.fromBytes(this.value0));
     map.set(
       "value1",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value1))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value1)),
     );
     map.set("value2", ethereum.Value.fromUnsignedBigInt(this.value2));
     return map;
@@ -170,7 +170,7 @@ export class SponsorRegistry extends ethereum.SmartContract {
     let result = super.call(
       "isVerifiedSponsor",
       "isVerifiedSponsor(address):(bool)",
-      [ethereum.Value.fromAddress(_sponsor)]
+      [ethereum.Value.fromAddress(_sponsor)],
     );
 
     return result[0].toBoolean();
@@ -180,7 +180,7 @@ export class SponsorRegistry extends ethereum.SmartContract {
     let result = super.tryCall(
       "isVerifiedSponsor",
       "isVerifiedSponsor(address):(bool)",
-      [ethereum.Value.fromAddress(_sponsor)]
+      [ethereum.Value.fromAddress(_sponsor)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -208,23 +208,23 @@ export class SponsorRegistry extends ethereum.SmartContract {
     let result = super.call(
       "requests",
       "requests(address):(bytes,uint8,uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
 
     return new SponsorRegistry__requestsResult(
       result[0].toBytes(),
       result[1].toI32(),
-      result[2].toBigInt()
+      result[2].toBigInt(),
     );
   }
 
   try_requests(
-    param0: Address
+    param0: Address,
   ): ethereum.CallResult<SponsorRegistry__requestsResult> {
     let result = super.tryCall(
       "requests",
       "requests(address):(bytes,uint8,uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -234,8 +234,8 @@ export class SponsorRegistry extends ethereum.SmartContract {
       new SponsorRegistry__requestsResult(
         value[0].toBytes(),
         value[1].toI32(),
-        value[2].toBigInt()
-      )
+        value[2].toBigInt(),
+      ),
     );
   }
 
@@ -243,23 +243,23 @@ export class SponsorRegistry extends ethereum.SmartContract {
     let result = super.call(
       "sponsors",
       "sponsors(address):(string,bool,uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
 
     return new SponsorRegistry__sponsorsResult(
       result[0].toString(),
       result[1].toBoolean(),
-      result[2].toBigInt()
+      result[2].toBigInt(),
     );
   }
 
   try_sponsors(
-    param0: Address
+    param0: Address,
   ): ethereum.CallResult<SponsorRegistry__sponsorsResult> {
     let result = super.tryCall(
       "sponsors",
       "sponsors(address):(string,bool,uint256)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -269,8 +269,8 @@ export class SponsorRegistry extends ethereum.SmartContract {
       new SponsorRegistry__sponsorsResult(
         value[0].toString(),
         value[1].toBoolean(),
-        value[2].toBigInt()
-      )
+        value[2].toBigInt(),
+      ),
     );
   }
 }

@@ -9,7 +9,7 @@ const architectureChart = `
 graph TD
     subgraph "Client Layer"
         User[Patient/Sponsor]
-        FVMJS[fhevmjs SDK]
+        FVMJS[@cofhe/sdk SDK]
     end
 
     subgraph "Network Layer (Fhenix Sepolia)"
@@ -214,7 +214,7 @@ export function ArchitectureDoc() {
                 </p>
 
                 <ol className="max-w-prose space-y-4 mt-8">
-                    <li><strong>Client-Side Encryption:</strong> The patient enters raw health metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The <code>fhevmjs</code> SDK encrypts each value into an FHE ciphertext using the Fhenix network public key. A ZK validity proof is generated alongside each ciphertext to prevent malformed data injection. The original plaintext values are immediately discarded from browser memory.</li>
+                    <li><strong>Client-Side Encryption:</strong> The patient enters raw health metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The <code>@cofhe/sdk</code> SDK encrypts each value into an FHE ciphertext using the Fhenix network public key. A ZK validity proof is generated alongside each ciphertext to prevent malformed data injection. The original plaintext values are immediately discarded from browser memory.</li>
                     <li><strong>On-Chain Storage:</strong> The encrypted ciphertexts are submitted to <code>PatientRegistry.registerPatient()</code>. The contract validates the ZK input proofs via FHE precompile, stores the ciphertext handles in private <code>euint32</code> mappings, and calls <code>FHE.allowThis()</code> to grant itself and the <code>EligibilityEngine</code> ACL access to the handles. A <code>DataAccessLog</code> entry is recorded with an anonymized hash.</li>
                     <li><strong>Eligibility Computation:</strong> The <code>EligibilityEngine.computeEligibility(patient, trialId)</code> function pulls encrypted patient values from <code>PatientRegistry</code> and encrypted trial bounds from <code>TrialManager</code>. It performs homomorphic comparisons using <code>FHE.ge()</code> and <code>FHE.le()</code> to generate <code>ebool</code> results for each health dimension.</li>
                     <li><strong>CMUX Score Aggregation:</strong> Because <code>ebool</code> values cannot be used in Solidity <code>if</code> statements (they are encrypted), MedVault uses <code>FHE.cmux(condition, trueValue, falseValue)</code> to conditionally accumulate weighted score points. E.g., <code>FHE.cmux(ageInRange, FHE.asEuint32(40), FHE.asEuint32(0))</code> adds 40 points if the age passes. The final score is a single <code>euint32</code> summing all dimensions.</li>

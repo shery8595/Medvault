@@ -70,7 +70,7 @@ const ArchitectureFlowDiagram = () => {
             label: "CLIENT LAYER",
             color: "blue",
             nodes: [
-                { icon: <Users className="w-4 h-4" />, name: "Patient Browser", detail: "fhevmjs SDK" },
+                { icon: <Users className="w-4 h-4" />, name: "Patient Browser", detail: "@cofhe/sdk SDK" },
                 { icon: <Building2 className="w-4 h-4" />, name: "Sponsor Portal", detail: "React DApp" },
             ]
         },
@@ -187,7 +187,7 @@ const ArchitectureFlowDiagram = () => {
 const EncryptionPipelineDiagram = () => {
     const stages = [
         { label: "Plaintext", value: "age = 42", bg: "bg-rose-500", desc: "Raw patient data in browser memory", icon: <Heart className="w-4 h-4" /> },
-        { label: "FHE Encrypt", value: "fhevmjs.encrypt32(42)", bg: "bg-amber-500", desc: "Client-side encryption via Fhenix SDK", icon: <Lock className="w-4 h-4" /> },
+        { label: "FHE Encrypt", value: "@cofhe/sdk.encrypt32(42)", bg: "bg-amber-500", desc: "Client-side encryption via Fhenix SDK", icon: <Lock className="w-4 h-4" /> },
         { label: "Ciphertext", value: "0x7f3a...b2c1", bg: "bg-purple-500", desc: "euint32 handle stored on-chain", icon: <Database className="w-4 h-4" /> },
         { label: "FHE Compute", value: "FHE.ge(age, minAge)", bg: "bg-blue-500", desc: "Homomorphic comparison in coprocessor", icon: <Cpu className="w-4 h-4" /> },
         { label: "Encrypted Result", value: "ebool → euint32 score", bg: "bg-blue-500", desc: "Score accumulated via CMUX", icon: <Activity className="w-4 h-4" /> },
@@ -297,7 +297,7 @@ const ContractInteractionDiagram = () => {
 // ─── FHE State Machine ───
 const FheStateMachine = () => {
     const states = [
-        { step: "01", title: "Client Encryption", desc: "`fhevmjs` encrypts health metrics entirely in the browser using FHE.", icon: <Users className="w-5 h-5" />, color: "blue" },
+        { step: "01", title: "Client Encryption", desc: "`@cofhe/sdk` encrypts health metrics entirely in the browser using FHE.", icon: <Users className="w-5 h-5" />, color: "blue" },
         { step: "02", title: "On-Chain Vault", desc: "`PatientRegistry` stores ciphertext handles in encrypted contract state.", icon: <Database className="w-5 h-5" />, color: "purple" },
         { step: "03", title: "FHEVM Engine", desc: "`EligibilityEngine` runs homomorphic comparisons without decrypting inputs.", icon: <Lock className="w-5 h-5" />, color: "teal", highlight: true },
         { step: "04", title: "EIP-712 Decrypt", desc: "Only the patient can sign a viewing key to decrypt their match score.", icon: <Key className="w-5 h-5" />, color: "amber" },
@@ -486,7 +486,7 @@ export function IntroductionDoc() {
 
                 <div className="not-prose space-y-4 my-10">
                     {[
-                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Fhenix fhevmjs SDK encrypts every value into FHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
+                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Fhenix @cofhe/sdk SDK encrypts every value into FHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
                         { step: "2", title: "Sponsor Publishes Encrypted Trial Criteria", desc: "A verified pharmaceutical sponsor defines their trial eligibility criteria (e.g., Age 18-65, HbA1c < 7.0). These requirements are also encrypted as euint32 ciphertext values and stored on-chain in the TrialManager contract. The trial's structural metadata (name, phase, location) remains public.", icon: <Building2 className="w-6 h-6" />, color: "purple" },
                         { step: "3", title: "EligibilityEngine Computes on Encrypted Data", desc: "The EligibilityEngine smart contract performs FHE homomorphic operations (FHE.ge(), FHE.le(), FHE.cmux()) to compare encrypted patient values against encrypted trial bounds. The result is an encrypted eligibility score (0-100) stored on-chain. The network computes the match without decrypting any inputs.", icon: <Activity className="w-6 h-6" />, color: "teal" },
                         { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Fhenix KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
@@ -673,7 +673,7 @@ export function IntroductionDoc() {
                     {[
                         { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Fhenix integration deep-dive, and guide to FHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
                         { id: "S2", title: "Smart Contracts", desc: "Reference for all 11 contracts, EligibilityEngine scoring mechanics, and consent-gated decryption.", color: "purple", links: [{ label: "Engine", href: "/docs/engine" }, { label: "Contracts", href: "/docs/contracts" }, { label: "Sponsors", href: "/docs/sponsor-system" }] },
-                        { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with fhevmjs, The Graph subgraph indexing, and React context management.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }] },
+                        { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with @cofhe/sdk, The Graph subgraph indexing, and React context management.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }] },
                         { id: "S4", title: "Operations & Guides", desc: "User workflows, private yield staking, deployment guides, and the verification suite.", color: "amber", links: [{ label: "Workflows", href: "/docs/guides" }, { label: "Staking", href: "/docs/staking" }, { label: "Testing", href: "/docs/testing" }, { label: "Deploy", href: "/docs/deployment" }] },
                         { id: "S5", title: "Security & Compliance", desc: "Threat model, FHE security guarantees, HIPAA/GDPR compliance, and immutable audit trail.", color: "emerald", links: [{ label: "Security Model", href: "/docs/security-model" }, { label: "Compliance", href: "/docs/compliance" }] },
                     ].map(section => (

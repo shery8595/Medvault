@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class ConsentGranted extends ethereum.Event {
@@ -62,7 +62,7 @@ export class ConsentManager extends ethereum.SmartContract {
   consent(param0: Address, param1: BigInt): boolean {
     let result = super.call("consent", "consent(address,uint256):(bool)", [
       ethereum.Value.fromAddress(param0),
-      ethereum.Value.fromUnsignedBigInt(param1)
+      ethereum.Value.fromUnsignedBigInt(param1),
     ]);
 
     return result[0].toBoolean();
@@ -71,7 +71,7 @@ export class ConsentManager extends ethereum.SmartContract {
   try_consent(param0: Address, param1: BigInt): ethereum.CallResult<boolean> {
     let result = super.tryCall("consent", "consent(address,uint256):(bool)", [
       ethereum.Value.fromAddress(param0),
-      ethereum.Value.fromUnsignedBigInt(param1)
+      ethereum.Value.fromUnsignedBigInt(param1),
     ]);
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -86,8 +86,8 @@ export class ConsentManager extends ethereum.SmartContract {
       "hasConsent(address,uint256):(bool)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
 
     return result[0].toBoolean();
@@ -95,15 +95,15 @@ export class ConsentManager extends ethereum.SmartContract {
 
   try_hasConsent(
     _patient: Address,
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
       "hasConsent",
       "hasConsent(address,uint256):(bool)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();

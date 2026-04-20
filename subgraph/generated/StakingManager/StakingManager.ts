@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class Staked extends ethereum.Event {
@@ -123,7 +123,7 @@ export class StakingManager extends ethereum.SmartContract {
     let result = super.call(
       "getEncryptedTotalStaked",
       "getEncryptedTotalStaked(address):(bytes32)",
-      [ethereum.Value.fromAddress(user)]
+      [ethereum.Value.fromAddress(user)],
     );
 
     return result[0].toBytes();
@@ -133,7 +133,7 @@ export class StakingManager extends ethereum.SmartContract {
     let result = super.tryCall(
       "getEncryptedTotalStaked",
       "getEncryptedTotalStaked(address):(bytes32)",
-      [ethereum.Value.fromAddress(user)]
+      [ethereum.Value.fromAddress(user)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();

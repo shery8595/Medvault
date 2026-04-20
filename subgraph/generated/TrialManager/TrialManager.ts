@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class SponsorNameUpdated extends ethereum.Event {
@@ -198,7 +198,7 @@ export class TrialManager__trialsResult {
     value12: i32,
     value13: boolean,
     value14: boolean,
-    value15: BigInt
+    value15: BigInt,
   ) {
     this.value0 = value0;
     this.value1 = value1;
@@ -228,28 +228,28 @@ export class TrialManager__trialsResult {
     map.set("value5", ethereum.Value.fromBoolean(this.value5));
     map.set(
       "value6",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value6))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value6)),
     );
     map.set(
       "value7",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value7))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value7)),
     );
     map.set("value8", ethereum.Value.fromBoolean(this.value8));
     map.set(
       "value9",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value9))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value9)),
     );
     map.set(
       "value10",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value10))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value10)),
     );
     map.set(
       "value11",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value11))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value11)),
     );
     map.set(
       "value12",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value12))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value12)),
     );
     map.set("value13", ethereum.Value.fromBoolean(this.value13));
     map.set("value14", ethereum.Value.fromBoolean(this.value14));
@@ -331,7 +331,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.call(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -341,7 +341,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.tryCall(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -364,7 +364,7 @@ export class TrialManager extends ethereum.SmartContract {
     _maxWeight: i32,
     _requiresNonSmoker: boolean,
     _requiresNormalBP: boolean,
-    _duration: BigInt
+    _duration: BigInt,
   ): BigInt {
     let result = super.call(
       "createTrial",
@@ -383,8 +383,8 @@ export class TrialManager extends ethereum.SmartContract {
         ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(_maxWeight)),
         ethereum.Value.fromBoolean(_requiresNonSmoker),
         ethereum.Value.fromBoolean(_requiresNormalBP),
-        ethereum.Value.fromUnsignedBigInt(_duration)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_duration),
+      ],
     );
 
     return result[0].toBigInt();
@@ -404,7 +404,7 @@ export class TrialManager extends ethereum.SmartContract {
     _maxWeight: i32,
     _requiresNonSmoker: boolean,
     _requiresNormalBP: boolean,
-    _duration: BigInt
+    _duration: BigInt,
   ): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
       "createTrial",
@@ -423,8 +423,8 @@ export class TrialManager extends ethereum.SmartContract {
         ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(_maxWeight)),
         ethereum.Value.fromBoolean(_requiresNonSmoker),
         ethereum.Value.fromBoolean(_requiresNormalBP),
-        ethereum.Value.fromUnsignedBigInt(_duration)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_duration),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -437,28 +437,28 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.call(
       "getTrial",
       "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256))",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
 
     return changetype<TrialManager__getTrialResultValue0Struct>(
-      result[0].toTuple()
+      result[0].toTuple(),
     );
   }
 
   try_getTrial(
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<TrialManager__getTrialResultValue0Struct> {
     let result = super.tryCall(
       "getTrial",
       "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256))",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(
-      changetype<TrialManager__getTrialResultValue0Struct>(value[0].toTuple())
+      changetype<TrialManager__getTrialResultValue0Struct>(value[0].toTuple()),
     );
   }
 
@@ -479,7 +479,7 @@ export class TrialManager extends ethereum.SmartContract {
 
   sponsorNames(param0: Address): string {
     let result = super.call("sponsorNames", "sponsorNames(address):(string)", [
-      ethereum.Value.fromAddress(param0)
+      ethereum.Value.fromAddress(param0),
     ]);
 
     return result[0].toString();
@@ -489,7 +489,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.tryCall(
       "sponsorNames",
       "sponsorNames(address):(string)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -502,7 +502,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.call(
       "sponsorRegistry",
       "sponsorRegistry():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -512,7 +512,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.tryCall(
       "sponsorRegistry",
       "sponsorRegistry():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -540,7 +540,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.call(
       "trials",
       "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256)",
-      [ethereum.Value.fromUnsignedBigInt(param0)]
+      [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
     return new TrialManager__trialsResult(
@@ -559,7 +559,7 @@ export class TrialManager extends ethereum.SmartContract {
       result[12].toI32(),
       result[13].toBoolean(),
       result[14].toBoolean(),
-      result[15].toBigInt()
+      result[15].toBigInt(),
     );
   }
 
@@ -567,7 +567,7 @@ export class TrialManager extends ethereum.SmartContract {
     let result = super.tryCall(
       "trials",
       "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256)",
-      [ethereum.Value.fromUnsignedBigInt(param0)]
+      [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -590,8 +590,8 @@ export class TrialManager extends ethereum.SmartContract {
         value[12].toI32(),
         value[13].toBoolean(),
         value[14].toBoolean(),
-        value[15].toBigInt()
-      )
+        value[15].toBigInt(),
+      ),
     );
   }
 }

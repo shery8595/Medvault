@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class ActionLogged extends ethereum.Event {
@@ -70,7 +70,7 @@ export class DataAccessLog__logsResult {
     value1: BigInt,
     value2: Bytes,
     value3: BigInt,
-    value4: Address
+    value4: Address,
   ) {
     this.value0 = value0;
     this.value1 = value1;
@@ -83,7 +83,7 @@ export class DataAccessLog__logsResult {
     let map = new TypedMap<string, ethereum.Value>();
     map.set(
       "value0",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value0))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value0)),
     );
     map.set("value1", ethereum.Value.fromUnsignedBigInt(this.value1));
     map.set("value2", ethereum.Value.fromFixedBytes(this.value2));
@@ -122,28 +122,28 @@ export class DataAccessLog extends ethereum.SmartContract {
     let result = super.call(
       "getLog",
       "getLog(uint256):((uint8,uint256,bytes32,uint256,address))",
-      [ethereum.Value.fromUnsignedBigInt(_index)]
+      [ethereum.Value.fromUnsignedBigInt(_index)],
     );
 
     return changetype<DataAccessLog__getLogResultValue0Struct>(
-      result[0].toTuple()
+      result[0].toTuple(),
     );
   }
 
   try_getLog(
-    _index: BigInt
+    _index: BigInt,
   ): ethereum.CallResult<DataAccessLog__getLogResultValue0Struct> {
     let result = super.tryCall(
       "getLog",
       "getLog(uint256):((uint8,uint256,bytes32,uint256,address))",
-      [ethereum.Value.fromUnsignedBigInt(_index)]
+      [ethereum.Value.fromUnsignedBigInt(_index)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(
-      changetype<DataAccessLog__getLogResultValue0Struct>(value[0].toTuple())
+      changetype<DataAccessLog__getLogResultValue0Struct>(value[0].toTuple()),
     );
   }
 
@@ -166,7 +166,7 @@ export class DataAccessLog extends ethereum.SmartContract {
     let result = super.call(
       "isAuthorizedLogger",
       "isAuthorizedLogger(address):(bool)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
 
     return result[0].toBoolean();
@@ -176,7 +176,7 @@ export class DataAccessLog extends ethereum.SmartContract {
     let result = super.tryCall(
       "isAuthorizedLogger",
       "isAuthorizedLogger(address):(bool)",
-      [ethereum.Value.fromAddress(param0)]
+      [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -189,7 +189,7 @@ export class DataAccessLog extends ethereum.SmartContract {
     let result = super.call(
       "logs",
       "logs(uint256):(uint8,uint256,bytes32,uint256,address)",
-      [ethereum.Value.fromUnsignedBigInt(param0)]
+      [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
     return new DataAccessLog__logsResult(
@@ -197,7 +197,7 @@ export class DataAccessLog extends ethereum.SmartContract {
       result[1].toBigInt(),
       result[2].toBytes(),
       result[3].toBigInt(),
-      result[4].toAddress()
+      result[4].toAddress(),
     );
   }
 
@@ -205,7 +205,7 @@ export class DataAccessLog extends ethereum.SmartContract {
     let result = super.tryCall(
       "logs",
       "logs(uint256):(uint8,uint256,bytes32,uint256,address)",
-      [ethereum.Value.fromUnsignedBigInt(param0)]
+      [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -217,8 +217,8 @@ export class DataAccessLog extends ethereum.SmartContract {
         value[1].toBigInt(),
         value[2].toBytes(),
         value[3].toBigInt(),
-        value[4].toAddress()
-      )
+        value[4].toAddress(),
+      ),
     );
   }
 

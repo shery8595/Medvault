@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 const consentFlowChart = `
 sequenceDiagram
     participant P as Patient Wallet
-    participant D as DApp (fhevmjs)
+    participant D as DApp (@cofhe/sdk)
     participant Z as Fhenix Network
     participant S as Sponsor
 

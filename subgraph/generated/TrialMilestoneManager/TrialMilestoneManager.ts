@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class MilestoneCompleted extends ethereum.Event {
@@ -100,37 +100,33 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
   }
 
   getMilestones(
-    _trialId: BigInt
+    _trialId: BigInt,
   ): Array<TrialMilestoneManager__getMilestonesResultValue0Struct> {
     let result = super.call(
       "getMilestones",
       "getMilestones(uint256):((string,uint16,uint256)[])",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
 
-    return result[0].toTupleArray<
-      TrialMilestoneManager__getMilestonesResultValue0Struct
-    >();
+    return result[0].toTupleArray<TrialMilestoneManager__getMilestonesResultValue0Struct>();
   }
 
   try_getMilestones(
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<
     Array<TrialMilestoneManager__getMilestonesResultValue0Struct>
   > {
     let result = super.tryCall(
       "getMilestones",
       "getMilestones(uint256):((string,uint16,uint256)[])",
-      [ethereum.Value.fromUnsignedBigInt(_trialId)]
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(
-      value[0].toTupleArray<
-        TrialMilestoneManager__getMilestonesResultValue0Struct
-      >()
+      value[0].toTupleArray<TrialMilestoneManager__getMilestonesResultValue0Struct>(),
     );
   }
 
@@ -140,8 +136,8 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
       "getParticipantProgress(uint256,address):(uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(_trialId),
-        ethereum.Value.fromAddress(_patient)
-      ]
+        ethereum.Value.fromAddress(_patient),
+      ],
     );
 
     return result[0].toBigInt();
@@ -149,15 +145,15 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
 
   try_getParticipantProgress(
     _trialId: BigInt,
-    _patient: Address
+    _patient: Address,
   ): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
       "getParticipantProgress",
       "getParticipantProgress(uint256,address):(uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(_trialId),
-        ethereum.Value.fromAddress(_patient)
-      ]
+        ethereum.Value.fromAddress(_patient),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -187,8 +183,8 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
       "participantProgress(uint256,address):(uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
+        ethereum.Value.fromAddress(param1),
+      ],
     );
 
     return result[0].toBigInt();
@@ -196,15 +192,15 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
 
   try_participantProgress(
     param0: BigInt,
-    param1: Address
+    param1: Address,
   ): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
       "participantProgress",
       "participantProgress(uint256,address):(uint256)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
+        ethereum.Value.fromAddress(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();

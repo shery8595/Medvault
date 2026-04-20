@@ -20,7 +20,7 @@ graph TD
 `;
 
 const contexts = [
-    { name: "Web3Context.tsx", responsibility: "MetaMask connection, Ethers.js provider, account/chain tracking, fhevmjs initialization, isFHEReady flag.", exposes: "account, provider, signer, fhevmInstance, isFHEReady, connectWallet()" },
+    { name: "Web3Context.tsx", responsibility: "MetaMask connection, Ethers.js provider, account/chain tracking, @cofhe/sdk initialization, isFHEReady flag.", exposes: "account, provider, signer, fhevmInstance, isFHEReady, connectWallet()" },
     { name: "EncryptedDataContext.tsx", responsibility: "Business logic layer. Wraps all FHE-aware contract interactions (patient vault writes, trial creation, eligibility compute).", exposes: "updatePatientInfo(), createTrial(), computeEligibility(), decryptScore()" },
 ];
 
@@ -45,7 +45,7 @@ export function FrontendArchitectureDoc() {
 
                 {/* Tech Stack Row */}
                 <div className="flex flex-wrap gap-3 my-8 not-prose">
-                    {["Vite 6", "React 18", "TypeScript 5", "Tailwind CSS 4", "Framer Motion", "Ethers.js 6", "fhevmjs", "React Router 7", "The Graph"].map(t => (
+                    {["Vite 6", "React 18", "TypeScript 5", "Tailwind CSS 4", "Framer Motion", "Ethers.js 6", "@cofhe/sdk", "React Router 7", "The Graph"].map(t => (
                         <span key={t} className="px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-sm">
                             {t}
                         </span>
@@ -99,7 +99,7 @@ export function FrontendArchitectureDoc() {
                 <div className="not-prose flex flex-col sm:flex-row items-stretch gap-3 my-10">
                     {[
                         { step: "1", label: "User Triggers", desc: "Button clicked, UI immediately locked via isLoading state.", color: "slate", icon: <Zap className="w-4 h-4" /> },
-                        { step: "2", label: "Local Encrypt", desc: "fhevmjs generates ciphertexts + ZK proofs in the browser.", color: "teal", icon: <Shield className="w-4 h-4" /> },
+                        { step: "2", label: "Local Encrypt", desc: "@cofhe/sdk generates ciphertexts + ZK proofs in the browser.", color: "teal", icon: <Shield className="w-4 h-4" /> },
                         { step: "3", label: "Wallet Sign", desc: "MetaMask popup shown. Script execution halts awaiting approval.", color: "purple", icon: <Shield className="w-4 h-4" /> },
                         { step: "4", label: "FHE Processing", desc: "Transaction submitted. Fhenix coprocessor runs FHE (15–60s).", color: "amber", icon: <Loader2 className="w-4 h-4" /> },
                         { step: "5", label: "Confirmed", desc: "Receipt received. Toast shown. Subgraph refetch triggered.", color: "emerald", icon: <Layers className="w-4 h-4" /> },

@@ -7,7 +7,7 @@ import {
   Entity,
   Bytes,
   Address,
-  BigInt
+  BigInt,
 } from "@graphprotocol/graph-ts";
 
 export class ApplicationStatusUpdated extends ethereum.Event {
@@ -119,7 +119,7 @@ export class EligibilityEngine__applicationsResult {
     let map = new TypedMap<string, ethereum.Value>();
     map.set(
       "value0",
-      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value0))
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(this.value0)),
     );
     map.set("value1", ethereum.Value.fromBytes(this.value1));
     return map;
@@ -141,34 +141,34 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   applications(
     param0: BigInt,
-    param1: Address
+    param1: Address,
   ): EligibilityEngine__applicationsResult {
     let result = super.call(
       "applications",
       "applications(uint256,address):(uint8,bytes)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
+        ethereum.Value.fromAddress(param1),
+      ],
     );
 
     return new EligibilityEngine__applicationsResult(
       result[0].toI32(),
-      result[1].toBytes()
+      result[1].toBytes(),
     );
   }
 
   try_applications(
     param0: BigInt,
-    param1: Address
+    param1: Address,
   ): ethereum.CallResult<EligibilityEngine__applicationsResult> {
     let result = super.tryCall(
       "applications",
       "applications(uint256,address):(uint8,bytes)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
+        ethereum.Value.fromAddress(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -177,8 +177,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(
       new EligibilityEngine__applicationsResult(
         value[0].toI32(),
-        value[1].toBytes()
-      )
+        value[1].toBytes(),
+      ),
     );
   }
 
@@ -186,7 +186,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.call(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -196,7 +196,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.tryCall(
       "automationContract",
       "automationContract():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -211,8 +211,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "checkEligibility(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
 
     return result[0].toBytes();
@@ -220,15 +220,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_checkEligibility(
     _patient: Address,
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "checkEligibility",
       "checkEligibility(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -247,7 +247,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.tryCall(
       "consentManager",
       "consentManager():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -266,7 +266,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.tryCall(
       "dataAccessLog",
       "dataAccessLog():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -281,8 +281,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "encryptedResults(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
 
     return result[0].toBytes();
@@ -290,15 +290,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_encryptedResults(
     param0: Address,
-    param1: BigInt
+    param1: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "encryptedResults",
       "encryptedResults(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -313,8 +313,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "encryptedScores(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
 
     return result[0].toBytes();
@@ -322,15 +322,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_encryptedScores(
     param0: Address,
-    param1: BigInt
+    param1: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "encryptedScores",
       "encryptedScores(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -345,8 +345,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "getEncryptedResult(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
 
     return result[0].toBytes();
@@ -354,15 +354,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_getEncryptedResult(
     _patient: Address,
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "getEncryptedResult",
       "getEncryptedResult(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -377,8 +377,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "getEncryptedScore(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
 
     return result[0].toBytes();
@@ -386,15 +386,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_getEncryptedScore(
     _patient: Address,
-    _trialId: BigInt
+    _trialId: BigInt,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "getEncryptedScore",
       "getEncryptedScore(address,uint256):(bytes32)",
       [
         ethereum.Value.fromAddress(_patient),
-        ethereum.Value.fromUnsignedBigInt(_trialId)
-      ]
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -422,7 +422,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.call(
       "patientRegistry",
       "patientRegistry():(address)",
-      []
+      [],
     );
 
     return result[0].toAddress();
@@ -432,7 +432,7 @@ export class EligibilityEngine extends ethereum.SmartContract {
     let result = super.tryCall(
       "patientRegistry",
       "patientRegistry():(address)",
-      []
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -447,8 +447,8 @@ export class EligibilityEngine extends ethereum.SmartContract {
       "trialAppliedPatients(uint256,uint256):(address)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
 
     return result[0].toAddress();
@@ -456,15 +456,15 @@ export class EligibilityEngine extends ethereum.SmartContract {
 
   try_trialAppliedPatients(
     param0: BigInt,
-    param1: BigInt
+    param1: BigInt,
   ): ethereum.CallResult<Address> {
     let result = super.tryCall(
       "trialAppliedPatients",
       "trialAppliedPatients(uint256,uint256):(address)",
       [
         ethereum.Value.fromUnsignedBigInt(param0),
-        ethereum.Value.fromUnsignedBigInt(param1)
-      ]
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -546,6 +546,14 @@ export class ApplyToTrialCall__Inputs {
 
   get _trialId(): BigInt {
     return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _eligible(): boolean {
+    return this._call.inputValues[1].value.toBoolean();
+  }
+
+  get _signature(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
   }
 }
 

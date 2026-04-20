@@ -7,7 +7,7 @@ import { Fingerprint, Stethoscope, ShieldAlert, BadgeCheck, DatabaseBackup, Buil
 const patientJourneyChart = `
 stateDiagram-v2
     [*] --> Unregistered
-    Unregistered --> DataVault: Register + Encrypt Metrics (fhevmjs)
+    Unregistered --> DataVault: Register + Encrypt Metrics (@cofhe/sdk)
     DataVault --> Applied: Apply for Trial
     Applied --> Matching: EligibilityEngine.computeEligibility()
     Matching --> ScoreReady: FHE Score stored on-chain (encrypted)
@@ -34,7 +34,7 @@ stateDiagram-v2
 `;
 
 const patientSteps = [
-    { icon: <Fingerprint />, step: "1", title: "Connect & Register", color: "blue", desc: "Connect your MetaMask wallet to the Fhenix Sepolia testnet. In the Patient Dashboard, click 'Update Vault' and enter your medical metrics (Age, Blood Pressure, HbA1c, Weight). These are encrypted by `fhevmjs` in your browser before being sent on-chain." },
+    { icon: <Fingerprint />, step: "1", title: "Connect & Register", color: "blue", desc: "Connect your MetaMask wallet to the Fhenix Sepolia testnet. In the Patient Dashboard, click 'Update Vault' and enter your medical metrics (Age, Blood Pressure, HbA1c, Weight). These are encrypted by `@cofhe/sdk` in your browser before being sent on-chain." },
     { icon: <Stethoscope />, step: "2", title: "Browse & Apply", color: "teal", desc: "Navigate to the Trials tab to browse all active trials indexed by The Graph Subgraph. Click 'Apply' on any trial that might match your profile. The `EligibilityEngine` will immediately compute a score by comparing your encrypted metrics against the trial's encrypted requirements." },
     { icon: <ShieldAlert />, step: "3", title: "Request Result (EIP-712)", color: "purple", desc: "In your Applications list, click 'Reveal Score'. This triggers MetaMask to show an EIP-712 signing request. You are not signing a transaction — you are generating a cryptographic viewing key that proves you own the wallet. The Fhenix network uses this key to decrypt your specific score mapping slot." },
     { icon: <BadgeCheck />, step: "4", title: "Grant Consent (Optional)", color: "emerald", desc: "If your score is 100 (perfect match), you may optionally choose to reveal your identity to the sponsor by clicking 'Grant Access'. This records a time-locked access token on-chain. The sponsor can now contact you directly through the DApp's encrypted messaging system." },

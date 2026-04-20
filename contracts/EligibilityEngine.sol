@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool, euint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, Impl, Common, euint8, ebool, euint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./PatientRegistry.sol";
 import "./TrialManager.sol";
 import "./ConsentManager.sol";
@@ -130,6 +130,7 @@ contract EligibilityEngine {
 
         FHE.allowThis(finalResult);
         FHE.allow(finalResult, _patient);
+        FHE.allowPublic(finalResult); // Allows patient to request decryptForTx without a permit
         FHE.allowThis(score);
         FHE.allow(score, _patient);
 
@@ -151,13 +152,33 @@ contract EligibilityEngine {
     }
 
     /**
-     * @notice Patient applies to the trial after computing 100% eligibility
+     * @notice Patient applies to a trial with on-chain proof of FHE eligibility.
+     * @dev The patient must first call checkEligibility(), then obtain a Threshold
+     *      Network signature via `client.decryptForTx(ctHash).withoutPermit().execute()`
+     *      off-chain, and submit the plaintext + signature here. The contract verifies
+     *      the signature using FHE.verifyDecryptResult before accepting the application.
+     * @param _trialId       The trial to apply to.
+     * @param _eligible      The decrypted boolean result (must be true).
+     * @param _signature     Threshold Network ECDSA signature over (ctHash, _eligible).
      */
-    function applyToTrial(uint256 _trialId) external {
+    function applyToTrial(
+        uint256 _trialId,
+        bool _eligible,
+        bytes calldata _signature
+    ) external {
         require(applications[_trialId][msg.sender].status == ApplicationStatus.None, "Already applied");
-        // Note: score verification happens on the frontend for UX, 
-        // but we record the application here.
-        
+        require(_eligible, "Patient is not eligible for this trial");
+
+        // Enforce on-chain: verify the Threshold Network signed this decryption result.
+        // ebool is `type ebool is bytes32`; Impl.verifyDecryptResult takes (bytes32, uint256, bytes).
+        // true → 1, false → 0 per the CoFHE decryption spec.
+        ebool encResult = encryptedResults[msg.sender][_trialId];
+        require(Common.isInitialized(encResult), "Eligibility not yet computed for this trial");
+        require(
+            Impl.verifyDecryptResult(ebool.unwrap(encResult), _eligible ? 1 : 0, _signature),
+            "Invalid eligibility proof"
+        );
+
         applications[_trialId][msg.sender].status = ApplicationStatus.Pending;
         trialAppliedPatients[_trialId].push(msg.sender);
         
