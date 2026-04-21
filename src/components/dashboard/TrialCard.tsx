@@ -29,7 +29,7 @@ import { getConsentManager, getEligibilityEngine, getSponsorIncentiveVault } fro
 import { CONSENT_DURATION_OPTIONS, DEFAULT_CONSENT_DURATION_SECONDS } from "../../lib/consentPolicy";
 import { useEncryptedData } from "../../lib/EncryptedDataContext";
 
-import { reencryptUint8, getFHEClient, ARBITRUM_SEPOLIA_CHAIN_ID } from "../../lib/fhe";
+import { reencryptUint8, getFHEClient } from "../../lib/fhe";
 import addresses from "../../lib/contracts/addresses.json";
 import { EncryptionAnimation } from "../ui/EncryptionAnimation";
 
@@ -172,11 +172,7 @@ export function TrialCard({ trial, index = 0, variant = "default", refetchTrials
 
         // FIX 2: Cast handle to bigint before passing to decryptForTx
         const handleBig = typeof handle === "string" ? BigInt(handle) : handle;
-        const result = await c
-          .decryptForTx(handleBig)
-          .withoutPermit()
-          .setChainId(ARBITRUM_SEPOLIA_CHAIN_ID)
-          .execute();
+        const result = await c.decryptForTx(handleBig).withoutPermit().execute();
 
         const eligible = result.decryptedValue === 1n || result.decryptedValue === true;
         setIsEligibleDecrypted(eligible);
@@ -294,11 +290,7 @@ export function TrialCard({ trial, index = 0, variant = "default", refetchTrials
 
         // FIX 2: Cast handle to bigint
         const handleBig = typeof handle === "string" ? BigInt(handle) : handle;
-        const decryptResult = await c
-          .decryptForTx(handleBig)
-          .withoutPermit()
-          .setChainId(ARBITRUM_SEPOLIA_CHAIN_ID)
-          .execute();
+        const decryptResult = await c.decryptForTx(handleBig).withoutPermit().execute();
 
         eligible = decryptResult.decryptedValue === 1n || decryptResult.decryptedValue === true;
         signature = decryptResult.signature;
