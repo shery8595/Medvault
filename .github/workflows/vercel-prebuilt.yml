@@ -34,8 +34,8 @@ jobs:
       - name: Pull Vercel env and project settings
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build (Build Output API)
-        run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Vite build + pack .vercel/output (no vercel build)
+        run: npm run build && node scripts/pack-vercel-static-output.mjs
 
       - name: Deploy prebuilt
         run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

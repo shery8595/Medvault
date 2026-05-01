@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "20.x",
+    "node": ">=20",
     "npm": ">=7.0.0"
   },
   "dependencies": {
@@ -85,8 +85,8 @@
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
     "typescript": "^5.8.3",
-    "vite": "^6.2.0",
-    "vercel": "^41.0.0"
+    "vercel": "^53.0.1",
+    "vite": "^6.2.0"
   },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -94,7 +94,8 @@
     "build:prebuilt": "vite build",
     "build:vercel": "cross-env NODE_OPTIONS=--max-old-space-size=6144 vite build",
     "vercel:pull": "vercel pull --yes --environment=production",
-    "vercel:build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vercel build",
+    "vercel:pack": "node scripts/pack-vercel-static-output.mjs",
+    "vercel:build": "npm run build && npm run vercel:pack",
     "vercel:deploy": "vercel deploy --prebuilt --prod",
     "vercel:ship": "npm run vercel:pull && npm run vercel:build && npm run vercel:deploy",
     "preview": "vite preview",
