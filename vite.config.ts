@@ -62,10 +62,19 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return;
-            if (id.includes('@privy-io')) return 'vendor-privy';
-            if (id.includes('@walletconnect')) return 'vendor-walletconnect';
+            // Keep wallet stack + Privy in one chunk — splitting WC / viem / ox breaks at runtime (minified "__ is not a function").
+            if (
+              id.includes('@privy-io') ||
+              id.includes('@walletconnect') ||
+              id.includes('@reown') ||
+              id.includes('@wagmi') ||
+              id.includes('viem') ||
+              id.includes('/ox/') ||
+              id.includes('@metamask')
+            ) {
+              return 'vendor-web3';
+            }
             if (id.includes('@react-three') || id.includes('node_modules/three/')) return 'vendor-three';
-            if (id.includes('viem') || id.includes('/ox/')) return 'vendor-viem';
             if (id.includes('@cofhe') || id.includes('fhevmjs') || id.includes('/tfhe/')) return 'vendor-fhe';
             if (id.includes('@noir-lang')) return 'vendor-noir';
             if (id.includes('@semaphore-protocol')) return 'vendor-semaphore';
