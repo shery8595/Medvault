@@ -59,12 +59,6 @@ export function PatientDashboard() {
               <Bell className="h-4 w-4" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full" />
             </button>
-            <img
-              alt="User clinical profile"
-              className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-slate-200 object-cover"
-              src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=256&auto=format&fit=crop"
-              referrerPolicy="no-referrer"
-            />
           </div>
         }
       />
