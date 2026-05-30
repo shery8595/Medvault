@@ -1,4 +1,4 @@
-import type { Provider } from "ethers";
+import type { EventLog, Provider } from "ethers";
 import { getDataAccessLog } from "./contracts";
 
 export interface AuditLogEntry {
@@ -44,10 +44,8 @@ function filterByTrials(entries: AuditLogEntry[], trialIdSet: Set<string>): Audi
     return entries.filter((row) => trialIdSet.has(row.trialId));
 }
 
-function mapDetailedEvent(
-    ev: { transactionHash: string; index: number; args: readonly unknown[] | { action: unknown; trialId: unknown; patientHash: unknown; timestamp: unknown; performer: unknown } },
-): AuditLogEntry {
-    const args = ev.args as {
+function mapDetailedEvent(ev: EventLog): AuditLogEntry {
+    const args = ev.args as unknown as {
         action: unknown;
         trialId: bigint;
         patientHash: string;
@@ -99,10 +97,11 @@ async function fetchViaDetailedEvents(
         const entries: AuditLogEntry[] = [];
 
         for (const ev of events) {
+            if (!("args" in ev) || ev.args == null) continue;
             const key = `${ev.transactionHash}-${ev.index}`;
             if (seen.has(key)) continue;
             seen.add(key);
-            entries.push(mapDetailedEvent(ev));
+            entries.push(mapDetailedEvent(ev as EventLog));
         }
 
         entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
