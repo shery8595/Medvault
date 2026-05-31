@@ -10,6 +10,8 @@ import {
   SponsorPerformanceSection,
   SponsorProtocolsTable,
 } from "../components/sponsor/SponsorDashboardCharts";
+import { cn } from "../lib/utils";
+import { sponsorHeroGlow, sponsorHeroShadow, sponsorHeroShell } from "../lib/sponsorUi";
 
 export function SponsorDashboard() {
   const { account, connect, isConnecting, error: connectError } = useWeb3();
@@ -54,11 +56,8 @@ export function SponsorDashboard() {
         </div>
       ) : null}
 
-      <div className="relative overflow-hidden rounded-2xl border border-violet-100/80 bg-gradient-to-r from-[#f5f3ff] via-[#f0f4ff] to-[#eef6ff] px-5 py-4 shadow-[0_2px_16px_-4px_rgba(99,102,241,0.12)] ring-1 ring-violet-100/60 md:px-6 md:py-4">
-        <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_55%_50%,rgba(139,92,246,0.08),transparent_70%)]"
-          aria-hidden
-        />
+      <div className={cn(sponsorHeroShell, sponsorHeroShadow, "px-5 py-4 md:px-6 md:py-4")}>
+        <div className={sponsorHeroGlow} aria-hidden />
 
         <img
           src="/images/sponsor_dashboard.png"

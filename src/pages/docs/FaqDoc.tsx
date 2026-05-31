@@ -4,8 +4,23 @@ import { Callout } from "../../components/docs/Callout";
 import { DocsPageHeaderForRoute } from "../../components/docs/DocsPageHeader";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const faqs: { q: string; a: ReactNode }[] = [
+    {
+        q: "Where is the public MedVault app?",
+        a: (
+            <>
+                Production is at{" "}
+                <a href={PRODUCTION_APP_URL} className="text-[#00685f] font-semibold hover:underline">
+                    med-vault.xyz
+                </a>
+                . Local development uses <code>http://localhost:3000</code>. Semaphore identity and vault backups in{" "}
+                <code>localStorage</code> are per-origin — restore your identity backup on production if you registered on
+                localhost.
+            </>
+        ),
+    },
     {
         q: "Which network does MedVault use?",
         a: (
@@ -74,8 +89,12 @@ const faqs: { q: string; a: ReactNode }[] = [
                 The <strong>HTTP relayer</strong> pays gas for the anonymous apply flow. The browser calls{" "}
                 <code>submitViaRelayer</code> in <code>src/lib/relayer.ts</code>, which hits{" "}
                 <code>POST /relay/apply-stage</code> then (after CoFHE decrypt in-wallet){" "}
-                <code>POST /relay/apply-finalize</code>. Host it yourself in production; configure{" "}
-                <code>VITE_RELAYER_URL</code> or the Vite <code>/relay</code> proxy for local dev.
+                <code>POST /relay/apply-finalize</code>. Host it yourself in production; set{" "}
+                <code>FRONTEND_URL</code> to{" "}
+                <a href={PRODUCTION_APP_URL} className="text-[#00685f] font-semibold hover:underline">
+                    https://med-vault.xyz
+                </a>{" "}
+                for CORS. Configure <code>VITE_RELAYER_URL</code> or the Vite <code>/relay</code> proxy for local dev.
             </>
         ),
     },

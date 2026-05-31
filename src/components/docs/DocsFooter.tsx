@@ -1,6 +1,6 @@
 import React from "react";
 import { BookOpen } from "lucide-react";
-import { DOCS_CONTRACT_COUNT, DOCS_PAGE_COUNT } from "../../lib/docsNav";
+import { DOCS_CONTRACT_COUNT, DOCS_PAGE_COUNT, PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 export function DocsFooter() {
     return (
@@ -11,9 +11,17 @@ export function DocsFooter() {
                     {DOCS_PAGE_COUNT} pages · {DOCS_CONTRACT_COUNT} production contracts
                 </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00685f]/8 text-[#00685f] rounded-full text-xs font-semibold border border-[#00685f]/15">
-                <BookOpen className="w-4 h-4" />
-                Arbitrum Sepolia · MedVault
+            <div className="flex flex-wrap items-center gap-2">
+                <a
+                    href={PRODUCTION_APP_URL}
+                    className="px-3 py-1.5 bg-white text-[#00685f] rounded-full text-xs font-semibold border border-[#00685f]/25 hover:bg-[#00685f]/5 transition-colors"
+                >
+                    med-vault.xyz
+                </a>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00685f]/8 text-[#00685f] rounded-full text-xs font-semibold border border-[#00685f]/15">
+                    <BookOpen className="w-4 h-4" />
+                    Arbitrum Sepolia · MedVault
+                </div>
             </div>
         </div>
     );

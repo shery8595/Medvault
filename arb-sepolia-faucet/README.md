@@ -60,7 +60,7 @@ Cool-downs are stored **in memory** and reset on process restart.
 1. New project from this repo.
 2. Set `FAUCET_PRIVATE_KEY` in the platform’s secrets (wallet funded on **Arbitrum Sepolia**).
 3. If you set `ARBITRUM_SEPOLIA_RPC_URL`, use an **Arbitrum Sepolia** endpoint only — or remove it to use the default public RPC.
-4. Optional: set `FAUCET_CORS_ORIGIN` to your production site.
+4. Optional: set `FAUCET_CORS_ORIGIN` to your production site (e.g. `https://med-vault.xyz`).
 5. Start command: `npm start` (uses `PORT` from the host if provided).
 
 ## License

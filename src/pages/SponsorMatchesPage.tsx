@@ -15,8 +15,18 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "../lib/utils";
-import { sponsorCardHeader, sponsorCardShell } from "../lib/sponsorUi";
+import {
+  sponsorCardHeader,
+  sponsorCardShell,
+  sponsorHeroDescription,
+  sponsorHeroEyebrow,
+  sponsorHeroThreeColumnArtGrid,
+  sponsorHeroTitle,
+} from "../lib/sponsorUi";
+import { trialsInputClass } from "../lib/sponsorTrialsUi";
 import { SectionTopBar } from "../components/layout/SectionTopBar";
+import { SponsorHeroBanner } from "../components/sponsor/SponsorHeroBanner";
+import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt";
 import { useSponsorApplicationActions } from "../hooks/useSponsorApplicationActions";
 import { useAnonymousCertification } from "../hooks/useAnonymousCertification";
 import { ZkCertifyBadge } from "../components/zk/ZkCertifyBadge";
@@ -198,6 +208,7 @@ export function SponsorMatchesPage() {
     useSponsorApplicationActions();
   const [message, setMessage] = useState<string>("");
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleUpdateStatus = async (trialId: string, patientAddress: string, status: number) => {
     try {
@@ -222,9 +233,29 @@ export function SponsorMatchesPage() {
     }
   };
 
+  const filteredMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return matches;
+    return matches.filter((match) => {
+      const identity = (
+        match.patientId ||
+        match.nullifier ||
+        match.patientAddress ||
+        ""
+      ).toLowerCase();
+      return (
+        match.trialName.toLowerCase().includes(q) ||
+        match.trialId.toLowerCase().includes(q) ||
+        match.status.toLowerCase().includes(q) ||
+        (match.applicationStatus ?? "").toLowerCase().includes(q) ||
+        identity.includes(q)
+      );
+    });
+  }, [matches, searchQuery]);
+
   const groupedMatches = useMemo(() => {
     const groups: { [key: string]: { trialName: string; matches: any[]; maxTimestamp: number } } = {};
-    matches.forEach((match) => {
+    filteredMatches.forEach((match) => {
       if (!groups[match.trialId]) {
         groups[match.trialId] = { trialName: match.trialName, matches: [], maxTimestamp: 0 };
       }
@@ -235,7 +266,7 @@ export function SponsorMatchesPage() {
       }
     });
     return groups;
-  }, [matches]);
+  }, [filteredMatches]);
 
   const groupedEntries = useMemo(() => {
     return (
@@ -244,7 +275,7 @@ export function SponsorMatchesPage() {
   }, [groupedMatches]);
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-5 pb-8">
       <SectionTopBar
         title="Patient matches"
         rightContent={
@@ -259,32 +290,33 @@ export function SponsorMatchesPage() {
         }
       />
 
-      <header className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-white via-white to-slate-50/50 px-6 py-8 md:px-10 md:py-9 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/50">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#1D2634]/[0.04] blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1D2634]/10 ring-1 ring-[#1D2634]/15">
-                <UserCheck className="h-4 w-4 text-[#1D2634]" strokeWidth={2} />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Recruitment</p>
-            </div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem] md:leading-tight">
-              Patient matches
-            </h1>
-            <p className="max-w-xl text-sm leading-relaxed text-slate-600">
-              Review applications grouped by protocol. Anonymous rows use a separate verification flow.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
-          >
-            <Search className="h-4 w-4" />
-            Search (coming soon)
-          </button>
+      <SponsorHeroBanner innerClassName={sponsorHeroThreeColumnArtGrid}>
+        <div className="min-w-0 space-y-1.5">
+          <p className={sponsorHeroEyebrow}>Recruitment</p>
+          <h1 className={sponsorHeroTitle}>Patient matches</h1>
+          <p className={sponsorHeroDescription}>
+            Review applications grouped by protocol. Anonymous rows use a separate verification flow.
+          </p>
         </div>
-      </header>
+
+        <SponsorHeroCenterArt src="/images/patient_matches_component.png" />
+
+        <div className="relative w-full md:col-start-3 md:row-start-1 md:justify-self-end">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <input
+            type="search"
+            placeholder="Search protocol, status, or ID…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+            className={cn(trialsInputClass, "w-full")}
+          />
+        </div>
+      </SponsorHeroBanner>
 
       <div
         className={cn(
@@ -330,6 +362,21 @@ export function SponsorMatchesPage() {
               <p className="mt-1 max-w-sm text-sm text-slate-500">
                 When patients apply to your trials, they will appear here by protocol.
               </p>
+            </div>
+          ) : groupedEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
+              <Search className="mb-3 h-8 w-8 text-slate-300" strokeWidth={1.5} />
+              <h3 className="font-display text-lg font-semibold text-slate-900">No matches found</h3>
+              <p className="mt-1 max-w-sm text-sm text-slate-500">
+                Nothing matches &ldquo;{searchQuery.trim()}&rdquo;. Try another protocol name, status, or ID.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="mt-4 text-sm font-semibold text-[#1D2634] hover:underline"
+              >
+                Clear search
+              </button>
             </div>
           ) : (
             <div className="space-y-10">

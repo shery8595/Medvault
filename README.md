@@ -8,7 +8,7 @@
 
 **MedVault** is built around **[Fhenix CoFHE](https://fhenix.io)** — confidential smart contracts on **Arbitrum Sepolia** where trial eligibility, consent, and incentives run on **encrypted health data**, not plaintext. **[Chainlink Automation](https://chain.link/automation)** closes expired protocols on a schedule (distribute incentive pools + deactivate trials). Semaphore and Noir add anonymous identity and ZK binding.
 
-**Live app:** deploy via [Vercel](https://vercel.com) (see [Deployment](#deployment)).  
+**Live app:** [https://med-vault.xyz](https://med-vault.xyz) (hosted on [Vercel](https://vercel.com); see [Deployment](#deployment)).  
 **Repo:** [github.com/shery8595/Med-Vault](https://github.com/shery8595/Med-Vault)
 
 ---
@@ -492,10 +492,10 @@ VITE_SUBGRAPH_URL=https://api.studio.thegraph.com/query/<id>/medvault-final/<ver
 
 Optional service for **`finalizeAnonymousApplication`** when the patient should not pay gas.
 
-```bash
+    ```bash
 cd relayer
 cp .env.example .env
-npm install
+    npm install
 node server.js
 ```
 
@@ -505,6 +505,8 @@ Production example in `.env.example` (Railway).
 ---
 
 ## Deployment
+
+Production is served at **https://med-vault.xyz** (configure the custom domain in the Vercel project). Set the relayer’s `FRONTEND_URL` to that origin for CORS.
 
 ### Frontend (Git → Vercel)
 
@@ -541,7 +543,7 @@ See [Chainlink Automation](#chainlink-automation) and `scripts/diagnose-automati
 
 ### Subgraph
 
-```bash
+    ```bash
 npm run subgraph:deploy:near-head -- <version>
 # Update VITE_SUBGRAPH_URL in Vercel env to the new Studio version URL
 ```

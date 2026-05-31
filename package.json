@@ -4,7 +4,11 @@
   "private": true,
   "overrides": {
     "ox": "0.14.20",
-    "@aztec/bb.js": "5.0.0-nightly.20260324"
+    "@aztec/bb.js": "5.0.0-nightly.20260324",
+    "recharts": "2.15.4",
+    "d3-color": "3.1.0",
+    "d3-interpolate": "3.0.1",
+    "d3-scale": "4.0.2"
   },
   "engines": {
     "node": ">=20",
@@ -58,7 +62,7 @@
     "react-is": "^19.2.4",
     "react-router-dom": "^7.13.0",
     "readable-stream": "^4.7.0",
-    "recharts": "^3.7.0",
+    "recharts": "2.15.4",
     "stream-browserify": "^3.0.0",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",

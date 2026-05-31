@@ -1,7 +1,18 @@
 import { Link } from "react-router-dom";
-import { AreaChart, Card, Flex, Metric, ProgressBar, Text } from "@tremor/react";
+import { Card, Flex, Metric, ProgressBar, Text } from "@tremor/react";
 import { MetricSparkline, SPARK_COLORS } from "../charts/MetricSparkline";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   Activity,
   ArrowRight,
@@ -161,18 +172,58 @@ export function SponsorPerformanceSection({
             <EmptyChart message="Application and screening activity will appear here as your trials recruit." />
           ) : (
             <div>
-              <AreaChart
-                className="h-72 [&_.recharts-legend-wrapper]:hidden"
-                data={areaData}
-                index="date"
-                categories={["Applications", "Screened", "Accepted"]}
-                colors={["violet", "blue", "emerald"]}
-                valueFormatter={valueFormatter}
-                showLegend={false}
-                showGridLines
-                curveType="monotone"
-                yAxisWidth={40}
-              />
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={areaData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "#64748b", fontWeight: 500 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#64748b", fontWeight: 500 }}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      width={40}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => valueFormatter(value)}
+                      contentStyle={{
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Applications"
+                      stroke="#8b5cf6"
+                      fill="#8b5cf6"
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Screened"
+                      stroke="#3b82f6"
+                      fill="#3b82f6"
+                      fillOpacity={0.18}
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Accepted"
+                      stroke="#10b981"
+                      fill="#10b981"
+                      fillOpacity={0.18}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
               <div
                 className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-slate-100 pt-4"
                 aria-hidden

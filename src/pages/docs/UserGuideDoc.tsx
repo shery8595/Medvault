@@ -4,6 +4,7 @@ import { DocsPageHeaderForRoute } from "../../components/docs/DocsPageHeader";
 
 import { motion } from "framer-motion";
 import { Fingerprint, Stethoscope, ShieldAlert, BadgeCheck, DatabaseBackup, Building2, Lock, CheckCircle2 } from "lucide-react";
+import { PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const patientJourneyChart = `
 stateDiagram-v2
@@ -96,6 +97,15 @@ export function UserGuideDoc() {
         <motion.div>
             <Prose className="max-w-none">
                 <DocsPageHeaderForRoute />
+
+                <Callout type="info" title="Try the live app">
+                    Open{" "}
+                    <a href={PRODUCTION_APP_URL} className="font-semibold text-[#00685f] hover:underline">
+                        med-vault.xyz
+                    </a>{" "}
+                    for the hosted testnet build. Use Patient Identity → backup/restore if you need the same Semaphore
+                    identity on production as on localhost.
+                </Callout>
 
                 <hr className="my-12 border-slate-200" />
 

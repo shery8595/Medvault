@@ -33,7 +33,19 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { DONUT_SLICE_FILL } from "../lib/sponsorChartData";
-import { sponsorCardHeader, sponsorCardShell } from "../lib/sponsorUi";
+import {
+  sponsorCardHeader,
+  sponsorCardShell,
+  sponsorHeroComponentArtClassCompact,
+  sponsorHeroDescriptionCompact,
+  sponsorHeroEyebrowCompact,
+  sponsorHeroLinksCompact,
+  sponsorHeroPaddingCompact,
+  sponsorHeroTitleCompact,
+  sponsorHeroTwoColumnArtGridCompact,
+} from "../lib/sponsorUi";
+import { SponsorHeroBanner } from "../components/sponsor/SponsorHeroBanner";
+import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt";
 import { useAaveYield } from "../hooks/useAaveYield";
 import { useStaking } from "../hooks/useStaking";
 
@@ -135,7 +147,7 @@ export function SponsorAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-5 pb-8">
       <SectionTopBar
         title="Analytics"
         rightContent={
@@ -166,38 +178,35 @@ export function SponsorAnalyticsPage() {
         </div>
       ) : null}
 
-      <header className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-white via-white to-slate-50/50 px-6 py-8 md:px-10 md:py-9 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/50">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#1D2634]/[0.04] blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1D2634]/10 ring-1 ring-[#1D2634]/15">
-                <BarChart3 className="h-4 w-4 text-[#1D2634]" strokeWidth={2} />
-              </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Analytics</p>
-            </div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem] md:leading-tight">
-              Protocol analytics
-            </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
-              Applications, review pipeline, and recruitment performance across your sponsor portfolio.
-            </p>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
-              <Link
-                to="/sponsor/active-trials"
-                className="inline-flex items-center gap-1 text-[#1D2634] hover:underline"
-              >
-                Active protocols
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-              <span className="text-slate-300">·</span>
-              <Link to="/sponsor/patient-matches" className="text-slate-600 hover:text-slate-900">
-                Candidate queue
-              </Link>
-            </div>
+      <SponsorHeroBanner
+        paddingClassName={sponsorHeroPaddingCompact}
+        innerClassName={sponsorHeroTwoColumnArtGridCompact}
+      >
+        <div className="min-w-0 space-y-1">
+          <p className={sponsorHeroEyebrowCompact}>Analytics</p>
+          <h1 className={sponsorHeroTitleCompact}>Protocol analytics</h1>
+          <p className={sponsorHeroDescriptionCompact}>
+            Applications, review pipeline, and recruitment performance across your sponsor portfolio.
+          </p>
+          <div className={sponsorHeroLinksCompact}>
+            <Link
+              to="/sponsor/active-trials"
+              className="inline-flex items-center gap-1 text-teal-700 transition-colors hover:text-teal-800"
+            >
+              Active protocols
+              <span aria-hidden>→</span>
+            </Link>
+            <span className="text-slate-300">·</span>
+            <Link to="/sponsor/patient-matches" className="text-slate-600 transition-colors hover:text-slate-900">
+              Candidate queue
+            </Link>
           </div>
         </div>
-      </header>
+        <SponsorHeroCenterArt
+          src="/images/analytics_component.png"
+          artClassName={sponsorHeroComponentArtClassCompact}
+        />
+      </SponsorHeroBanner>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className={cn(sponsorCardShell, "border-0 overflow-hidden")}>

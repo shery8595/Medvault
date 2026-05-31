@@ -85,8 +85,12 @@ export function IdentityPrivacyDoc() {
                 </p>
                 <p>
                     In local dev, Vite can proxy <code>/relay</code> to your Railway/host URL to avoid CORS; optional{" "}
-                    <code>VITE_RELAYER_URL</code> overrides the base URL (see <code>.env.example</code>). Production deployments
-                    should either enable CORS on the relayer for your frontend origin or terminate through a same-origin proxy.
+                    <code>VITE_RELAYER_URL</code> overrides the base URL (see <code>.env.example</code>). On production (
+                    <a href="https://med-vault.xyz" className="font-semibold text-[#00685f] hover:underline">
+                        med-vault.xyz
+                    </a>
+                    ), set the relayer&apos;s <code>FRONTEND_URL</code> to that origin for CORS, or terminate relay traffic
+                    through a same-origin proxy.
                 </p>
                 <p>
                     Env vars on the server typically include <code>RELAYER_PRIVATE_KEY</code>, <code>RPC_URL</code>,{" "}

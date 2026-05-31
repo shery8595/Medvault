@@ -27,7 +27,18 @@ export default defineConfig(({ mode }) => {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
-      dedupe: ['viem', 'ox', 'ethers'],
+      dedupe: [
+        'viem',
+        'ox',
+        'ethers',
+        'recharts',
+        'd3-color',
+        'd3-interpolate',
+        'd3-scale',
+        'd3-shape',
+        'd3-time',
+        'd3-time-format',
+      ],
       alias: {
         '@': path.resolve(__dirname, './src'),
         // Noir certify: use bb.js browser bundle so barretenberg .wasm URLs resolve correctly
@@ -52,6 +63,7 @@ export default defineConfig(({ mode }) => {
         'crypto-browserify',
         '@xyflow/react',
         '@xyflow/system',
+        'recharts',
       ],
       exclude: [
         '@fhenix-fhe/relayer-sdk',
@@ -72,6 +84,15 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: false,
       rollupOptions: {
         maxParallelFileOps: 1,
+        output: {
+          manualChunks(id) {
+            if (
+              /[\\/]node_modules[\\/](d3-[^\\/]+|victory-vendor|internmap)[\\/]/.test(id)
+            ) {
+              return 'd3-vendor';
+            }
+          },
+        },
         onwarn(warning, defaultHandler) {
           const msg = warning.message ?? '';
           if (msg.includes('annotation that Rollup cannot interpret')) return;

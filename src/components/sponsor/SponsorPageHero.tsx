@@ -1,6 +1,17 @@
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "../ui/Button";
+import { cn } from "../../lib/utils";
+import {
+  sponsorHeroDescription,
+  sponsorHeroEyebrow,
+  sponsorHeroGlow,
+  sponsorHeroIllustrationClass,
+  sponsorHeroPadding,
+  sponsorHeroShadow,
+  sponsorHeroShell,
+  sponsorHeroTitle,
+} from "../../lib/sponsorUi";
 
 type HeroLink = { label: string; to: string; primary?: boolean };
 
@@ -10,6 +21,8 @@ type SponsorPageHeroProps = {
   description: string;
   cta?: { label: string; to: string };
   links?: HeroLink[];
+  /** Optional right-side illustration (e.g. active trials component art). */
+  illustrationSrc?: string;
 };
 
 export function SponsorPageHero({
@@ -18,21 +31,35 @@ export function SponsorPageHero({
   description,
   cta,
   links = [],
+  illustrationSrc,
 }: SponsorPageHeroProps) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-violet-100/80 bg-gradient-to-r from-[#f5f3ff] via-[#f0f4ff] to-[#eef6ff] px-6 py-4 shadow-[0_2px_14px_-3px_rgba(99,102,241,0.16)] ring-1 ring-violet-100/60 md:px-7 md:py-5">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_55%_50%,rgba(139,92,246,0.08),transparent_70%)]"
-        aria-hidden
-      />
+  const hasIllustration = Boolean(illustrationSrc);
 
-      <div className="relative z-[2] flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-violet-500/90">{eyebrow}</p>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-[#1a2744] md:text-3xl md:leading-snug">
-            {title}
-          </h1>
-          <p className="max-w-lg text-[15px] leading-relaxed text-slate-600 md:text-base">{description}</p>
+  return (
+    <div className={cn(sponsorHeroShell, sponsorHeroShadow, sponsorHeroPadding)}>
+      <div className={sponsorHeroGlow} aria-hidden />
+
+      {illustrationSrc ? (
+        <img
+          src={illustrationSrc}
+          alt=""
+          className={sponsorHeroIllustrationClass}
+          decoding="async"
+          aria-hidden
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "relative z-[2] flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+          hasIllustration &&
+            "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(140px,220px)_auto] lg:items-center lg:gap-3",
+        )}
+      >
+        <div className={cn("space-y-2", hasIllustration && "lg:pr-1")}>
+          <p className={sponsorHeroEyebrow}>{eyebrow}</p>
+          <h1 className={sponsorHeroTitle}>{title}</h1>
+          <p className={sponsorHeroDescription}>{description}</p>
           {links.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 pt-1.5 text-[15px] font-semibold md:text-base">
               {links.map((link, i) => (
@@ -54,6 +81,10 @@ export function SponsorPageHero({
             </div>
           ) : null}
         </div>
+
+        {hasIllustration ? (
+          <div className="hidden h-[118px] shrink-0 sm:h-[128px] lg:block lg:h-[132px]" aria-hidden />
+        ) : null}
 
         {cta ? (
           <Link to={cta.to} className="w-full shrink-0 sm:w-auto">

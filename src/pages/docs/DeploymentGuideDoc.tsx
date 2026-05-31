@@ -4,6 +4,7 @@ import { Callout } from "../../components/docs/Callout";
 import { DocsPageHeaderForRoute } from "../../components/docs/DocsPageHeader";
 import { motion } from "framer-motion";
 import { Terminal, Database, Server, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
+import { PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const envVars = [
     { key: "VITE_PRIVY_APP_ID", required: true, desc: "Privy app ID (dashboard) for sign-in and embedded EOA wallets on Arbitrum Sepolia." },
@@ -35,7 +36,9 @@ const depChecklist = [
     { label: "VITE_SUBGRAPH_URL updated with Studio URL", cat: "Frontend" },
     { label: "`npm run dev` serves on localhost", cat: "Frontend" },
     { label: "App loads and shows FHE Ready indicator", cat: "Frontend" },
+    { label: "Production frontend live at med-vault.xyz (Vercel custom domain)", cat: "Frontend" },
     { label: "HTTP relayer live (RPC, relayer key, REGISTRY_ADDRESS, SEMAPHORE_ADDRESS, FRONTEND_URL / CORS)", cat: "Ops" },
+    { label: "Relayer FRONTEND_URL=https://med-vault.xyz (CORS for production)", cat: "Ops" },
     { label: "Optional: private faucet (`arb-sepolia-faucet`) + `VITE_TESTNET_FAUCET_URL`", cat: "Ops" },
     { label: "Optional: `VITE_RELAYER_URL` or Vite `/relay` proxy for local CORS", cat: "Ops" },
     { label: "Optional: Chainlink Automation upkeep for MedVaultAutomation + `setChainlinkForwarder`", cat: "Ops" },
@@ -69,6 +72,16 @@ export function DeploymentGuideDoc() {
         <motion.div>
             <Prose className="max-w-none">
                 <DocsPageHeaderForRoute />
+
+                <Callout type="info" title="Production URL">
+                    The public app is deployed at{" "}
+                    <a href={PRODUCTION_APP_URL} className="font-semibold text-[#00685f] underline-offset-2 hover:underline">
+                        med-vault.xyz
+                    </a>
+                    . Set the relayer&apos;s <code>FRONTEND_URL</code> to that origin (see{" "}
+                    <code>relayer/.env.example</code>) so browser clients on production can call{" "}
+                    <code>/relay/*</code> without CORS errors.
+                </Callout>
 
                 {/* Pre-deploy checklist */}
                 <div className="not-prose my-10">
@@ -228,8 +241,17 @@ npm install
 npm run dev
 
 # OR for production bundle (runs after full deployment validation):
-npm run build && npm run preview`}
+npm run build && npm run preview
+
+# Ship to Vercel (prebuilt; see README "Deployment"):
+npm run vercel:ship`}
                 />
+
+                <Callout type="tip" title="Production hosting">
+                    Configure <strong>med-vault.xyz</strong> as a custom domain on the Vercel project. Prebuilt deploys
+                    use <code>npm run vercel:build</code> + <code>npm run vercel:deploy</code>; bake all{" "}
+                    <code>VITE_*</code> variables at build time (GitHub Actions or <code>vercel pull</code> locally).
+                </Callout>
 
                 <Callout type="tip" title="Verify FHE Readiness in the Browser">
                     After launching, sign in with Privy and ensure the app finishes wallet + FHE setup. If CoFHE stays disconnected, verify <code>VITE_PRIVY_APP_ID</code>, Arbitrum Sepolia as the active chain, and optional <code>VITE_RPC_URL</code> for reads.

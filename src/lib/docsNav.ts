@@ -2,6 +2,9 @@
  * Documentation IA: top tabs, path→tab, sidebar grouping, client search index.
  */
 
+/** Public production site (custom domain on Vercel). */
+export const PRODUCTION_APP_URL = "https://med-vault.xyz";
+
 export type DocsTabId =
     | "getting-started"
     | "protocol"
@@ -315,7 +318,8 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         tabId: "operations",
         section: "Runbooks",
         keywords: ["deploy", "subgraph", "script", "network", "relayer", "faucet", "chainlink"],
-        pageDescription: "Deploying contracts, refreshing ABIs, and subgraph configuration for Arbitrum Sepolia.",
+        pageDescription:
+            "Deploying contracts, subgraph, and production frontend at med-vault.xyz (Vercel + relayer CORS).",
     },
     {
         title: "Changelog",

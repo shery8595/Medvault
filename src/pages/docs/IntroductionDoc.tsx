@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "../../lib/utils";
-import { DOCS_CONTRACT_COUNT } from "../../lib/docsNav";
+import { DOCS_CONTRACT_COUNT, PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const INTRO_STAT_TONE: Record<string, string> = {
     teal: "bg-teal-500 text-white",
@@ -477,6 +477,14 @@ export function IntroductionDoc() {
                                     >
                                         <Shield className="w-3.5 h-3.5" /> Security
                                     </Link>
+                                    <a
+                                        href={PRODUCTION_APP_URL}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#00685f] text-xs font-bold border border-[#00685f]/30 hover:bg-[#00685f]/5 transition-colors"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" /> Live app
+                                    </a>
                                 </div>
                             </div>
                             <div className="relative flex min-h-[125px] md:min-h-[179px] items-center justify-center p-3 md:p-4">

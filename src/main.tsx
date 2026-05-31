@@ -2,6 +2,9 @@
 if (window._cp) window._cp('main.tsx: module evaluation start');
 
 import './polyfills';
+import { preloadAppImages } from './lib/preloadImages';
+
+preloadAppImages();
 
 // @ts-ignore
 if (window._cp) window._cp('main.tsx: polyfills imported');

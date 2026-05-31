@@ -148,6 +148,7 @@ export function SponsorTrialsPage() {
       <SponsorPageHero
         title="Active protocols"
         description="Monitor and manage your clinical protocols and applicant flow."
+        illustrationSrc="/images/active_trial_component.png"
         cta={{ label: "New protocol", to: "/sponsor/trials/create" }}
         links={[
           { label: "Candidate queue", to: "/sponsor/patient-matches", primary: true },

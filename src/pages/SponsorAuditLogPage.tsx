@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import {
-  ShieldCheck,
   Search,
   Download,
   Clock,
@@ -16,7 +15,19 @@ import {
 import { useAuditLogs } from "../hooks/useAuditLogs";
 import { useWeb3 } from "../lib/Web3Context";
 import { Link } from "react-router-dom";
-import { sponsorCardHeader, sponsorCardShell } from "../lib/sponsorUi";
+import {
+  sponsorCardHeader,
+  sponsorCardShell,
+  sponsorHeroComponentArtClassCompact,
+  sponsorHeroDescriptionCompact,
+  sponsorHeroEyebrowCompact,
+  sponsorHeroLinksCompact,
+  sponsorHeroPaddingCompact,
+  sponsorHeroTitleCompact,
+  sponsorHeroTwoColumnArtGridCompact,
+} from "../lib/sponsorUi";
+import { SponsorHeroBanner } from "../components/sponsor/SponsorHeroBanner";
+import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt";
 import { cn } from "../lib/utils";
 
 export function SponsorAuditLogPage() {
@@ -77,38 +88,34 @@ export function SponsorAuditLogPage() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      <header className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-white via-white to-slate-50/50 px-6 py-8 md:px-10 md:py-9 shadow-[0_4px_24px_-6px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/50">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#1D2634]/[0.04] blur-3xl" />
-        <div className="relative space-y-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1D2634]/10 ring-1 ring-[#1D2634]/15">
-              <ShieldCheck className="h-4 w-4 text-[#1D2634]" strokeWidth={2} />
-            </div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600">Compliance</p>
-          </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-slate-900 md:text-[2rem] md:leading-tight">
-            Regulatory audit trail
-          </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+    <div className="space-y-5 pb-8">
+      <SponsorHeroBanner
+        paddingClassName={sponsorHeroPaddingCompact}
+        innerClassName={sponsorHeroTwoColumnArtGridCompact}
+      >
+        <div className="min-w-0 space-y-1">
+          <p className={sponsorHeroEyebrowCompact}>Compliance</p>
+          <h1 className={sponsorHeroTitleCompact}>Regulatory audit trail</h1>
+          <p className={sponsorHeroDescriptionCompact}>
             On-chain DataAccessLog entries for your protocols, merged with any indexed subgraph events. Filter and
             export for reporting.
           </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1 text-xs font-semibold">
+          <div className={sponsorHeroLinksCompact}>
             <Link
               to="/sponsor/active-trials"
-              className="inline-flex items-center gap-1 text-[#1D2634] hover:underline"
+              className="inline-flex items-center gap-1 text-teal-700 transition-colors hover:text-teal-800"
             >
               Active protocols
-              <ArrowRight className="h-3.5 w-3.5" />
+              <span aria-hidden>→</span>
             </Link>
             <span className="text-slate-300">·</span>
-            <Link to="/sponsor/patient-matches" className="text-slate-600 hover:text-slate-900">
+            <Link to="/sponsor/patient-matches" className="text-slate-600 transition-colors hover:text-slate-900">
               Candidate queue
             </Link>
           </div>
         </div>
-      </header>
+        <SponsorHeroCenterArt src="/images/audit_component.png" artClassName={sponsorHeroComponentArtClassCompact} />
+      </SponsorHeroBanner>
 
       <Card className={cn(sponsorCardShell, "overflow-hidden border-0")}>
         <CardHeader className={cn(sponsorCardHeader, "px-5 py-5 md:px-6")}>
