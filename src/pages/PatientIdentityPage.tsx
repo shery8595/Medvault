@@ -274,10 +274,6 @@ export function PatientIdentityPage() {
             </div>
           </motion.section>
 
-          <motion.div {...fadeUp(0.08)}>
-            <WalletSendCard />
-          </motion.div>
-
           <motion.section
             {...fadeUp(0.1)}
             className="rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)]"
@@ -358,7 +354,11 @@ export function PatientIdentityPage() {
 
         {/* Right column */}
         <div className="lg:col-span-7 space-y-4">
-          <motion.div {...fadeUp(0.08)} className="flex items-center gap-2 text-slate-900">
+          <motion.div {...fadeUp(0.08)}>
+            <WalletSendCard />
+          </motion.div>
+
+          <motion.div {...fadeUp(0.1)} className="flex items-center gap-2 text-slate-900">
             <Fingerprint className="h-5 w-5 text-teal-600" />
             <h2 className="text-base font-bold tracking-tight sm:text-lg">Clinical privacy layers</h2>
           </motion.div>
@@ -367,7 +367,7 @@ export function PatientIdentityPage() {
             {privacyLayers.map((layer, i) => (
               <motion.div
                 key={layer.title}
-                {...fadeUp(0.12 + i * 0.05)}
+                {...fadeUp(0.14 + i * 0.05)}
                 className="flex gap-4 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div
