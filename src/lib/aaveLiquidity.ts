@@ -1,10 +1,15 @@
 import { ethers } from "ethers";
 
+/** Normalize to EIP-55 so ethers v6 Contract calls do not throw INVALID_ARGUMENT checksum errors. */
+function checksum(addr: string): string {
+  return ethers.getAddress(addr.toLowerCase());
+}
+
 /** Match `StakingManager.AAVE_POOL` on Arbitrum Sepolia deployments. */
-export const ARBITRUM_SEPOLIA_AAVE_POOL = "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792EFF";
+export const ARBITRUM_SEPOLIA_AAVE_POOL = checksum("0xBfC91D59fdAA134A4ED45f7B584cAf96D7792EFF");
 
 /** WETH underlying reserve on Arbitrum Sepolia Aave v3 pool (paired with MEDVAULT staking gateway). */
-export const ARBITRUM_SEPOLIA_WETH_UNDERLYING = "0xe39Ab85fAfDe6ffDf4C70d62cDd72BefB890aC8e";
+export const ARBITRUM_SEPOLIA_WETH_UNDERLYING = checksum("0xe39Ab85fAfDe6ffDf4C70d62cDd72BefB890aC8e");
 
 /** Linear APR approximation from Aave liquidity index rate (Ray per second). Suitable for KPI display — not compounded APY math. */
 export function liquidityRayPerSecondToApproxAprPercent(liquidityRateRay: bigint): number {

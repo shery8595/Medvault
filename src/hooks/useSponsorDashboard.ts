@@ -9,6 +9,7 @@ import {
   buildTrialTableRows,
   buildWeeklyPerformanceSeries,
   collectTimelineEvents,
+  countTrialMatches,
   type DonutSlice,
   type FunnelStat,
   type TrialTableRow,
@@ -57,6 +58,10 @@ const GET_SPONSOR_STATS = `
           stagedAt
           submittedAt
           statusUpdatedAt
+          fhePropensityCommittedAt
+        }
+        propensitySignals {
+          signalCount
         }
       }
     }
@@ -224,7 +229,7 @@ export function useSponsorDashboard() {
     const rejectedApplications = allApplications.filter((a: any) => a.status === 'Rejected').length;
 
     const totalWalletEligibility = trials.reduce(
-      (acc: number, t: any) => acc + (t.eligibilityResults?.length || 0),
+      (acc: number, t: any) => acc + countTrialMatches(t),
       0
     );
 

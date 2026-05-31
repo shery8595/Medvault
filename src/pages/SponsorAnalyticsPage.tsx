@@ -32,7 +32,7 @@ import {
   Landmark,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import { DONUT_SLICE_FILL } from "../lib/sponsorChartData";
+import { DONUT_SLICE_FILL, countTrialMatches } from "../lib/sponsorChartData";
 import {
   sponsorCardHeader,
   sponsorCardShell,
@@ -114,7 +114,7 @@ export function SponsorAnalyticsPage() {
       .map((t) => ({
         label: t.name.length > 22 ? `${t.name.slice(0, 20)}…` : t.name,
         fullName: t.name,
-        matches: (t.eligibilityResults ?? []).length || t.matchCount || 0,
+        matches: countTrialMatches(t),
         active: t.active ? 1 : 0,
       }))
       .sort((a, b) => b.matches - a.matches)
@@ -442,7 +442,9 @@ export function SponsorAnalyticsPage() {
                 <CardTitle className="font-display text-base font-semibold text-slate-900">
                   Matches by protocol
                 </CardTitle>
-                <p className="text-xs text-slate-500">Eligibility results recorded per trial (subgraph)</p>
+                <p className="text-xs text-slate-500">
+                  Wallet eligibility + anonymous FHE applications per trial (subgraph)
+                </p>
               </div>
               <Layers className="h-5 w-5 shrink-0 text-slate-400" />
             </div>

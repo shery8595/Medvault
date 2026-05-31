@@ -3,6 +3,7 @@ import { useSubgraph } from './useSubgraph';
 import { Trial } from '../types';
 import { generateEphemeralAddress, getAnonymousNullifier, getStoredIdentity, listStoredAnonymousTrialIds } from '../lib/semaphore';
 import { filterSponsorVisibleSubmissions } from '../lib/anonymousApplicationStatus';
+import { countTrialMatches } from '../lib/sponsorChartData';
 
 const GET_TRIALS_WITH_USER_STATE = `
   query GetTrialsWithUserState($account: Bytes!, $accountId: ID!, $anonymousNullifiers: [BigInt!]!) {
@@ -99,6 +100,10 @@ const GET_TRIALS_BY_SPONSOR = `
         statusUpdatedAt
         submittedAt
         stagedAt
+        fhePropensityCommittedAt
+      }
+      propensitySignals {
+        signalCount
       }
       incentivePool {
         id
@@ -125,7 +130,7 @@ function enrichSponsorTrialRow(t: any, now: number): Trial {
   const apps = [...walletApps, ...anonApps];
   const accepted = apps.filter((a: any) => a.status === "Accepted").length;
   const pendingApplicationCount = apps.filter((a: any) => a.status === "Pending").length;
-  const screened = (t.eligibilityResults ?? []).length;
+  const screened = countTrialMatches(t);
   const poolDistributed = Boolean(t.incentivePool?.distributed);
   const milestones = (t.milestones ?? []).map((m: any) => {
     const index = Number(m.index ?? 0);
@@ -157,10 +162,10 @@ function enrichSponsorTrialRow(t: any, now: number): Trial {
     hasConsent: (t.consents ?? []).length > 0,
     hasComputed: screened > 0 || applicants > 0,
     matchCount: screened,
+    screenedCount: screened,
     applicantCount: applicants,
     acceptedCount: accepted,
     pendingApplicationCount,
-    screenedCount: screened,
     updatedAtSec,
     poolFundedWei,
     milestoneProgressPct,

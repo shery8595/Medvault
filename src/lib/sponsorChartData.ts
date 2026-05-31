@@ -1,6 +1,47 @@
 /** Aggregate sponsor subgraph rows into dashboard chart series (no PHI). */
 
+import { isSponsorVisibleAnonymousStatus } from "./anonymousApplicationStatus";
+
 export type Timestamped = { timestampSec: number };
+
+/**
+ * Per-trial match count for sponsor analytics (aggregate only, no PHI).
+ * Wallet rows: unique patients with eligibility and/or application indexed.
+ * Anonymous rows: visible pipeline submissions + FHE propensity commits (no wallet EligibilityResult).
+ */
+export function countTrialMatches(trial: any): number {
+  const walletKeys = new Set<string>();
+  for (const e of trial.eligibilityResults ?? []) {
+    const p = e.patient ? String(e.patient).toLowerCase() : "";
+    if (p.startsWith("0x")) walletKeys.add(p);
+    else if (e.id) {
+      const fromId = String(e.id).split("-")[0]?.toLowerCase();
+      if (fromId?.startsWith("0x")) walletKeys.add(fromId);
+    }
+  }
+  for (const a of trial.applications ?? []) {
+    const p = a.patient ? String(a.patient).toLowerCase() : "";
+    if (p.startsWith("0x")) walletKeys.add(p);
+  }
+
+  let anonymous = 0;
+  for (const a of trial.anonymousSubmissions ?? []) {
+    const fheAt = a.fhePropensityCommittedAt;
+    const hasFheSignal =
+      fheAt != null && fheAt !== "0" && Number(fheAt) > 0;
+    if (isSponsorVisibleAnonymousStatus(a.status) || hasFheSignal) {
+      anonymous += 1;
+    }
+  }
+
+  const signals = trial.propensitySignals ?? [];
+  const signalCount =
+    signals.length > 0 ? Number(signals[0]?.signalCount ?? 0) : 0;
+
+  const walletPlusAnon = walletKeys.size + anonymous;
+  if (walletPlusAnon > 0) return walletPlusAnon;
+  return signalCount;
+}
 
 export type WeeklyBucket = {
   label: string;
@@ -116,7 +157,7 @@ export function buildFunnelStats(trials: any[]): FunnelStat[] {
     );
     const apps = [...(t.applications ?? []), ...anonVisible];
     applicants += apps.length;
-    screened += (t.eligibilityResults ?? []).length;
+    screened += countTrialMatches(t);
     accepted += apps.filter((a: any) => a.status === "Accepted").length;
     rejected += apps.filter((a: any) => a.status === "Rejected").length;
     if (t.incentivePool?.distributed) completed += 1;
@@ -139,7 +180,7 @@ export function buildTrialTableRows(trials: any[]): TrialTableRow[] {
     );
     const apps = [...(t.applications ?? []), ...anonVisible];
     const accepted = apps.filter((a: any) => a.status === "Accepted").length;
-    const screened = (t.eligibilityResults ?? []).length;
+    const screened = countTrialMatches(t);
     const consents = (t.consents ?? []).length;
     const matchRate = consents > 0 ? Math.round((screened / consents) * 100) : screened > 0 ? 100 : 0;
 

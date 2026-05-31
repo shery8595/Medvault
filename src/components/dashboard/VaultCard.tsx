@@ -48,12 +48,22 @@ const EncryptedField: React.FC<{ label: string; delay?: number }> = ({ label, de
   </motion.div>
 );
 
+/** On-chain: ebool gender — true = Male, false = Female (see AnonymousPatientRegistry). */
+function formatDecryptedValue(
+  value: string | number | boolean,
+  type: "number" | "boolean" | "gender"
+): string | number {
+  if (type === "gender") return value ? "Male" : "Female";
+  if (type === "boolean") return value ? "Yes" : "No";
+  return value as string | number;
+}
+
 const DecryptedField: React.FC<{ 
   label: string; 
   value: string | number | boolean; 
   icon: React.ReactNode;
   delay?: number;
-  type?: "number" | "boolean";
+  type?: "number" | "boolean" | "gender";
 }> = ({ label, value, icon, delay = 0, type = "number" }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
@@ -68,7 +78,7 @@ const DecryptedField: React.FC<{
       <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">{label}</span>
     </div>
     <span className="text-sm font-bold text-emerald-900">
-      {type === "boolean" ? (value ? "Yes" : "No") : value}
+      {formatDecryptedValue(value, type)}
     </span>
   </motion.div>
 );
@@ -213,7 +223,7 @@ export const VaultCard: React.FC<VaultCardProps> = ({ report }) => {
                 value={decryptedData.gender}
                 icon={<User className="h-3.5 w-3.5 text-emerald-600" />}
                 delay={0.1}
-                type="boolean"
+                type="gender"
               />
               <DecryptedField
                 label="Weight (kg)"
