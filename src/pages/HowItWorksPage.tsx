@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -142,27 +142,104 @@ const roleComparison = [
   { action: "Views match proof", patient: 100, sponsor: 40, platform: 0 },
 ];
 
-function VaultIllus({ reduce }: { reduce: boolean }) {
+function FlowLines({
+  reduce,
+  trackClassName = "bg-[#6bd8cb]/70",
+}: {
+  reduce: boolean;
+  trackClassName?: string;
+}) {
   return (
-    <div className="flex items-center justify-center gap-3 px-5 py-5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e8f4fd]">
-        <UserRound className="h-5 w-5 text-[#0a2540]" strokeWidth={1.7} />
-      </div>
-      <div className="flex flex-1 flex-col gap-[5px]">
-        {([80, 55, 70] as number[]).map((w, i) => (
+    <div className="flex w-full flex-col justify-center gap-2" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-[3px] w-full overflow-hidden rounded-full bg-[#bcc9c6]/30">
           <motion.div
-            key={i}
-            className="h-[3px] rounded-full bg-gradient-to-r from-[#6bd8cb] to-[#89f5e7]"
-            style={{ width: `${w}%` }}
-            animate={reduce ? undefined : { scaleX: [0.5, 1, 0.5], opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.28, ease: "easeInOut" }}
+            className={cn("h-full w-full rounded-full", trackClassName)}
+            animate={reduce ? { opacity: 0.85 } : { opacity: [0.3, 1, 0.3] }}
+            transition={{
+              duration: 1.6,
+              repeat: reduce ? 0 : Infinity,
+              delay: i * 0.2,
+              ease: "easeInOut",
+            }}
           />
-        ))}
-      </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00685f]/10">
-        <Database className="h-5 w-5 text-[#00685f]" strokeWidth={1.7} />
-      </div>
+        </div>
+      ))}
     </div>
+  );
+}
+
+function DataFlowConnector({
+  reduce,
+  label,
+  left,
+  right,
+  trackClassName,
+}: {
+  reduce: boolean;
+  label: string;
+  left: ReactNode;
+  right: ReactNode;
+  trackClassName?: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 px-6 pb-8 pt-6">
+      <div className="shrink-0">{left}</div>
+      <div className="relative min-w-0 flex-1">
+        <FlowLines reduce={reduce} trackClassName={trackClassName} />
+        <p className="absolute -bottom-5 left-0 right-0 text-center font-mono text-[9px] font-semibold uppercase tracking-wider text-[#5a6a80]">
+          {label}
+        </p>
+      </div>
+      <div className="shrink-0">{right}</div>
+    </div>
+  );
+}
+
+function ConnectIllus({ reduce }: { reduce: boolean }) {
+  return (
+    <DataFlowConnector
+      reduce={reduce}
+      label="Linking wallet"
+      trackClassName="bg-gradient-to-r from-[#6bd8cb] via-[#89f5e7] to-[#00685f]"
+      left={
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e8f4fd] ring-1 ring-[#bcc9c6]/40">
+          <UserRound className="h-5 w-5 text-[#0a2540]" strokeWidth={1.7} />
+        </div>
+      }
+      right={
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00685f]/10 ring-1 ring-[#6bd8cb]/30">
+          <Database className="h-5 w-5 text-[#00685f]" strokeWidth={1.7} />
+        </div>
+      }
+    />
+  );
+}
+
+function EncryptIllus({ reduce }: { reduce: boolean }) {
+  return (
+    <DataFlowConnector
+      reduce={reduce}
+      label="Encrypting locally"
+      trackClassName="bg-gradient-to-r from-[#00B4D8] via-[#89f5e7] to-[#8792fe]"
+      left={
+        <div className="flex h-10 w-10 flex-col justify-center gap-[3px] rounded-xl bg-[#e8f4fd] px-2.5 py-2 ring-1 ring-[#bcc9c6]/40">
+          {[72, 88, 60].map((w) => (
+            <div key={w} className="h-[3px] w-full rounded-full bg-[#0a2540]/15">
+              <div className="h-full rounded-full bg-[#0a2540]/40" style={{ width: `${w}%` }} />
+            </div>
+          ))}
+        </div>
+      }
+      right={
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8792fe]/15 ring-1 ring-[#8792fe]/35">
+          <div className="relative">
+            <Database className="h-5 w-5 text-[#5a4a9e]" strokeWidth={1.7} />
+            <Lock className="absolute -bottom-1 -right-1 h-3 w-3 text-[#00685f]" strokeWidth={2.5} />
+          </div>
+        </div>
+      }
+    />
   );
 }
 
@@ -223,7 +300,8 @@ function ProofIllus({ reduce }: { reduce: boolean }) {
 }
 
 function StepPreviewIllus({ index, reduce }: { index: number; reduce: boolean }) {
-  if (index <= 1) return <VaultIllus reduce={reduce} />;
+  if (index === 0) return <ConnectIllus reduce={reduce} />;
+  if (index === 1) return <EncryptIllus reduce={reduce} />;
   if (index <= 3) return <MatchIllus />;
   return <ProofIllus reduce={reduce} />;
 }
@@ -252,16 +330,13 @@ function OverviewPipeline({ reduce }: { reduce: boolean }) {
                     log
                   </span>
                   <div className="flex w-full items-center">
-                    <div className="h-px flex-1 bg-gradient-to-r from-[#89f5e7] to-[#00685f]" />
-                    <ChevronRight className="-ml-0.5 h-3.5 w-3.5 text-[#00685f]" />
-                  </div>
-                  {!reduce && (
                     <motion.div
-                      className="h-1 w-1 rounded-full bg-[#6bd8cb]"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.2 }}
+                      className="h-px flex-1 origin-left bg-gradient-to-r from-[#89f5e7] to-[#00685f]"
+                      animate={reduce ? { opacity: 1 } : { opacity: [0.35, 1, 0.35] }}
+                      transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
                     />
-                  )}
+                    <ChevronRight className="-ml-0.5 h-3.5 w-3.5 shrink-0 text-[#00685f]" />
+                  </div>
                 </div>
               )}
             </Fragment>
