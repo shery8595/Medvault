@@ -545,6 +545,7 @@ export function PatientAppliedTrialsPage() {
     const { account } = useWeb3();
     const { trials, loading } = useTrials(account || undefined);
     const isConnected = Boolean(account);
+    const [filter, setFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
 
     if (!isConnected) {
         return (
@@ -566,7 +567,6 @@ export function PatientAppliedTrialsPage() {
     const accepted = appliedTrials.filter(t => t.applicationStatus === "Accepted").length;
     const rejected = appliedTrials.filter(t => t.applicationStatus === "Rejected").length;
 
-    const [filter, setFilter] = useState<"all" | "Pending" | "Accepted" | "Rejected">("all");
     const filteredTrials = filter === "all" ? appliedTrials : appliedTrials.filter(t => t.applicationStatus === filter);
 
     const filterTabs = [
