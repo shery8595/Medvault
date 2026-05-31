@@ -533,7 +533,6 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
             <ClaimModal
                 isOpen={isClaimModalOpen}
                 onClose={() => setIsClaimModalOpen(false)}
-                amountEth={trial.incentivePool?.shareWei ? (Number(trial.incentivePool.shareWei) / 1e18).toString() : "0"}
                 trialId={trial.id}
                 nullifier={trial.nullifier}
             />
