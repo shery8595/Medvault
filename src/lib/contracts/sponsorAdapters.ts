@@ -79,14 +79,80 @@ export async function getMilestonesAndProgress(
   return { rawMilestones, progress };
 }
 
-export async function getTrialPoolAndMilestones(signer: ethers.Signer, trialId: string) {
+export type TrialPoolReclaimStatus = {
+  totalDepositedWei: bigint;
+  totalFunded: string;
+  participantCount: number;
+  screeningDistributed: boolean;
+  reclaimFinalized: boolean;
+  trialEnded: boolean;
+  canReclaim: boolean;
+  /** Exact when no participants; otherwise use on-chain reclaim for the true remainder. */
+  reclaimableWei: bigint;
+  reclaimableEth: string;
+};
+
+export async function getTrialPoolReclaimStatus(
+  signer: ethers.Signer,
+  trialId: string,
+  trialEndTimeSec?: string | number | null
+): Promise<TrialPoolReclaimStatus> {
+  const vault = getSponsorIncentiveVault(signer);
+  const tid = BigInt(trialId);
+  const endSec = trialEndTimeSec != null ? Number(trialEndTimeSec) : 0;
+  const trialEnded = endSec > 0 && Math.floor(Date.now() / 1000) >= endSec;
+
+  const [totalDepositedWei, participantCountBn, screeningDistributed, reclaimFinalized] =
+    await Promise.all([
+      vault.getTotalDeposited(tid),
+      vault.getParticipantCount(tid),
+      vault.isDistributed(tid),
+      vault.reclaimFinalized(tid),
+    ]);
+
+  const participantCount = Number(participantCountBn);
+  const noParticipants = participantCount === 0;
+  const reclaimableWei =
+    totalDepositedWei > 0n && !reclaimFinalized && noParticipants ? totalDepositedWei : 0n;
+
+  const canReclaim =
+    trialEnded &&
+    !reclaimFinalized &&
+    totalDepositedWei > 0n &&
+    (screeningDistributed || noParticipants);
+
+  return {
+    totalDepositedWei,
+    totalFunded: ethers.formatEther(totalDepositedWei),
+    participantCount,
+    screeningDistributed,
+    reclaimFinalized,
+    trialEnded,
+    canReclaim,
+    reclaimableWei,
+    reclaimableEth: ethers.formatEther(reclaimableWei),
+  };
+}
+
+export async function reclaimUndistributedPool(signer: ethers.Signer, trialId: string) {
+  const vault = getSponsorIncentiveVault(signer);
+  const tx = await vault.reclaimUndistributed(BigInt(trialId));
+  await tx.wait();
+}
+
+export async function getTrialPoolAndMilestones(
+  signer: ethers.Signer,
+  trialId: string,
+  trialEndTimeSec?: string | number | null
+) {
   const vault = getSponsorIncentiveVault(signer);
   const mm = getTrialMilestoneManager(signer);
 
-  const [funded, distributed, rawMilestones] = await Promise.all([
+  const [funded, distributed, rawMilestones, reclaim] = await Promise.all([
     vault.getTotalDeposited(trialId),
     vault.isDistributed(trialId),
     mm.getMilestones(trialId),
+    getTrialPoolReclaimStatus(signer, trialId, trialEndTimeSec),
   ]);
 
   const screeningDistributed = distributed;
@@ -106,6 +172,7 @@ export async function getTrialPoolAndMilestones(signer: ethers.Signer, trialId: 
     totalFunded: ethers.formatEther(funded),
     distributed,
     milestones: milestonesWithDistribution,
+    reclaim,
   };
 }
 

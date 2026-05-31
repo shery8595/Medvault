@@ -38,6 +38,7 @@ import {
     fundTrialPool,
     getAnonymousParticipantMilestoneState,
     getTrialPoolAndMilestones,
+    reclaimUndistributedPool,
     promoteAnonymousParticipantAndDistribute,
     promoteParticipantAndDistribute,
     resetMilestonePagination,
@@ -58,7 +59,19 @@ export function SponsorTrialDetailsPage() {
 
     const [fundingAmount, setFundingAmount] = useState("");
     const [fundingStatus, setFundingStatus] = useState<string | null>(null);
-    const [poolInfo, setPoolInfo] = useState({ totalFunded: "0", distributed: false });
+    const [poolInfo, setPoolInfo] = useState({
+        totalFunded: "0",
+        distributed: false,
+        reclaim: {
+            canReclaim: false,
+            reclaimFinalized: false,
+            trialEnded: false,
+            participantCount: 0,
+            reclaimableEth: "0",
+            screeningDistributed: false,
+        },
+    });
+    const [reclaimStatus, setReclaimStatus] = useState<string | null>(null);
     const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
     const [decisionMessage, setDecisionMessage] = useState("");
     const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
@@ -81,10 +94,11 @@ export function SponsorTrialDetailsPage() {
         const fetchProtocolData = async () => {
             if (!signer || !id) return;
             try {
-                const protocolData = await getTrialPoolAndMilestones(signer, id);
+                const protocolData = await getTrialPoolAndMilestones(signer, id, trial?.endTime);
                 setPoolInfo({
                     totalFunded: protocolData.totalFunded,
                     distributed: protocolData.distributed,
+                    reclaim: protocolData.reclaim,
                 });
                 if (protocolData.milestones.length > 0) {
                     setMilestones(protocolData.milestones);
@@ -96,7 +110,7 @@ export function SponsorTrialDetailsPage() {
             }
         };
         fetchProtocolData();
-    }, [signer, id]);
+    }, [signer, id, trial?.endTime]);
 
     useEffect(() => {
         let cancelled = false;
@@ -164,6 +178,35 @@ export function SponsorTrialDetailsPage() {
             setFundingStatus(`Error: ${err.reason || err.message || "Failed to fund"}`);
         }
     };
+
+    const handleReclaimUndistributed = async () => {
+        if (!signer || !id) return;
+        setReclaimStatus("Reclaiming undistributed ETH...");
+        try {
+            await reclaimUndistributedPool(signer, id);
+            setReclaimStatus("Success! Undistributed funds returned to your wallet.");
+            const protocolData = await getTrialPoolAndMilestones(signer, id, trial?.endTime);
+            setPoolInfo({
+                totalFunded: protocolData.totalFunded,
+                distributed: protocolData.distributed,
+                reclaim: protocolData.reclaim,
+            });
+        } catch (err: any) {
+            console.error(err);
+            setReclaimStatus(`Error: ${err.reason || err.message || "Reclaim failed"}`);
+        }
+    };
+
+    const isTrialOwner =
+        Boolean(account) &&
+        Boolean(trial?.sponsor?.name) &&
+        trial!.sponsor!.name.toLowerCase() === account!.toLowerCase();
+    const { reclaim } = poolInfo;
+    const showReclaimPanel =
+        isTrialOwner &&
+        reclaim.trialEnded &&
+        parseFloat(poolInfo.totalFunded) > 0 &&
+        !reclaim.reclaimFinalized;
 
     const handleSetMilestones = async () => {
         if (!signer || !id) return;
@@ -616,6 +659,67 @@ export function SponsorTrialDetailsPage() {
                                             <p className="text-[10px] text-slate-500 max-w-xs mx-auto">Establish milestones to incentivize participants with partial payouts throughout the trial duration.</p>
                                         </div>
                                     </div>
+                                )}
+
+                                {showReclaimPanel && (
+                                    <div
+                                        className={cn(
+                                            "p-4 rounded-xl border space-y-3",
+                                            reclaim.canReclaim
+                                                ? "border-violet-200 bg-violet-50/80 dark:border-violet-900/50 dark:bg-violet-950/30"
+                                                : "border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40",
+                                        )}
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <ShieldAlert className="h-5 w-5 text-violet-600 shrink-0 mt-0.5" />
+                                            <div className="space-y-1 min-w-0">
+                                                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-900 dark:text-white">
+                                                    Reclaim undistributed funds
+                                                </h4>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                                                    {reclaim.participantCount === 0
+                                                        ? "This trial ended with no enrolled participants. You can recover the full prize pool that was never paid out."
+                                                        : reclaim.screeningDistributed
+                                                            ? "After screening payouts, any ETH still in the pool can be returned to you once the trial has ended."
+                                                            : "Run screening distribution (or wait for automation) before reclaiming the remaining balance."}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {reclaim.canReclaim ? (
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                                {reclaim.participantCount === 0 && parseFloat(reclaim.reclaimableEth) > 0 && (
+                                                    <p className="text-sm font-bold text-violet-900 dark:text-violet-200 font-mono">
+                                                        ~{reclaim.reclaimableEth} ETH
+                                                    </p>
+                                                )}
+                                                <Button
+                                                    onClick={handleReclaimUndistributed}
+                                                    className="bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 sm:ml-auto"
+                                                >
+                                                    Reclaim to wallet
+                                                </Button>
+                                            </div>
+                                        ) : null}
+                                        {reclaimStatus && (
+                                            <div
+                                                className={cn(
+                                                    "p-3 rounded-lg text-xs font-semibold flex items-center gap-2",
+                                                    reclaimStatus.startsWith("Error")
+                                                        ? "bg-red-50 text-red-600"
+                                                        : "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200",
+                                                )}
+                                            >
+                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                                {reclaimStatus}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {reclaim.reclaimFinalized && parseFloat(poolInfo.totalFunded) > 0 && (
+                                    <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 flex items-center gap-2">
+                                        <Check className="h-3.5 w-3.5" />
+                                        Undistributed pool already reclaimed
+                                    </p>
                                 )}
 
                                 <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
