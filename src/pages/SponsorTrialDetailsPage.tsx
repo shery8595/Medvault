@@ -79,6 +79,7 @@ export function SponsorTrialDetailsPage() {
     const [milestones, setMilestones] = useState<any[]>([]);
     const [milestonesLoading, setMilestonesLoading] = useState(true);
     const [milestoneStatus, setMilestoneStatus] = useState<string | null>(null);
+    const [releasingPhaseIndex, setReleasingPhaseIndex] = useState<number | null>(null);
     const [isDefiningMilestones, setIsDefiningMilestones] = useState(false);
     const [anonymousMilestoneState, setAnonymousMilestoneState] = useState<
         Record<string, { participant: string; registered: boolean; progress: number; paid: boolean[] }>
@@ -224,6 +225,7 @@ export function SponsorTrialDetailsPage() {
 
     const handleDistributePartial = async (index: number) => {
         if (!signer || !id) return;
+        setReleasingPhaseIndex(index);
         setMilestoneStatus(`Initiating payout for Phase ${index + 1}...`);
         try {
             await distributePartialMilestone(signer, id, index);
@@ -264,6 +266,8 @@ export function SponsorTrialDetailsPage() {
                 return;
             }
             setMilestoneStatus(`Error: ${err.reason || err.message || "Payout failed"}`);
+        } finally {
+            setReleasingPhaseIndex(null);
         }
     };
 
@@ -601,11 +605,14 @@ export function SponsorTrialDetailsPage() {
                                                     phase.total > 0 &&
                                                     !phase.allPromoted &&
                                                     !phaseReleased;
+                                                const isReleasing = releasingPhaseIndex === idx;
                                                 const buttonLabel = phaseReleased
                                                     ? "Released"
-                                                    : needsPromotion
-                                                        ? "Promote First"
-                                                        : "Release Funds";
+                                                    : isReleasing
+                                                        ? "Releasing…"
+                                                        : needsPromotion
+                                                            ? "Promote First"
+                                                            : "Release Funds";
 
                                                 return (
                                                     <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm">
@@ -633,8 +640,8 @@ export function SponsorTrialDetailsPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            disabled={phaseReleased || needsPromotion || poolInfo.distributed}
-                                                            onClick={() => handleDistributePartial(idx)}
+                                                            disabled={phaseReleased || needsPromotion || isReleasing}
+                                                            onClick={() => void handleDistributePartial(idx)}
                                                             className={cn(
                                                                 "h-8 min-w-[7.5rem] text-[10px] font-bold uppercase disabled:opacity-100",
                                                                 phaseReleased
