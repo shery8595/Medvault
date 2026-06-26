@@ -29,7 +29,7 @@ const steps = [
   {
     n: 2,
     title: "Encrypted profile",
-    detail: "@cofhe/sdk encrypts vitals locally; ciphertext is what hits the RPC.",
+    detail: "@zama-fhe/sdk encrypts vitals locally; ciphertext is what hits the RPC.",
     icon: Lock,
     tint: "violet",
     to: "/patient/medical-vault",
@@ -46,8 +46,8 @@ const steps = [
   },
   {
     n: 4,
-    title: "Results + ZK certify",
-    detail: "Decrypt locally, then generate a Noir proof — HonkVerifier stores trust on-chain.",
+    title: "Results + compliance seal",
+    detail: "Decrypt locally with Zama, then optionally generate a Noir attestation — HonkVerifier records the seal on-chain.",
     icon: Fingerprint,
     tint: "violet",
     to: "/patient/results",

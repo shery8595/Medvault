@@ -4,6 +4,7 @@ import { Callout } from "../../components/docs/Callout";
 import { DocsPageHeaderForRoute } from "../../components/docs/DocsPageHeader";
 
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Coins, ShieldCheck, TrendingUp, Landmark, ArrowRight, Wallet } from "lucide-react";
 
 const severityStyles: Record<string, { bg: string; text: string }> = {
@@ -37,17 +38,28 @@ export function PrivateStakingDoc() {
                     </div>
                     <div className="p-8 rounded-[32px] bg-gradient-to-br from-slate-800 to-slate-950 shadow-xl shadow-black/20">
                         <Landmark className="w-10 h-10 mb-4 opacity-80" />
-                        <h3 className="text-xl font-black mb-2">Instant Unstake</h3>
-                        <p className="text-sm opacity-90 font-medium">Withdraw your ETH at any time. The contract handles the redemption from Aave and re-encryption back to your wallet.</p>
+                        <h3 className="text-xl font-black mb-2">Two unstake paths</h3>
+                        <p className="text-sm opacity-90 font-medium">Private unstake returns encrypted stake to your cETH balance. Public unstake unwinds Aave (amounts visible on-chain).</p>
                     </div>
                 </div>
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>I. Staking Architecture</h2>
+                <h2>I. Staking architecture (dual paths)</h2>
                 <p>
-                    The staking system operates as a gateway between the <strong>MedVault Confidential Enclave</strong> and the <strong>Aave V3 Liquidity Pool</strong>. Because Aave requires public <code>uint256</code> values for accounting, MedVault acts as an "accumulator" that pools private intents and manages the public interactions.
+                    <code>StakingManager</code> exposes two deliberately separated paths. The <strong>private path</strong> keeps
+                    value inside MedVault&apos;s encrypted cETH ledger. The <strong>public path</strong> deposits WETH into
+                    Aave V3 and unwinds through the gateway — amounts are visible via standard ERC-20 / gateway events.
                 </p>
+                <Callout type="info" title="Default private design (Option A)">
+                    Private staking withdrawal means <strong>return to confidential MedVault balance</strong>, not an Aave
+                    exit. Use <code>stakeFromConfidential</code> → <code>requestPrivateUnstake</code> →{" "}
+                    <code>completePrivateUnstake</code>. See{" "}
+                    <Link to="/docs/private-withdrawals" className="font-semibold text-[#00685f] hover:underline">
+                        Private withdrawals
+                    </Link>{" "}
+                    for encrypted amount staging.
+                </Callout>
 
                 <div className="not-prose my-10 p-8 rounded-3xl bg-slate-50 border border-slate-200">
                     <div className="not-prose bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
@@ -66,11 +78,13 @@ export function PrivateStakingDoc() {
 
                 <h2>II. The Staking Manager</h2>
                 <p>
-                    The <code>StakingManager.sol</code> contract is the primary entry point. It handles two types of staking:
+                    The <code>StakingManager.sol</code> contract handles three staking modes:
                 </p>
                 <ul>
-                    <li><strong>Direct Staking:</strong> Users send public ETH from their wallet.</li>
-                    <li><strong>Confidential Staking:</strong> Users stake rewards directly from their <code>ConfidentialETH</code> balance.</li>
+                    <li><strong>Public stake (<code>stake</code>):</strong> Send ETH from wallet → Aave V3 via WETH gateway. Encrypted stake total tracked in gwei units.</li>
+                    <li><strong>Confidential stake (<code>stakeFromConfidential</code>):</strong> Move encrypted cETH units into encrypted stake ledger — no Aave deposit.</li>
+                    <li><strong>Private unstake (<code>requestPrivateUnstake</code>):</strong> Release encrypted stake back to cETH via <code>transferEncrypted</code>.</li>
+                    <li><strong>Public unstake (<code>requestPublicUnstake</code>):</strong> Explicit Aave unwind; aliases <code>requestUnstake</code> / <code>completeUnstake</code> for back-compat.</li>
                 </ul>
 
                 <Callout type="info" title="Precision &amp; e-Types">
@@ -81,29 +95,28 @@ export function PrivateStakingDoc() {
                 <CodeBlock
                     filename="StakingManager.sol"
                     language="solidity"
-                    code={`// SPDX-License-Identifier: BSD-3-Clause-Clear
-pragma solidity ^0.8.27;
+                    code={`function stakeFromConfidential(
+    externalEuint64 encryptedUnits,
+    bytes calldata inputProof
+) external {
+    euint64 units = FHE.fromExternal(encryptedUnits, inputProof);
+    FHE.allow(units, address(cETH));
+    cETH.transferEncrypted(msg.sender, address(this), units);
+    // ... update _encryptedTotalStaked
+}
 
-import "@fhenixprotocol/cofhe-contracts/FHE.sol";
+function requestPrivateUnstake(
+    externalEuint64 encryptedUnits,
+    bytes calldata inputProof
+) external {
+    // FHE.ge(encStaked, units) → sufficientHandle (public decrypt only)
+}
 
-contract StakingManager {
-    // Encrypted balance mapping (User => euint64)
-    mapping(address => euint64) private _stakedBalances;
-
-    /**
-     * @notice Stakes rewards directly from the user's confidential balance
-     * @param amountUnits The amount in micro-ETH units to stake
-     */
-    function stakeFromConfidential(euint64 amountUnits) external {
-        // 1. Authorize transfer from ConfidentialETH
-        // 2. Wrap ETH into WETH
-        // 3. Supply WETH to Aave V3 Pool
-        // 4. Update the patient's encrypted stake record
-        euint64 current = _stakedBalances[msg.sender];
-        _stakedBalances[msg.sender] = FHE.add(current, amountUnits);
-        
-        FHE.allow(_stakedBalances[msg.sender], msg.sender);
-    }
+function completePrivateUnstake(
+    bytes calldata sufficientCleartexts,
+    bytes calldata sufficientProof
+) external {
+    // subtract stake, cETH.transferEncrypted back to patient
 }`}
                 />
 
@@ -208,7 +221,7 @@ contract StakingManager {
                     {[
                         { title: "Aave Protocol Risk", desc: "Yield generation depends on Aave V3's continued operation and solvency. In the unlikely event of an Aave pool exploit or WETH liquidity crisis, staked funds could be partially or fully lost.", severity: "Medium" },
                         { title: "Smart Contract Risk", desc: "The StakingManager, ConfidentialETH, and their interactions with Aave introduce additional smart contract surface area. Each contract has been tested with 100+ test cases, but formal verification has not been completed.", severity: "Medium" },
-                        { title: "FHE Liveness Dependency", desc: "If the Fhenix coprocessor experiences downtime, encrypted staking operations (deposits, withdrawals) will be blocked. Public ETH operations remain unaffected.", severity: "Low" },
+                        { title: "FHE Liveness Dependency", desc: "If the Zama FHE coprocessor experiences downtime, encrypted staking operations (deposits, withdrawals) will be blocked. Public ETH operations remain unaffected.", severity: "Low" },
                         { title: "Scaling Truncation", desc: "The 1e12 scaling factor means very small yield amounts may be lost to truncation. Over long staking periods with small balances, this can result in slightly lower effective APY than quoted.", severity: "Low" },
                     ].map(risk => {
                         const styles = severityStyles[risk.severity];

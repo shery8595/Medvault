@@ -5,16 +5,16 @@ import { cn } from "../../lib/utils";
 
 const TICKER_ITEMS = [
   "FHE MATCHING",
-  "CoFHE",
+  "Zama FHE",
   "SEMAPHORE",
   "NOIR / HONK",
   "MEDVAULT",
-  "ARBITRUM SEPOLIA",
+  "Ethereum Sepolia",
   "MCP",
   "SUBGRAPH",
   "PRIVY",
   "CONSENT ACL",
-  "ZK ELIGIBILITY",
+  "NOIR ATTESTATION",
   "CHAINLINK",
 ] as const;
 
@@ -119,7 +119,7 @@ export function LandingClosingSection() {
             Put <span className="text-[#6bd8cb]">privacy</span> at the center of trial matching
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
-            FHE-friendly vitals, anonymous eligibility proofs, and sponsor workflows on Arbitrum Sepolia — patients stay in
+            FHE-friendly vitals, anonymous Semaphore apply, optional Noir compliance seals, and sponsor workflows on Ethereum Sepolia — patients stay in
             control; builders get docs, subgraph, and a local MCP layer.
           </p>
 
@@ -222,11 +222,11 @@ export function LandingClosingSection() {
       <div className="border-t border-[#6bd8cb]/10 bg-[#020605]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-[11px] text-slate-500 sm:flex-row sm:px-8">
           <p className="m-0 font-mono tracking-wide">
-            © {new Date().getFullYear()} MedVault · Arbitrum Sepolia testnet
+            © {new Date().getFullYear()} MedVault · Ethereum Sepolia testnet
           </p>
           <p className="m-0 flex items-center gap-2 font-mono uppercase tracking-[0.15em] text-slate-500">
             <span className="text-[#6bd8cb]/80">Powered by</span>
-            <span className="text-slate-400">Fhenix CoFHE</span>
+            <span className="text-slate-400">Zama FHE</span>
             <span className="text-slate-600" aria-hidden>
               ·
             </span>

@@ -1,5 +1,10 @@
 import { useMatches } from "../hooks/useMatches";
 import { useWeb3 } from "../lib/Web3Context";
+import {
+  downloadAttestationAuditBundle,
+  fetchAttestationAuditBundle,
+} from "../lib/attestationExport";
+import { parseFieldElement, parseTrialId } from "../lib/field";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -12,6 +17,7 @@ import {
   Loader2,
   ShieldCheck,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { cn } from "../lib/utils";
@@ -62,6 +68,7 @@ function MatchRow({
   trialId: string;
   onSelect: (match: Match) => void;
 }) {
+  const { provider, chainId } = useWeb3();
   const { certified, eligible, fheCommitted } = useAnonymousCertification(
     match.isAnonymous ? match.nullifier : undefined,
     match.isAnonymous ? trialId : undefined,
@@ -76,6 +83,21 @@ function MatchRow({
 
   const fheLabel = fheMatchLabel(match);
   const showFheCommitted = match.isAnonymous && (fheCommitted || match.fhePropensityCommittedAt);
+
+  const handleExportAudit = async () => {
+    if (!provider || !match.nullifier) return;
+    try {
+      const bundle = await fetchAttestationAuditBundle(
+        provider,
+        parseTrialId(trialId),
+        parseFieldElement(match.nullifier),
+        chainId ?? undefined
+      );
+      if (bundle) downloadAttestationAuditBundle(bundle);
+    } catch (err) {
+      console.error("Attestation export failed:", err);
+    }
+  };
 
   return (
     <div
@@ -110,7 +132,18 @@ function MatchRow({
             {match.isAnonymous ? "Anonymous" : "Verified"}
           </p>
           {certified ? (
-            <ZkCertifyBadge variant="certified" size="sm" className="mt-1" eligible={eligible} />
+            <div className="mt-1 flex flex-col gap-0.5">
+              <ZkCertifyBadge variant="certified" size="sm" eligible={eligible} />
+              <span className="text-[10px] font-medium text-teal-700">Zama match sealed</span>
+              <button
+                type="button"
+                onClick={handleExportAudit}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 hover:text-teal-800"
+              >
+                <Download className="h-3 w-3" />
+                Export audit bundle
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

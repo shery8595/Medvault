@@ -14,6 +14,11 @@
           "internalType": "uint256",
           "name": "_trialId",
           "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_permitRecipient",
+          "type": "address"
         }
       ],
       "name": "cancelStagedAnonymousEligibility",
@@ -69,12 +74,12 @@
         },
         {
           "internalType": "uint256",
-          "name": "_trialId",
+          "name": "_nullifier",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "_nullifier",
+          "name": "_trialId",
           "type": "uint256"
         },
         {
@@ -83,17 +88,27 @@
           "type": "address"
         },
         {
-          "internalType": "bool",
-          "name": "_decryptedEligible",
-          "type": "bool"
+          "internalType": "address",
+          "name": "_consentWallet",
+          "type": "address"
         },
         {
           "internalType": "bytes",
-          "name": "_decryptSig",
+          "name": "_proof",
           "type": "bytes"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_publicInputs",
+          "type": "bytes32[]"
+        },
+        {
+          "internalType": "bool",
+          "name": "_eligible",
+          "type": "bool"
         }
       ],
-      "name": "finalizeAnonymousEligibility",
+      "name": "finalizeAnonymousEligibilityWithProof",
       "outputs": [
         {
           "internalType": "ebool",

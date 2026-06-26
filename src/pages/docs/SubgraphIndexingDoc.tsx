@@ -8,7 +8,7 @@ import { Database, Zap, GitMerge, RefreshCcw } from "lucide-react";
 
 const indexingFlowChart = `
 graph LR
-    A[Arbitrum Sepolia Node] -->|Emits Event| B[Graph Node Listener]
+    A[Ethereum Sepolia Node] -->|Emits Event| B[Graph Node Listener]
     B -->|Triggers Handler| C[AssemblyScript Mapping]
     C -->|Creates / Updates Entity| D[(PostgreSQL Store)]
     D -->|Serves| E[GraphQL API]
@@ -24,6 +24,7 @@ const events = [
   { contract: "TrialManager", event: "TrialHalted", fields: "trialId", entity: "Trial (update active=false)" },
   { contract: "TrialManager", event: "TrialActivated", fields: "trialId", entity: "Trial (update active=true)" },
   { contract: "EligibilityEng", event: "ApplicationStatusUpdated", fields: "patientAddress, trialId, status", entity: "EligibilityResult" },
+  { contract: "EligibilityEng", event: "EligibilityProofVerified", fields: "nullifier, trialId, resultHash, fheStageHash, criteriaSchemaHash, eligible", entity: "AnonymousSubmission (attestation fields)" },
   { contract: "SponsorRegistry", event: "SponsorAdded", fields: "sponsor, name", entity: "Sponsor" },
   { contract: "SponsorRegistry", event: "SponsorRemoved", fields: "sponsor", entity: "Sponsor (delete)" },
 ];
@@ -83,6 +84,12 @@ export function SubgraphIndexingDoc() {
 
         <Callout type="info" title="Events as Structural Pointers in FHE">
           Think of blockchain events in MedVault not as payloads carrying data, but as <em>pointer notifications</em>. A <code>TrialCreated</code> event tells The Graph: "A trial with ID 42 was created by address 0xABC." The Graph stores this relation. When the user later applies, the FHE engine independently reads the encrypted requirements from the contract state — never from the event log.
+        </Callout>
+
+        <Callout type="info" title="Noir attestation indexing (v0.1.1+)">
+          <code>EligibilityProofVerified</code> updates <code>AnonymousSubmission</code> with{" "}
+          <code>attestationResultHash</code>, <code>attestationFheStageHash</code>, and{" "}
+          <code>attestationCriteriaSchemaHash</code> — sponsor-audit metadata only, no PHI or wallet linkage.
         </Callout>
 
         <hr className="my-12 border-slate-200" />

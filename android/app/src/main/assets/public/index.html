@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>MedVault | Privacy-First Clinical Trials</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Warm cache for dashboard / docs PNGs (JS also preloads after bundle loads) -->
+    <link rel="preload" as="image" type="image/png" href="./images/med_vault_component.png" fetchpriority="low">
+    <link rel="preload" as="image" type="image/png" href="./images/component_dashboard.png" fetchpriority="low">
+    <link rel="preload" as="image" type="image/png" href="./images/sponsor_dashboard.png" fetchpriority="low">
+    <style>
+        :root {
+            background-color: #f7f9fb;
+        }
+    </style>
+    <script>
+        // --- ADVANCED FHEVM PRODUCTION POLYFILLS ---
+        window.LOG_DEBUG = (msg, data) => {
+            console.log(`[MEDVAULT-DEBUG] ${msg}`, data || '');
+        };
+
+        // 1. Core Globals
+        window.global = window;
+        window.process = {
+            env: { NODE_ENV: 'production' },
+            nextTick: (cb) => setTimeout(cb, 0),
+            browser: true,
+            cwd: () => '/'
+        };
+
+        // 2. Class-based placeholders to prevent "prototype of undefined" crashes
+        // These are overwritten by polyfills.ts once the bundle loads.
+        if (!window.EventEmitter) {
+            function EventEmitter() {}
+            EventEmitter.prototype = {};
+            window.EventEmitter = EventEmitter;
+        }
+        if (!window.Stream) {
+            function Stream() {}
+            Stream.prototype = {};
+            window.Stream = Stream;
+        }
+        window.Buffer = window.Buffer || { isBuffer: () => false };
+
+        // 3. Error logging (no full-screen overlay — avoids looking like a total app failure)
+        window.addEventListener('error', (event) => {
+            if (event.message && event.message.includes('redefine property: ethereum')) {
+                console.warn('[MEDVAULT] Ignored wallet extension inject error:', event.message);
+                return;
+            }
+            console.error('[MEDVAULT] Uncaught error:', event.message, event.filename + ':' + event.lineno, event.error || '');
+        });
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const msg = reason instanceof Error ? reason.message : String(reason);
+            console.error('[MEDVAULT] Unhandled promise rejection:', msg, reason);
+        });
+    </script>
+  <script type="module" crossorigin src="./assets/index-BVRIVDa-.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/d3-vendor-DZmnY0jj.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-BhNMfnoa.css">
+</head>
+
+<body class="min-h-screen antialiased font-sans">
+    <div id="root"></div>
+</body>
+
+</html>

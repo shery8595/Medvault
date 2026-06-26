@@ -74,7 +74,7 @@ export function TechnologyPage() {
                 </div>
                 <h2 className="text-3xl lg:text-4xl font-bold mb-6 tracking-tight text-slate-900">Fully Homomorphic Encryption</h2>
                 <p className="text-lg text-slate-600 leading-relaxed max-w-xl mb-8">
-                  Unlike traditional encryption where data must be decrypted to be processed, FHE allows us to perform mathematical operations directly on the ciphertext. MedVault utilizes <span className="text-slate-900 font-semibold">Fhenix FHE</span>, the industry-standard implementation of FHE.
+                  Unlike traditional encryption where data must be decrypted to be processed, FHE allows us to perform mathematical operations directly on the ciphertext. MedVault utilizes <span className="text-slate-900 font-semibold">Zama FHE</span>, the industry-standard implementation of FHE.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   {["fhEVM Integration", "Programmable Bootstrapping", "FHE Gates", "Encrypted Booleans", "Bivariate Logic", "Provable Integrity"].map((tag) => (
@@ -124,7 +124,7 @@ export function TechnologyPage() {
               </p>
             </motion.div>
 
-            {/* Fhenix Stack Section */}
+            {/* Zama Stack Section */}
             <motion.div 
               {...fadeUp(0.3)} 
               className="md:col-span-12 rounded-[2.5rem] p-10 border border-slate-200 bg-white flex flex-col items-center text-center lg:text-left lg:flex-row gap-12"
@@ -133,9 +133,9 @@ export function TechnologyPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white mb-8 mx-auto lg:mx-0">
                   <CircuitBoard className="h-6 w-6" />
                 </div>
-                <h3 className="text-3xl font-bold mb-4 tracking-tight text-slate-900">Powered by Fhenix's fhEVM</h3>
+                <h3 className="text-3xl font-bold mb-4 tracking-tight text-slate-900">Powered by Zama's fhEVM</h3>
                 <p className="text-slate-600 leading-relaxed text-lg max-w-2xl">
-                  MedVault runs on Fhenix's fhEVM, bringing on-chain confidentiality to Ethereum. Smart contracts can now store and process private states using encrypted types like <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">ebool</code>, <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">euint32</code>, and <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">eaddress</code>, ensuring that only the final authorized result is ever visible.
+                  MedVault runs on Zama's fhEVM, bringing on-chain confidentiality to Ethereum. Smart contracts can now store and process private states using encrypted types like <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">ebool</code>, <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">euint32</code>, and <code className="text-accent bg-accent/10 px-1.5 py-0.5 rounded">eaddress</code>, ensuring that only the final authorized result is ever visible.
                 </p>
               </div>
               <div className="flex-shrink-0 grid grid-cols-2 gap-4">

@@ -1,0 +1,3 @@
+# Copy to android/local.properties after installing the Android SDK (see docs/ANDROID_APK.md).
+# Windows example (replace YOUR_USERNAME):
+# sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk

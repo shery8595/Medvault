@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { ARBITRUM_SEPOLIA_CHAIN_ID } from "@medvault/core";
+import { ETHEREUM_SEPOLIA_CHAIN_ID } from "@medvault/core";
 import { resolveSdkContext, type SdkRuntimeContext } from "./context.js";
 import { createProtocolModule } from "./modules/protocol.js";
 import { createRelayerModule } from "./modules/relayer.js";
@@ -31,7 +31,7 @@ export class MedVaultSDK {
   }
 
   get chainId(): bigint {
-    return ARBITRUM_SEPOLIA_CHAIN_ID;
+    return ETHEREUM_SEPOLIA_CHAIN_ID;
   }
 
   async getSignerAddress(): Promise<string | null> {

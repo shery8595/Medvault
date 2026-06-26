@@ -99,7 +99,7 @@ export function WalletSendCard() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">Send ETH</h2>
-            <p className="text-xs text-slate-500">Arbitrum Sepolia · from your app wallet</p>
+            <p className="text-xs text-slate-500">Ethereum Sepolia · from your app wallet</p>
           </div>
         </div>
 

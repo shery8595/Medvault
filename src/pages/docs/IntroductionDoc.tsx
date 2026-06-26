@@ -131,7 +131,7 @@ const ArchitectureFlowDiagram = () => {
             label: "CLIENT LAYER",
             color: "blue",
             nodes: [
-                { icon: <Users className="w-4 h-4" />, name: "Patient Browser", detail: "@cofhe/sdk SDK" },
+                { icon: <Users className="w-4 h-4" />, name: "Patient Browser", detail: "@zama-fhe/sdk SDK" },
                 { icon: <Building2 className="w-4 h-4" />, name: "Sponsor Portal", detail: "React DApp" },
             ]
         },
@@ -252,7 +252,7 @@ const ArchitectureFlowDiagram = () => {
 const EncryptionPipelineDiagram = () => {
     const stages = [
         { label: "Plaintext", value: "age = 42", bg: "bg-rose-500", iconRing: "bg-rose-100", iconText: "text-rose-600", desc: "Raw patient data in browser memory", icon: <Heart className="w-4 h-4" /> },
-        { label: "FHE Encrypt", value: "@cofhe/sdk.encrypt32(42)", bg: "bg-amber-500", iconRing: "bg-amber-100", iconText: "text-amber-600", desc: "Client-side encryption via Fhenix SDK", icon: <Lock className="w-4 h-4" /> },
+        { label: "FHE Encrypt", value: "@zama-fhe/sdk.encrypt32(42)", bg: "bg-amber-500", iconRing: "bg-amber-100", iconText: "text-amber-600", desc: "Client-side encryption via Zama SDK", icon: <Lock className="w-4 h-4" /> },
         { label: "Ciphertext", value: "0x7f3a...b2c1", bg: "bg-purple-500", iconRing: "bg-purple-100", iconText: "text-purple-600", desc: "euint32 handle stored on-chain", icon: <Database className="w-4 h-4" /> },
         { label: "FHE Compute", value: "FHE.ge(age, minAge)", bg: "bg-blue-500", iconRing: "bg-blue-100", iconText: "text-blue-600", desc: "Homomorphic comparison in coprocessor", icon: <Cpu className="w-4 h-4" /> },
         { label: "Encrypted Result", value: "ebool → euint32 score", bg: "bg-blue-500", iconRing: "bg-blue-100", iconText: "text-blue-600", desc: "Score accumulated via CMUX", icon: <Activity className="w-4 h-4" /> },
@@ -362,7 +362,7 @@ const ContractInteractionDiagram = () => {
 // ─── FHE State Machine ───
 const FheStateMachine = () => {
     const states = [
-        { step: "01", title: "Client Encryption", desc: "`@cofhe/sdk` encrypts health metrics entirely in the browser using FHE.", icon: <Users className="w-5 h-5" />, color: "blue" as const, iconRing: "bg-blue-100", iconGlyph: "text-blue-600" },
+        { step: "01", title: "Client Encryption", desc: "`@zama-fhe/sdk` encrypts health metrics entirely in the browser using FHE.", icon: <Users className="w-5 h-5" />, color: "blue" as const, iconRing: "bg-blue-100", iconGlyph: "text-blue-600" },
         { step: "02", title: "On-Chain Vault", desc: "`MedVaultRegistry` stores ciphertext handles in encrypted contract state.", icon: <Database className="w-5 h-5" />, color: "purple" as const, iconRing: "bg-purple-100", iconGlyph: "text-purple-600" },
         { step: "03", title: "FHEVM Engine", desc: "`EligibilityEngine` runs homomorphic comparisons without decrypting inputs.", icon: <Lock className="w-5 h-5" />, color: "teal" as const, iconRing: "bg-teal-100", iconGlyph: "text-teal-600", highlight: true },
         { step: "04", title: "EIP-712 Decrypt", desc: "Only the patient can sign a viewing key to decrypt their match score.", icon: <Key className="w-5 h-5" />, color: "amber" as const, iconRing: "bg-white/20", iconGlyph: "text-white" },
@@ -448,8 +448,8 @@ export function IntroductionDoc() {
                                 </h1>
                                 <p className="text-sm md:text-base text-slate-600 max-w-xl leading-relaxed m-0">
                                     FHE-powered clinical trial matching on{" "}
-                                    <strong className="text-slate-900">Arbitrum Sepolia</strong> with{" "}
-                                    <strong className="text-slate-900">CoFHE</strong> — homomorphic eligibility on
+                                    <strong className="text-slate-900">Ethereum Sepolia</strong> with{" "}
+                                    <strong className="text-slate-900">Zama FHE</strong> — homomorphic eligibility on
                                     ciphertexts, Semaphore identity, and consent-gated access.
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-5">
@@ -470,7 +470,7 @@ export function IntroductionDoc() {
                                         to="/docs/testing"
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 text-xs font-bold border border-emerald-200 hover:bg-emerald-100 transition-colors"
                                     >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Tests (191+)
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Tests (265)
                                     </Link>
                                     <Link
                                         to="/docs/security-model"
@@ -508,7 +508,7 @@ export function IntroductionDoc() {
                         icon={<FileCode2 className="w-5 h-5" />}
                         color="teal"
                     />
-                    <AnimatedStat value="191+" label="Hardhat tests" icon={<CheckCircle2 className="w-5 h-5" />} color="emerald" />
+                    <AnimatedStat value="265" label="Hardhat tests" icon={<CheckCircle2 className="w-5 h-5" />} color="emerald" />
                     <AnimatedStat value="3" label="DeFi Protocols" icon={<TrendingUp className="w-5 h-5" />} color="purple" />
                     <AnimatedStat value="0" label="Data Exposed" icon={<Shield className="w-5 h-5" />} color="blue" />
                     <AnimatedStat value="4" label="FHE Type System" icon={<Lock className="w-5 h-5" />} color="amber" />
@@ -584,10 +584,10 @@ export function IntroductionDoc() {
 
                 <div className="not-prose space-y-4 my-10">
                     {[
-                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Fhenix @cofhe/sdk SDK encrypts every value into FHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
+                        { step: "1", title: "Patient Encrypts Health Data in Browser", desc: "The patient enters their medical metrics (Age, Blood Pressure, HbA1c, Weight) into the MedVault dashboard. The Zama @zama-fhe/sdk SDK encrypts every value into FHE ciphertexts entirely within the browser. The original plaintext values are immediately discarded from memory. Only encrypted ciphertext blobs are transmitted to the blockchain.", icon: <Lock className="w-6 h-6" />, color: "blue" },
                         { step: "2", title: "Sponsor Publishes Encrypted Trial Criteria", desc: "A verified pharmaceutical sponsor defines their trial eligibility criteria (e.g., Age 18-65, HbA1c < 7.0). These requirements are also encrypted as euint32 ciphertext values and stored on-chain in the TrialManager contract. The trial's structural metadata (name, phase, location) remains public.", icon: <Building2 className="w-6 h-6" />, color: "purple" },
                         { step: "3", title: "EligibilityEngine Computes on Encrypted Data", desc: "The EligibilityEngine smart contract performs FHE homomorphic operations (FHE.ge(), FHE.le(), FHE.cmux()) to compare encrypted patient values against encrypted trial bounds. The result is an encrypted eligibility score (0-100) stored on-chain. The network computes the match without decrypting any inputs.", icon: <Activity className="w-6 h-6" />, color: "teal" },
-                        { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Fhenix KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
+                        { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Zama KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
                         { step: "5", title: "Optional Consent & Enrollment", desc: "If the score is 100 (perfect match), the patient may optionally grant identity access to the sponsor through ConsentManager. Upon approval, the patient is registered in the SponsorIncentiveVault reward pool. Chainlink Automation handles milestone payouts. The patient earns yield via Aave V3.", icon: <CheckCircle2 className="w-6 h-6" />, color: "emerald" },
                     ].map((s, i) => (
                         <motion.div
@@ -626,7 +626,7 @@ export function IntroductionDoc() {
                 <p>
                     MedVault&apos;s production contracts form a dependency graph with strictly scoped cross-contract
                     interactions. The diagram below shows primary data flow paths between core contracts on{" "}
-                    <strong>Arbitrum Sepolia</strong>.
+                    <strong>Ethereum Sepolia</strong>.
                 </p>
 
                 <ContractInteractionDiagram />
@@ -662,7 +662,7 @@ export function IntroductionDoc() {
                                     { dim: "Patient Online Requirement", fhe: "Upload once, go offline forever. Engine evaluates asynchronously.", zkp: "Must be online to generate a proof for every trial application.", win: "fhe" },
                                     { dim: "Trial Parameter Updates", fhe: "Sponsor can update criteria without invalidating patient data.", zkp: "Patient's proof invalidates immediately on any criteria change.", win: "fhe" },
                                     { dim: "Multi-Trial Matching", fhe: "Single encrypted profile matched against unlimited trials.", zkp: "Separate proof generation required per trial. O(n) computation.", win: "fhe" },
-                                    { dim: "Computation Location", fhe: "On-chain in the Fhenix coprocessor. Fully trustless.", zkp: "Client-side. Requires trusted prover setup.", win: "fhe" },
+                                    { dim: "Computation Location", fhe: "On-chain in the Zama FHE coprocessor. Fully trustless.", zkp: "Client-side. Requires trusted prover setup.", win: "fhe" },
                                     { dim: "Data Granularity", fhe: "Exact encrypted values. Complex range queries supported.", zkp: "Only proves boolean statements. No partial scores.", win: "fhe" },
                                     { dim: "Gas Cost", fhe: "Higher per-operation. Optimized via batched CMUX compute.", zkp: "Lower per-proof. But O(n) proofs needed per patient.", win: "draw" },
                                     { dim: "Proof Size", fhe: "Ciphertexts are larger (~256 bytes per euint32).", zkp: "Proofs are compact (~128-256 bytes).", win: "zkp" },
@@ -703,8 +703,8 @@ export function IntroductionDoc() {
                 <div className="not-prose grid grid-cols-1 md:grid-cols-3 gap-6 my-10">
                     {[
                         { icon: <Activity className="w-8 h-8" />, title: "Encrypted Matching Engine", desc: "The EligibilityEngine computes weighted eligibility scores across 3+ health dimensions using FHE.cmux() conditional multiplexing — without decrypting any patient data. Scores accumulate entirely in ciphertext space.", gradient: "from-blue-500 to-emerald-500" },
-                        { icon: <Coins className="w-8 h-8" />, title: "Private Yield Generation", desc: "Patient trial rewards are wrapped in ConfidentialETH (encrypted balances), then staked into Aave V3 lending pools. Yield accrues on private assets — a novel DeFi × healthcare primitive.", gradient: "from-purple-500 to-fuchsia-500" },
-                        { icon: <Bot className="w-8 h-8" />, title: "Automated Compliance Trail", desc: "Every sensitive operation is logged to DataAccessLog with anonymized keccak256 hashes. MedVaultAutomation uses Chainlink Keepers for trustless milestone payouts. Full HIPAA/GDPR-compatible audit trail.", gradient: "from-blue-500 to-cyan-500" },
+                        { icon: <Coins className="w-8 h-8" />, title: "Private Yield Generation", desc: "Trial rewards live in ConfidentialETH (encrypted balances). Stake confidentially inside MedVault or use the public Aave path; private unstake returns to encrypted cETH without on-chain amount leaks from Aave events.", gradient: "from-purple-500 to-fuchsia-500" },
+                        { icon: <Bot className="w-8 h-8" />, title: "Automated Compliance Trail", desc: "Every sensitive operation is logged to DataAccessLog with anonymized keccak256 hashes. MedVaultAutomation uses Chainlink Keepers for trustless milestone payouts. Compliance-oriented audit trail — not a claim of HIPAA/GDPR certification.", gradient: "from-blue-500 to-cyan-500" },
                     ].map(inn => (
                         <motion.div
                             key={inn.title}
@@ -736,8 +736,8 @@ export function IntroductionDoc() {
 
                 <div className="not-prose grid grid-cols-1 md:grid-cols-2 gap-6 my-10">
                     {[
-                        { icon: <Heart className="w-6 h-6" />, title: "Patient", color: "teal", permissions: ["Encrypt & store health metrics on-chain", "Apply to unlimited clinical trials", "Decrypt their own eligibility scores (EIP-712)", "Grant/revoke identity access to sponsors", "Stake rewards in private yield vaults"] },
-                        { icon: <Building2 className="w-6 h-6" />, title: "Sponsor", color: "purple", permissions: ["Create trials with encrypted criteria (after KYC)", "View anonymized match counts via Subgraph", "Accept/reject matched patients", "Fund trial incentive escrow pools", "Access consented patient profiles"] },
+                        { icon: <Heart className="w-6 h-6" />, title: "Patient", color: "teal", permissions: ["Encrypt & store health metrics on-chain", "Apply to unlimited clinical trials", "Decrypt their own eligibility scores (EIP-712)", "Grant/revoke identity access to sponsors", "Withdraw or stake rewards with encrypted amount staging", "Optional stealth-address public exit via relayer"] },
+                        { icon: <Building2 className="w-6 h-6" />, title: "Sponsor", color: "purple", permissions: ["Create trials with public eligibility bounds (after KYC on mainnet; open on Sepolia demo)", "View anonymized match counts via Subgraph", "Accept/reject matched patients", "Fund trial incentive escrow pools", "Access consented patient profiles only"] },
                         { icon: <ShieldCheck className="w-6 h-6" />, title: "Protocol Admin", color: "amber", permissions: ["Add/remove verified sponsors (multisig)", "Emergency halt trials via SponsorRegistry", "Authorize contracts in DataAccessLog", "Manage Chainlink Automation upkeep"] },
                         { icon: <Bot className="w-6 h-6" />, title: "Chainlink Keeper", color: "blue", permissions: ["Trigger checkUpkeep() on MedVaultAutomation", "Execute performUpkeep() for milestone payouts", "Automate trial deadline enforcement", "No access to encrypted data"] },
                     ].map(role => (
@@ -777,13 +777,16 @@ export function IntroductionDoc() {
                 </div>
 
                 <Callout type="warning" title="Testnet environment">
-                    The app targets <strong>Arbitrum Sepolia</strong> (chainId 421614) with Privy embedded wallets. FHE
-                    operations use the Fhenix <strong>CoFHE</strong> coprocessor and can take longer to confirm than plain
-                    transfers—plan for variable latency during heavy FHE calls. Contract behavior is covered by{" "}
-                    <Link to="/docs/testing" className="font-semibold text-[#00685f] hover:underline">
-                        191+ Hardhat tests
-                    </Link>{" "}
-                    with local CoFHE mocks.
+                    The app targets <strong>Ethereum Sepolia</strong> (chainId 11155111) with Privy embedded wallets. FHE operations use the Zama testnet relayer and can take longer than plain transfers. Contract behavior is covered by 260+ Hardhat tests with local FHE mocks.
+                </Callout>
+
+                <Callout type="info" title="Known privacy limits (honest disclosure)">
+                    <ul className="text-sm m-0 pl-4 space-y-1">
+                        <li><strong>Registration:</strong> direct <code>registerPatient</code> links the patient wallet to a Semaphore commitment in the same transaction.</li>
+                        <li><strong>Trial criteria:</strong> bounds in <code>TrialManager</code> are public on-chain; patient health fields stay encrypted.</li>
+                        <li><strong>Transaction layer:</strong> native ETH deposits, stakes, and public exits remain visible at settlement even when contract events omit amounts.</li>
+                        <li><strong>Compliance:</strong> MedVault is designed with health-privacy principles in mind; it is not certified HIPAA- or GDPR-compliant.</li>
+                    </ul>
                 </Callout>
 
                 <Divider />
@@ -798,12 +801,12 @@ export function IntroductionDoc() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 mb-8">
                     {[
-                        { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Fhenix integration deep-dive, and guide to FHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
+                        { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Zama integration deep-dive, and guide to FHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
                         { id: "S2", title: "Smart Contracts", desc: `Reference for ${DOCS_CONTRACT_COUNT} production contracts, EligibilityEngine scoring mechanics, Chainlink Automation, and consent-gated decryption.`, color: "purple", links: [{ label: "Engine", href: "/docs/engine" }, { label: "Contracts", href: "/docs/contracts" }, { label: "Sponsors", href: "/docs/sponsor-system" }, { label: "Chainlink Automation", href: "/docs/automation" }] },
-                        { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with @cofhe/sdk, subgraph indexing, React architecture, Semaphore / relayer / faucet tooling.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }, { label: "Identity & tooling", href: "/docs/identity-privacy" }] },
+                        { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with @zama-fhe/sdk, subgraph indexing, React architecture, Semaphore / relayer / faucet tooling.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }, { label: "Identity & tooling", href: "/docs/identity-privacy" }] },
                         { id: "S4", title: "Operations", desc: "User workflows, private yield staking, deployment, and release notes.", color: "amber", links: [{ label: "Workflows", href: "/docs/guides" }, { label: "Staking", href: "/docs/staking" }, { label: "Deploy", href: "/docs/deployment" }, { label: "Changelog", href: "/docs/changelog" }] },
                         { id: "S7", title: "MCP & SDK", desc: "TypeScript SDK for integrators plus local MCP for Cursor, Codex, and sponsor automation — not hosted in production.", color: "cyan", links: [{ label: "SDK", href: "/docs/mcp/sdk" }, { label: "MCP", href: "/docs/mcp" }, { label: "Setup", href: "/docs/mcp/setup" }, { label: "Tools", href: "/docs/mcp/tools" }] },
-                        { id: "S6", title: "Tests & verification", desc: "191+ Hardhat cases: unit, integration, CoFHE mocks, matrix IDs, and CI.", color: "emerald", links: [{ label: "Overview", href: "/docs/testing" }, { label: "Matrix", href: "/docs/testing/matrix" }, { label: "Fixtures", href: "/docs/testing/infrastructure" }, { label: "CI", href: "/docs/testing/ci" }] },
+                        { id: "S6", title: "Tests & verification", desc: "265 Hardhat cases: unit, integration, Zama FHE mocks, matrix IDs, and CI.", color: "emerald", links: [{ label: "Overview", href: "/docs/testing" }, { label: "Matrix", href: "/docs/testing/matrix" }, { label: "Fixtures", href: "/docs/testing/infrastructure" }, { label: "CI", href: "/docs/testing/ci" }] },
                         { id: "S5", title: "Security & Compliance", desc: "Threat model, FHE security guarantees, HIPAA/GDPR compliance, and immutable audit trail.", color: "rose", links: [{ label: "Security Model", href: "/docs/security-model" }, { label: "Compliance", href: "/docs/compliance" }, { label: "FAQ", href: "/docs/faq" }] },
                     ].map(section => (
                         <div key={section.id} className="p-5 border border-slate-200 rounded-2xl group hover:bg-slate-50 transition-colors">

@@ -1,12 +1,13 @@
 # MedVault MCP — paste into ~/.codex/config.toml
+# Env interpolation: Codex uses ${VAR} (not ${env:VAR})
 [mcp_servers.medvault]
 command = "node"
-args = ["E:/medvault/mcp-server/dist/index.js"]
+args = ["<REPO_ROOT>/mcp-server/dist/index.js"]
 enabled = true
 startup_timeout_sec = 30
 tool_timeout_sec = 120
 
 [mcp_servers.medvault.env]
-ARBITRUM_SEPOLIA_RPC_URL = "${ARBITRUM_SEPOLIA_RPC_URL}"
+SEPOLIA_RPC_URL = "${SEPOLIA_RPC_URL}"
 MEDVAULT_SUBGRAPH_URL = "${MEDVAULT_SUBGRAPH_URL}"
 MCP_PRIVATE_KEY = "${MCP_PRIVATE_KEY}"

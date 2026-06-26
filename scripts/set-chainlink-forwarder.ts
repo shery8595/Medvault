@@ -2,7 +2,7 @@
  * Set Chainlink Automation forwarder on MedVaultAutomation (required for performUpkeep).
  *
  * Usage:
- *   CHAINLINK_FORWARDER=0x... npx hardhat run scripts/set-chainlink-forwarder.ts --network arbitrumSepolia
+ *   CHAINLINK_FORWARDER=0x... npx hardhat run scripts/set-chainlink-forwarder.ts --network sepolia
  */
 import hre from "hardhat";
 import { ethers } from "hardhat";
@@ -11,7 +11,7 @@ import { loadAddresses, networkKeyFromHardhatName } from "./lib/networkAddresses
 async function main() {
   const forwarder = process.env.CHAINLINK_FORWARDER?.trim();
   if (!forwarder || !ethers.isAddress(forwarder)) {
-    throw new Error("Set CHAINLINK_FORWARDER to your Chainlink Automation forwarder address on Arbitrum Sepolia.");
+    throw new Error("Set CHAINLINK_FORWARDER to your Chainlink Automation forwarder address on Ethereum Sepolia.");
   }
 
   const key = networkKeyFromHardhatName(hre.network.name);

@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 const QUICK_START = `import { MedVaultSDK } from "@medvault/sdk";
 
 const sdk = MedVaultSDK.create({
-  rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+  rpcUrl: process.env.SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com",
   subgraphUrl: process.env.MEDVAULT_SUBGRAPH_URL!,
   relayerUrl: process.env.MEDVAULT_RELAYER_URL,
 });
@@ -19,7 +19,7 @@ const health = await sdk.relayer.health();`;
 const SPONSOR_WRITE = `import { ethers } from "ethers";
 import { MedVaultSDK } from "@medvault/sdk";
 
-const provider = new ethers.JsonRpcProvider(process.env.ARBITRUM_SEPOLIA_RPC_URL!);
+const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL!);
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
 const sdk = MedVaultSDK.create({
@@ -104,7 +104,7 @@ npm run sync-sdk-assets`}
                                 <td className="p-3">Required for trial &amp; sponsor subgraph reads</td>
                             </tr>
                             <tr>
-                                <td className="p-3 font-mono text-xs">rpcUrl / ARBITRUM_SEPOLIA_RPC_URL</td>
+                                <td className="p-3 font-mono text-xs">rpcUrl / SEPOLIA_RPC_URL</td>
                                 <td className="p-3">JSON-RPC for on-chain reads and sponsor writes</td>
                             </tr>
                             <tr>

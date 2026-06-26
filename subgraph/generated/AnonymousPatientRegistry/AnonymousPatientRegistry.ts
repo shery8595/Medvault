@@ -10,32 +10,6 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
-export class DataAccessed extends ethereum.Event {
-  get params(): DataAccessed__Params {
-    return new DataAccessed__Params(this);
-  }
-}
-
-export class DataAccessed__Params {
-  _event: DataAccessed;
-
-  constructor(event: DataAccessed) {
-    this._event = event;
-  }
-
-  get commitment(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get accessor(): Address {
-    return this._event.parameters[1].value.toAddress();
-  }
-
-  get timestamp(): BigInt {
-    return this._event.parameters[2].value.toBigInt();
-  }
-}
-
 export class OwnershipAccepted extends ethereum.Event {
   get params(): OwnershipAccepted__Params {
     return new OwnershipAccepted__Params(this);
@@ -94,6 +68,28 @@ export class PatientRegistered__Params {
   }
 }
 
+export class ProfileAccessed extends ethereum.Event {
+  get params(): ProfileAccessed__Params {
+    return new ProfileAccessed__Params(this);
+  }
+}
+
+export class ProfileAccessed__Params {
+  _event: ProfileAccessed;
+
+  constructor(event: ProfileAccessed) {
+    this._event = event;
+  }
+
+  get accessor(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get timestamp(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class AnonymousPatientRegistry__getPatientResultValue0Struct extends ethereum.Tuple {
   get age(): Bytes {
     return this[0].toBytes();
@@ -127,8 +123,12 @@ export class AnonymousPatientRegistry__getPatientResultValue0Struct extends ethe
     return this[7].toBytes();
   }
 
+  get profileCommitment(): Bytes {
+    return this[8].toBytes();
+  }
+
   get exists(): boolean {
-    return this[8].toBoolean();
+    return this[9].toBoolean();
   }
 }
 
@@ -165,8 +165,12 @@ export class AnonymousPatientRegistry__getPatientProfileResultValue0Struct exten
     return this[7].toBytes();
   }
 
+  get profileCommitment(): Bytes {
+    return this[8].toBytes();
+  }
+
   get exists(): boolean {
-    return this[8].toBoolean();
+    return this[9].toBoolean();
   }
 }
 
@@ -244,6 +248,29 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   dataAccessLog(): Address {
     let result = super.call("dataAccessLog", "dataAccessLog():(address)", []);
 
@@ -268,7 +295,7 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
   ): AnonymousPatientRegistry__getPatientResultValue0Struct {
     let result = super.call(
       "getPatient",
-      "getPatient(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      "getPatient(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
       [ethereum.Value.fromUnsignedBigInt(_commitment)],
     );
 
@@ -282,7 +309,7 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
   ): ethereum.CallResult<AnonymousPatientRegistry__getPatientResultValue0Struct> {
     let result = super.tryCall(
       "getPatient",
-      "getPatient(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      "getPatient(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
       [ethereum.Value.fromUnsignedBigInt(_commitment)],
     );
     if (result.reverted) {
@@ -324,7 +351,7 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
   ): AnonymousPatientRegistry__getPatientProfileResultValue0Struct {
     let result = super.call(
       "getPatientProfile",
-      "getPatientProfile(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      "getPatientProfile(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
       [ethereum.Value.fromUnsignedBigInt(_commitment)],
     );
 
@@ -338,7 +365,7 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
   ): ethereum.CallResult<AnonymousPatientRegistry__getPatientProfileResultValue0Struct> {
     let result = super.tryCall(
       "getPatientProfile",
-      "getPatientProfile(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      "getPatientProfile(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
       [ethereum.Value.fromUnsignedBigInt(_commitment)],
     );
     if (result.reverted) {
@@ -350,6 +377,29 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
         value[0].toTuple(),
       ),
     );
+  }
+
+  getProfileCommitment(_commitment: BigInt): Bytes {
+    let result = super.call(
+      "getProfileCommitment",
+      "getProfileCommitment(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_getProfileCommitment(_commitment: BigInt): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "getProfileCommitment",
+      "getProfileCommitment(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   owner(): Address {
@@ -504,8 +554,12 @@ export class GetPatientCallValue0OutputStruct extends ethereum.Tuple {
     return this[7].toBytes();
   }
 
+  get profileCommitment(): Bytes {
+    return this[8].toBytes();
+  }
+
   get exists(): boolean {
-    return this[8].toBoolean();
+    return this[9].toBoolean();
   }
 }
 
@@ -564,52 +618,44 @@ export class RegisterPatientCall__Inputs {
     return this._call.inputValues[1].value.toAddress();
   }
 
-  get _age(): RegisterPatientCall_ageStruct {
-    return changetype<RegisterPatientCall_ageStruct>(
-      this._call.inputValues[2].value.toTuple(),
-    );
+  get _profileCommitment(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
   }
 
-  get _gender(): RegisterPatientCall_genderStruct {
-    return changetype<RegisterPatientCall_genderStruct>(
-      this._call.inputValues[3].value.toTuple(),
-    );
+  get _age(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
   }
 
-  get _weight(): RegisterPatientCall_weightStruct {
-    return changetype<RegisterPatientCall_weightStruct>(
-      this._call.inputValues[4].value.toTuple(),
-    );
+  get _gender(): Bytes {
+    return this._call.inputValues[4].value.toBytes();
   }
 
-  get _height(): RegisterPatientCall_heightStruct {
-    return changetype<RegisterPatientCall_heightStruct>(
-      this._call.inputValues[5].value.toTuple(),
-    );
+  get _weight(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
   }
 
-  get _hasDiabetes(): RegisterPatientCall_hasDiabetesStruct {
-    return changetype<RegisterPatientCall_hasDiabetesStruct>(
-      this._call.inputValues[6].value.toTuple(),
-    );
+  get _height(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
   }
 
-  get _hbLevel(): RegisterPatientCall_hbLevelStruct {
-    return changetype<RegisterPatientCall_hbLevelStruct>(
-      this._call.inputValues[7].value.toTuple(),
-    );
+  get _hasDiabetes(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
   }
 
-  get _isSmoker(): RegisterPatientCall_isSmokerStruct {
-    return changetype<RegisterPatientCall_isSmokerStruct>(
-      this._call.inputValues[8].value.toTuple(),
-    );
+  get _hbLevel(): Bytes {
+    return this._call.inputValues[8].value.toBytes();
   }
 
-  get _hasHypertension(): RegisterPatientCall_hasHypertensionStruct {
-    return changetype<RegisterPatientCall_hasHypertensionStruct>(
-      this._call.inputValues[9].value.toTuple(),
-    );
+  get _isSmoker(): Bytes {
+    return this._call.inputValues[9].value.toBytes();
+  }
+
+  get _hasHypertension(): Bytes {
+    return this._call.inputValues[10].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[11].value.toBytes();
   }
 }
 
@@ -618,150 +664,6 @@ export class RegisterPatientCall__Outputs {
 
   constructor(call: RegisterPatientCall) {
     this._call = call;
-  }
-}
-
-export class RegisterPatientCall_ageStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_genderStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_weightStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_heightStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_hasDiabetesStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_hbLevelStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_isSmokerStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_hasHypertensionStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
   }
 }
 

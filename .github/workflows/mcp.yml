@@ -1,0 +1,48 @@
+name: MCP
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "mcp-server/**"
+      - "packages/medvault-core/**"
+      - "packages/medvault-sdk/**"
+      - "config/mcp/**"
+      - "package.json"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "mcp-server/**"
+      - "packages/medvault-core/**"
+      - "packages/medvault-sdk/**"
+      - "config/mcp/**"
+      - "package.json"
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build MCP stack
+        run: npm run mcp:build
+
+      - name: Export portable templates
+        run: npm run mcp:export-config -- --mode template
+
+      - name: Validate MCP config templates
+        run: npm run mcp:validate-config
+
+      - name: Offline MCP smoke test
+        run: npm run mcp:smoke
+
+      - name: Pool privacy unit tests
+        run: npm run test -w @medvault/sdk

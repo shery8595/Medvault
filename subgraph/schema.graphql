@@ -39,6 +39,8 @@ type Trial @entity(immutable: false) {
   requiresNonSmoker: Boolean!
   requiresNormalBP: Boolean!
 
+  encryptedCriteria: Boolean!
+
   active: Boolean!
   endTime: BigInt!
   createdAt: BigInt!
@@ -131,24 +133,22 @@ type Application @entity(immutable: false) {
 type IncentivePool @entity(immutable: false) {
   id: ID!                              # trialId
   trial: Trial!
-  totalFundedWei: BigInt!
   participantCount: Int!
   distributed: Boolean!
-  shareWei: BigInt
   distributedAt: BigInt
+  lastFundedAt: BigInt
   participants: [IncentiveParticipant!]! @derivedFrom(field: "pool")
 }
 
 type IncentiveParticipant @entity(immutable: true) {
-  id: ID!                              # trialId-patientAddress
+  id: ID!                              # trialId-nullifier
   pool: IncentivePool!
-  patient: Bytes!
+  nullifier: BigInt!
   registeredAt: BigInt!
 }
 
 type StakingUser @entity(immutable: false) {
   id: ID!                              # user wallet address
-  totalStakedWei: BigInt!
   lastUpdatedAt: BigInt!
 }
 
@@ -199,4 +199,61 @@ type AnonymousSubmission @entity(immutable: false) {
   noirCertified: Boolean!
   noirEligible: Boolean                # from EligibilityProofVerified
   noirCertifiedAt: BigInt
+  attestationResultHash: Bytes
+  attestationFheStageHash: Bytes
+  attestationCriteriaSchemaHash: Bytes
+}
+
+type ClaimLifecycle @entity(immutable: false) {
+  id: ID!                              # trialId-permitHolder
+  trialId: BigInt!
+  permitHolder: Bytes!
+  sufficientHandle: Bytes!
+  initiatedAt: BigInt!
+  initiatedTxHash: Bytes!
+  completed: Boolean!
+  completedAt: BigInt
+}
+
+type WithdrawRequest @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  user: Bytes!
+  sufficientHandle: Bytes!
+  kind: String!                        # withdraw | withdrawTo
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type UnstakeRequest @entity(immutable: true) {
+  id: ID!
+  user: Bytes!
+  sufficientHandle: Bytes!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type AutomationFinalization @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  trialId: BigInt!
+  distributed: Boolean!
+  deactivated: Boolean!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type ConsentGateCheck @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  trialId: BigInt!
+  resultId: Bytes!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type BlindRankingEvent @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  trialId: BigInt!
+  nullifierA: BigInt!
+  nullifierB: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
 }

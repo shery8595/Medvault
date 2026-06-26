@@ -32,7 +32,7 @@ import { cn } from "../lib/utils";
 import {
     getContractAddressForChain
 } from "../lib/contracts";
-import { forceConnectFHE, reencryptUint8, resetFheClient } from "../lib/fhe";
+import { reencryptUint8, reencryptUint8WithEphemeral } from "../lib/fhe";
 import { Trial } from "../types";
 import { resolveAnonymousNullifier, getStoredIdentity, getEphemeralSigner } from "../lib/semaphore";
 import {
@@ -102,13 +102,12 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
     const StatusIcon = config.icon;
 
     const hasEnded = trial.endTime && parseInt(trial.endTime) <= Math.floor(Date.now() / 1000);
-    const payoutShareWei = trial.incentivePool?.shareWei ? BigInt(trial.incentivePool.shareWei) : 0n;
     const canCheckPayout = poolFunded && status === "Accepted" && isRegistered;
 
     useEffect(() => {
-        setPoolFunded(Boolean(trial.rewardPoolFunded || BigInt(trial.incentivePool?.totalFundedWei || "0") > 0n));
+        setPoolFunded(Boolean(trial.rewardPoolFunded));
         setIsRegistered((prev) => prev || Boolean(trial.rewardParticipantRegistered));
-    }, [trial.rewardPoolFunded, trial.rewardParticipantRegistered, trial.incentivePool?.totalFundedWei]);
+    }, [trial.rewardPoolFunded, trial.rewardParticipantRegistered]);
 
     // Load score from store
     useEffect(() => {
@@ -148,19 +147,14 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                     throw new Error("Wallet provider unavailable.");
                 }
                 const ephemeralSigner = getEphemeralSigner(identity, signer.provider);
-                await forceConnectFHE(signer.provider, ephemeralSigner);
-                try {
-                    const score = await reencryptUint8(
-                        engineAddress,
-                        await ephemeralSigner.getAddress(),
-                        handle
-                    );
-                    const scoreNum = Number(score);
-                    setDecryptedScore(scoreNum);
-                    setRevealedScore(engineAddress, trial.id, scoreNum);
-                } finally {
-                    resetFheClient();
-                }
+                const score = await reencryptUint8WithEphemeral(
+                    ephemeralSigner,
+                    engineAddress,
+                    handle
+                );
+                const scoreNum = Number(score);
+                setDecryptedScore(scoreNum);
+                setRevealedScore(engineAddress, trial.id, scoreNum);
             } else {
                 const score = await reencryptUint8(engineAddress, account, handle);
                 const scoreNum = Number(score);
@@ -187,7 +181,13 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
             if (!nullifier) {
                 throw new Error("Missing anonymous application nullifier for this trial. Re-open the browser profile used during apply and retry.");
             }
-            await registerAnonymousParticipantByNullifier(signer, trial.id, nullifier);
+            const identity = getStoredIdentity();
+            if (!identity) {
+                throw new Error(
+                    "Semaphore identity not found in this browser. Use the same profile you used when you applied anonymously."
+                );
+            }
+            await registerAnonymousParticipantByNullifier(signer, trial.id, nullifier, identity);
             setIsRegistered(true);
             setIncentiveStatus("Registered!");
         } catch (err: any) {
@@ -411,7 +411,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                                 onClick={() => setIsClaimModalOpen(true)}
                             >
                                 <Gift className="h-3 w-3" />
-                                {payoutShareWei > 0n ? "Move / Stake Funds" : "Check / Move Funds"}
+                                Claim Rewards
                             </Button>
                         )}
 

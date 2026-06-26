@@ -6,9 +6,15 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 
+/** Zama fhEVM relayer API (Sepolia). Proxied same-origin in dev + Vercel prebuilt routes. */
+const ZAMA_RELAYER_SEPOLIA = 'https://relayer.testnet.zama.org';
+
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === 'true';
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
+    base: isCapacitorBuild ? './' : '/',
     plugins: [
       react(),
       tailwindcss(),
@@ -43,8 +49,6 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
         // Noir certify: use bb.js browser bundle so barretenberg .wasm URLs resolve correctly
         '@aztec/bb.js': path.resolve(__dirname, 'node_modules/@aztec/bb.js/dest/browser/index.js'),
-        'tfhe/tfhe_bg.wasm': path.resolve(__dirname, 'public/tfhe_bg.wasm'),
-        'tkms/kms_lib_bg.wasm': path.resolve(__dirname, 'public/kms_lib_bg.wasm'),
         'fetch-retry': path.resolve(__dirname, 'node_modules/fetch-retry/index.js'),
         // ⚠️ Critical browser compat fixes:
         // readable-stream v4 (top-level) has a different file structure (lib/ours/) but keccak
@@ -66,9 +70,8 @@ export default defineConfig(({ mode }) => {
         'recharts',
       ],
       exclude: [
-        '@fhenix-fhe/relayer-sdk',
-        'tfhe',
-        'tkms',
+        '@zama-fhe/sdk',
+        '@zama-fhe/react-sdk',
         '@aztec/bb.js',
         '@noir-lang/noir_js',
         '@noir-lang/acvm_js',
@@ -105,16 +108,15 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Do NOT set COOP/COEP to crossOriginIsolate here. That breaks Privy embedded wallets,
       // Coinbase Smart Wallet, and Base Account SDKs (popups / cross-window messaging).
-      // CoFHE runs with useWorkers: false, so SAB / strict isolation is not required for dev.
       proxy: {
-        // Proxy CoFHE VRF requests through Node to bypass CORS / ERR_CONNECTION_TIMED_OUT
-        '/cofhe-vrf': {
-          target: 'https://testnet-cofhe-vrf.fhenix.zone',
+        // Zama fhEVM relayer — same-origin path required by @zama-fhe/sdk (RelayerWeb)
+        '/api/relayer/11155111': {
+          target: ZAMA_RELAYER_SEPOLIA,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/cofhe-vrf/, ''),
+          rewrite: (path) => path.replace(/^\/api\/relayer\/11155111/, ''),
           secure: true,
         },
-        // Proxy relayer requests to bypass CORS in local dev
+        // MedVault anonymous-apply relayer (Semaphore proofs)
         '/relay': {
           target: 'https://medvault-relayer-production.up.railway.app',
           changeOrigin: true,

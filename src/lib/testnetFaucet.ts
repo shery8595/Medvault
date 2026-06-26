@@ -4,10 +4,13 @@ export type TestnetDripResult = {
 };
 
 /** Default web UI (not an API) — users paste address / connect wallet. */
-export const DEFAULT_PUBLIC_ARB_SEPOLIA_FAUCET_PAGE = "https://faucet.quicknode.com/arbitrum/sepolia";
+export const DEFAULT_PUBLIC_SEPOLIA_FAUCET_PAGE = "https://faucet.quicknode.com/ethereum/sepolia";
+
+/** @deprecated Use DEFAULT_PUBLIC_SEPOLIA_FAUCET_PAGE */
+export const DEFAULT_PUBLIC_TESTNET_FAUCET_PAGE = DEFAULT_PUBLIC_SEPOLIA_FAUCET_PAGE;
 
 /**
- * Base URL for `POST /drip` JSON (standalone `arb-sepolia-faucet` service or any compatible host). Public sites like QuickNode
+ * Base URL for `POST /drip` JSON (standalone `sepolia-faucet` service or any compatible host). Public sites like QuickNode
  * cannot be used here — they have no compatible API from the browser.
  *
  * Uses `VITE_TESTNET_FAUCET_URL` when set; in local dev falls back to `http://127.0.0.1:8787`.
@@ -29,11 +32,11 @@ export const getTestnetFaucetBaseUrl = getTestnetFaucetApiBaseUrl;
 export function getPublicTestnetFaucetPageUrl(): string {
   const fromEnv = (import.meta.env.VITE_TESTNET_FAUCET_PAGE_URL as string | undefined)?.trim() || "";
   if (fromEnv) return fromEnv;
-  return DEFAULT_PUBLIC_ARB_SEPOLIA_FAUCET_PAGE;
+  return DEFAULT_PUBLIC_SEPOLIA_FAUCET_PAGE;
 }
 
 /**
- * POST { address } to a compatible faucet server (see `arb-sepolia-faucet` repo).
+ * POST { address } to a compatible faucet server (see `sepolia-faucet/`).
  */
 export async function requestTestnetDrip(faucetBaseUrl: string, recipient: string): Promise<TestnetDripResult> {
   const base = faucetBaseUrl.replace(/\/$/, "");

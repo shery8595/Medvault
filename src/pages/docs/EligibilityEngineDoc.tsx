@@ -30,12 +30,12 @@ export function EligibilityEngineDoc() {
                 <div className="not-prose bg-gradient-to-br from-violet-50 to-white p-4 rounded-xl border border-violet-200 mb-6">
                     <h3 className="text-base font-semibold text-slate-900 mb-3 m-0">Anonymous apply sequence</h3>
                     <ol className="text-slate-600 text-sm space-y-2 m-0 pl-4 list-decimal">
-                        <li>Patient encrypts metrics with <code>@cofhe/sdk</code> (proof account = MedVaultRegistry when registering).</li>
+                        <li>Patient encrypts metrics with <code>@zama-fhe/sdk</code> (proof account = MedVaultRegistry when registering).</li>
                         <li><code>MedVaultRegistry</code> stores ciphertexts under Semaphore commitment in <code>AnonymousPatientRegistry</code>.</li>
                         <li><code>stageAnonymousEligibility</code> runs FHE scoring (registry or engine caller per ACL).</li>
                         <li>Patient grants <code>grantConsent(trialId, InEbool)</code> on <code>ConsentManager</code>.</li>
                         <li><code>checkAnonymousEligibilityWithConsent</code> gates sponsor-facing flows; score stays encrypted.</li>
-                        <li>Patient decrypts score off-chain via CoFHE client — plaintext never appears in events or storage.</li>
+                        <li>Patient decrypts score off-chain via Zama SDK client — plaintext never appears in events or storage.</li>
                     </ol>
                 </div>
 
@@ -142,8 +142,31 @@ score = FHE.add(score, FHE.cmux(ageOk, FHE.asEuint8(40), FHE.asEuint8(0)));
                 </ul>
 
                 <Callout type="tip" title="Gas & latency">
-                    FHE transactions on Arbitrum Sepolia are significantly more expensive than plain transfers. Expect variable confirmation time while the coprocessor evaluates ciphertexts. Profile with <code>npm run test:unit</code> locally using CoFHE mocks before testnet experiments.
+                    FHE transactions on Ethereum Sepolia are significantly more expensive than plain transfers. Expect variable confirmation time while the coprocessor evaluates ciphertexts. Profile with <code>npm run test:unit</code> locally using Zama FHE mocks before testnet experiments.
                 </Callout>
+
+                <hr className="my-12 border-slate-200" />
+
+                <h2>Noir attestation (optional seal)</h2>
+                <p className="text-sm">
+                    FHE scoring is authoritative. After staging/finalize, patients may call{" "}
+                    <code>verifyEligibilityProof</code> or use{" "}
+                    <code>finalizeAnonymousEligibilityWithProof</code> to record a public compliance receipt bound to
+                    the staged <code>finalCt</code> handle, Semaphore nullifier, and criteria schema version.
+                </p>
+                <ul className="text-sm">
+                    <li>
+                        <code>attestationReceipt(nullifier, trialId)</code> — sponsor-safe metadata (no PHI).
+                    </li>
+                    <li>
+                        <code>ELIGIBILITY_PUBLIC_INPUT_COUNT = 16</code> — includes{" "}
+                        <code>fhe_stage_handle_hash</code> and <code>criteria_schema_hash</code>.
+                    </li>
+                    <li>
+                        See <Link to="/docs/noir" className="font-semibold text-[#00685f]">Noir compliance attestation</Link>{" "}
+                        for circuit inputs, browser <code>sealResult()</code>, and residual FHE↔ZK binding caveat.
+                    </li>
+                </ul>
 
             </Prose>
         </motion.div>

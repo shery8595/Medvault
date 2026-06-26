@@ -11,7 +11,6 @@ export function weiToEth(wei?: string | bigint | null): number {
 type MilestoneRow = { index?: number; weightBps: number; distributed: boolean };
 type PoolRow = {
   distributed?: boolean;
-  shareWei?: string | null;
   participantCount?: number;
 };
 
@@ -30,9 +29,8 @@ export function effectiveMilestoneRows(
 }
 
 /**
- * Estimate ETH sent to participants from indexed pool + milestone data.
- * Milestone trials: sum of distributed milestone weights × funded pool.
- * Legacy bulk distribute: last shareWei × participantCount when pool.distributed.
+ * Estimate ETH sent to participants from milestone weights only.
+ * Pool funding amounts are sponsor-private and not indexed in the subgraph.
  */
 export function estimateParticipantPayoutEth(
   fundedWei: string | undefined,
@@ -47,13 +45,8 @@ export function estimateParticipantPayoutEth(
     return funded * (distributedBps / 10000);
   }
 
-  if (pool?.distributed && pool.shareWei && pool.participantCount) {
-    try {
-      const total = BigInt(pool.shareWei) * BigInt(pool.participantCount);
-      return weiToEth(total);
-    } catch {
-      return 0;
-    }
+  if (pool?.distributed && pool.participantCount) {
+    return funded;
   }
 
   return 0;

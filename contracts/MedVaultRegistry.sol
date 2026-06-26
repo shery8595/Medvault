@@ -3,24 +3,28 @@ pragma solidity ^0.8.27;
 
 import "@semaphore-protocol/contracts/interfaces/ISemaphore.sol";
 import "@semaphore-protocol/contracts/interfaces/ISemaphoreGroups.sol";
-import {InEuint8, InEbool, InEuint16, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {ebool, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 interface IAnonymousPatientRegistry {
     function registerPatient(
         uint256 _commitment,
         address _permitRecipient,
-        InEuint8 calldata _age,
-        InEbool calldata _gender,
-        InEuint16 calldata _weight,
-        InEuint8 calldata _height,
-        InEbool calldata _hasDiabetes,
-        InEuint16 calldata _hbLevel,
-        InEbool calldata _isSmoker,
-        InEbool calldata _hasHypertension
+        bytes32 _profileCommitment,
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof
     ) external;
 }
 
-// FINDING 2 & 4: Anonymous apply uses stage + finalize (CoFHE decrypt verify on `finalResult`).
+// Anonymous apply: stage FHE → Noir proof finalize (no on-chain KMS decrypt).
 interface IEligibilityEngine {
     enum ApplicationStatus { None, Pending, Accepted, Rejected }
     function stageAnonymousEligibility(
@@ -29,13 +33,15 @@ interface IEligibilityEngine {
         uint256 _nullifier,
         address _permitRecipient
     ) external returns (bytes32 finalCt);
-    function finalizeAnonymousEligibility(
+    function finalizeAnonymousEligibilityWithProof(
         uint256 _commitment,
-        uint256 _trialId,
         uint256 _nullifier,
+        uint256 _trialId,
         address _permitRecipient,
-        bool _decryptedEligible,
-        bytes calldata _decryptSig
+        address _consentWallet,
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs,
+        bool _eligible
     ) external returns (ebool);
     function checkAnonymousEligibilityWithConsent(
         uint256 _commitment,
@@ -49,7 +55,7 @@ interface IEligibilityEngine {
         uint256 _nullifier,
         ApplicationStatus _status
     ) external;
-    function cancelStagedAnonymousEligibility(uint256 _nullifier, uint256 _trialId) external;
+    function cancelStagedAnonymousEligibility(uint256 _nullifier, uint256 _trialId, address _permitRecipient) external;
 }
 
 /**
@@ -58,7 +64,7 @@ interface IEligibilityEngine {
  * @dev Phase 1 (Registration): Wallet-linked commitment submission
  *      Phase 2 (Application): Anonymous ZK proof verification with nullifier tracking
  */
-contract MedVaultRegistry {
+contract MedVaultRegistry is ZamaEthereumConfig {
     ISemaphore public semaphore;
     uint256 public patientGroupId;
     IAnonymousPatientRegistry public patientRegistry;
@@ -74,6 +80,31 @@ contract MedVaultRegistry {
     address public owner;
     address public pendingOwner;
 
+    /// @notice Gasless registration relayer — tx.sender is relayer, not patient wallet.
+    address public trustedRelayer;
+
+    bytes32 public constant REGISTER_VIA_RELAYER_TYPEHASH = keccak256(
+        "RegisterViaRelayer(address patientWallet,uint256 identityCommitment,address viewPermitRecipient,bytes32 profileCommitment,bytes32 healthDataHash,uint256 nonce,uint256 deadline)"
+    );
+
+    bytes32 public constant ANONYMOUS_APPLY_TYPEHASH = keccak256(
+        "AnonymousApply(uint256 trialId,uint256 commitment,uint256 nullifier,address permitRecipient,uint256 deadline)"
+    );
+
+    // M-4: Distinct typehash for cancel authorization. A captured apply permit signature cannot be
+    // replayed to tear down a staged application, breaking the public stage→cancel griefing loop.
+    bytes32 public constant CANCEL_ANONYMOUS_APPLY_TYPEHASH = keccak256(
+        "CancelAnonymousApply(uint256 trialId,uint256 nullifier,address permitRecipient,uint256 deadline)"
+    );
+
+    /// @notice M-2: Binds the consent-granting wallet to a nullifier at apply finalize.
+    bytes32 public constant CONSENT_WALLET_BINDING_TYPEHASH = keccak256(
+        "ConsentWalletBinding(uint256 nullifier,uint256 trialId,address consentWallet,uint256 deadline)"
+    );
+
+    mapping(address => uint256) public registerNonces;
+    mapping(uint256 => uint256) public anonymousApplyDeadlines;
+
     // Track wallet => commitment for Phase 1 (registration only)
     mapping(address => uint256) private walletToCommitment;
     mapping(address => bool) private registered;
@@ -86,7 +117,7 @@ contract MedVaultRegistry {
 
     event PatientRegistered(uint256 indexed commitment);
     event AnonymousApplication(uint256 indexed trialId, uint256 indexed nullifierHash, bytes32 indexed blindedRef);
-    /// @dev Emitted after FHE staging; `finalCt` is the `ebool` handle bytes32 for CoFHE `decryptForTx`.
+    /// @dev Emitted after FHE staging; `finalCt` is the `ebool` handle bytes32 for Zama FHE `decryptForTx`.
     event AnonymousApplyStaged(
         uint256 indexed trialId,
         uint256 indexed nullifierHash,
@@ -96,6 +127,8 @@ contract MedVaultRegistry {
     // FINDING 4: AnonymousConsentGranted event removed - no longer needed
     event OwnershipProposed(address indexed proposedOwner); // FINDING 11
     event OwnershipAccepted(address indexed newOwner); // FINDING 11
+    event TrustedRelayerUpdated(address indexed relayer);
+    event PatientRegisteredViaRelayer(address indexed relayer, uint256 indexed commitment);
 
     constructor(address _semaphore, address _patientRegistry, address _eligibilityEngine) {
         semaphore = ISemaphore(_semaphore);
@@ -141,6 +174,62 @@ contract MedVaultRegistry {
         require(newDuration <= 365 days, "Duration above maximum (365 days)");
         semaphore.updateGroupMerkleTreeDuration(patientGroupId, newDuration);
     }
+
+    function setTrustedRelayer(address _relayer) external onlyOwner {
+        require(_relayer != address(0), "Zero relayer");
+        trustedRelayer = _relayer;
+        emit TrustedRelayerUpdated(_relayer);
+    }
+
+    modifier onlyTrustedRelayer() {
+        require(msg.sender == trustedRelayer, "Only trusted relayer");
+        _;
+    }
+
+    function _registerPatientCore(
+        address patientWallet,
+        uint256 identityCommitment,
+        address _viewPermitRecipient,
+        bytes32 _profileCommitment,
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof,
+        bool linkWalletOnChain
+    ) internal {
+        require(_viewPermitRecipient != address(0), "Zero permit recipient");
+        require(_profileCommitment != bytes32(0), "Zero profile commitment");
+        // L-2: reject zero commitment — adding member 0 to the Semaphore group can corrupt the
+        // Merkle tree (0 is a common sentinel) and would let anyone "register" a null identity.
+        require(identityCommitment != 0, "Zero identity commitment");
+        require(!registered[patientWallet], "Already registered");
+        registered[patientWallet] = true;
+        if (linkWalletOnChain) {
+            walletToCommitment[patientWallet] = identityCommitment;
+        }
+
+        semaphore.addMember(patientGroupId, identityCommitment);
+
+        patientRegistry.registerPatient(
+            identityCommitment,
+            _viewPermitRecipient,
+            _profileCommitment,
+            _age,
+            _gender,
+            _weight,
+            _height,
+            _hasDiabetes,
+            _hbLevel,
+            _isSmoker,
+            _hasHypertension,
+            inputProof
+        );
+    }
     
     /**
      * @notice Phase 1: Public registration - wallet IS linked here by design
@@ -160,30 +249,22 @@ contract MedVaultRegistry {
     function registerPatient(
         uint256 identityCommitment,
         address _viewPermitRecipient,
-        InEuint8 calldata _age,
-        InEbool calldata _gender,
-        InEuint16 calldata _weight,
-        InEuint8 calldata _height,
-        InEbool calldata _hasDiabetes,
-        InEuint16 calldata _hbLevel,
-        InEbool calldata _isSmoker,
-        InEbool calldata _hasHypertension
+        bytes32 _profileCommitment,
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof
     ) external {
-        require(_viewPermitRecipient != address(0), "Zero permit recipient");
-        require(!registered[msg.sender], "Already registered");
-        registered[msg.sender] = true;
-        walletToCommitment[msg.sender] = identityCommitment;
-
-        // Add to Semaphore group
-        semaphore.addMember(patientGroupId, identityCommitment);
-
-        // Store encrypted patient data in AnonymousPatientRegistry
-        // The KEY: data is indexed by commitment, NOT wallet address!
-        // _viewPermitRecipient is the ephemeral address (derived from identity secret)
-        // — never the wallet — so AnonymousPatientRegistry stays wallet-agnostic.
-        patientRegistry.registerPatient(
+        _registerPatientCore(
+            msg.sender,
             identityCommitment,
             _viewPermitRecipient,
+            _profileCommitment,
             _age,
             _gender,
             _weight,
@@ -191,10 +272,154 @@ contract MedVaultRegistry {
             _hasDiabetes,
             _hbLevel,
             _isSmoker,
-            _hasHypertension
+            _hasHypertension,
+            inputProof,
+            true
+        );
+        emit PatientRegistered(identityCommitment);
+    }
+
+    /**
+     * @notice Privacy-preserving registration: relayer pays gas; wallet↔commitment not stored on-chain.
+     * @dev Patient signs EIP-712 digest off-chain; relayer submits this tx.
+     */
+    function registerPatientViaRelayer(
+        address patientWallet,
+        uint256 identityCommitment,
+        address _viewPermitRecipient,
+        bytes32 _profileCommitment,
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external onlyTrustedRelayer {
+        require(patientWallet != address(0), "Zero patient wallet");
+        require(nonce == registerNonces[patientWallet], "Invalid nonce");
+        require(block.timestamp <= deadline, "Signature expired");
+        registerNonces[patientWallet] = nonce + 1;
+
+        bytes32 healthDataHash = _healthDataHash(
+            _age,
+            _gender,
+            _weight,
+            _height,
+            _hasDiabetes,
+            _hbLevel,
+            _isSmoker,
+            _hasHypertension,
+            inputProof
         );
 
+        bytes32 structHash = keccak256(
+            abi.encode(
+                REGISTER_VIA_RELAYER_TYPEHASH,
+                patientWallet,
+                identityCommitment,
+                _viewPermitRecipient,
+                _profileCommitment,
+                healthDataHash,
+                nonce,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", _domainSeparator(), structHash)
+        );
+        address recovered = _recoverSigner(digest, signature);
+        require(recovered == patientWallet, "Invalid registration signature");
+
+        _registerPatientCore(
+            patientWallet,
+            identityCommitment,
+            _viewPermitRecipient,
+            _profileCommitment,
+            _age,
+            _gender,
+            _weight,
+            _height,
+            _hasDiabetes,
+            _hbLevel,
+            _isSmoker,
+            _hasHypertension,
+            inputProof,
+            false
+        );
+        emit PatientRegisteredViaRelayer(msg.sender, identityCommitment);
         emit PatientRegistered(identityCommitment);
+    }
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("MedVaultRegistry")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    function computeHealthDataHash(
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof
+    ) external pure returns (bytes32) {
+        return _healthDataHash(
+            _age,
+            _gender,
+            _weight,
+            _height,
+            _hasDiabetes,
+            _hbLevel,
+            _isSmoker,
+            _hasHypertension,
+            inputProof
+        );
+    }
+
+    function _healthDataHash(
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                _age,
+                _gender,
+                _weight,
+                _height,
+                _hasDiabetes,
+                _hbLevel,
+                _isSmoker,
+                _hasHypertension,
+                inputProof
+            )
+        );
+    }
+
+    function _recoverSigner(bytes32 digest, bytes calldata signature) internal pure returns (address) {
+        return ECDSA.recover(digest, signature);
     }
     
     // FINDING 4: grantAnonymousConsent() removed entirely
@@ -206,9 +431,12 @@ contract MedVaultRegistry {
         uint256 trialId,
         ISemaphore.SemaphoreProof calldata proof,
         uint256 commitment,
-        address permitRecipient
+        address permitRecipient,
+        uint256 deadline,
+        bytes calldata permitSignature
     ) internal view {
         require(permitRecipient != address(0), "Invalid permit recipient");
+        require(block.timestamp <= deadline, "Permit signature expired");
         require(
             ISemaphoreGroups(address(semaphore)).hasMember(patientGroupId, commitment),
             "Commitment not registered in group"
@@ -216,21 +444,64 @@ contract MedVaultRegistry {
         bool isValid = semaphore.verifyProof(patientGroupId, proof);
         require(isValid, "Invalid Semaphore proof");
         require(proof.scope == trialId, "Scope mismatch: trialId");
-        bytes32 consentSignal = keccak256(abi.encodePacked(commitment, trialId, permitRecipient, "CONSENT"));
-        require(proof.message == uint256(consentSignal), "Proof does not encode consent for this trial");
+        uint256 expectedMessage = uint256(keccak256(abi.encodePacked(commitment, permitRecipient)));
+        require(proof.message == expectedMessage, "Commitment/signal mismatch");
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ANONYMOUS_APPLY_TYPEHASH,
+                trialId,
+                commitment,
+                proof.nullifier,
+                permitRecipient,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", _domainSeparator(), structHash)
+        );
+        address recovered = _recoverSigner(digest, permitSignature);
+        require(recovered == permitRecipient, "Invalid permit recipient signature");
+    }
+
+    function _verifyConsentWalletBinding(
+        uint256 nullifier,
+        uint256 trialId,
+        address consentWallet,
+        uint256 deadline,
+        bytes calldata consentWalletSignature
+    ) internal view {
+        require(consentWallet != address(0), "Zero consent wallet");
+        require(block.timestamp <= deadline, "Consent binding signature expired");
+        bytes32 structHash = keccak256(
+            abi.encode(
+                CONSENT_WALLET_BINDING_TYPEHASH,
+                nullifier,
+                trialId,
+                consentWallet,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked("\x19\x01", _domainSeparator(), structHash)
+        );
+        address recovered = _recoverSigner(digest, consentWalletSignature);
+        require(recovered == consentWallet, "Invalid consent wallet signature");
     }
 
     /**
      * @notice Phase 2a: Stage FHE eligibility (Semaphore verified). Does not mark applied until finalize.
-     * @dev Patient uses `finalCt` from `AnonymousApplyStaged` with CoFHE `decryptForTx` + permit on `permitRecipient`.
+     * @dev Patient uses `finalCt` from `AnonymousApplyStaged` with Zama FHE `decryptForTx` + permit on `permitRecipient`.
      */
     function stageAnonymousApply(
         uint256 trialId,
         ISemaphore.SemaphoreProof calldata proof,
         uint256 commitment,
-        address permitRecipient
+        address permitRecipient,
+        uint256 deadline,
+        bytes calldata permitSignature
     ) external {
-        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient);
+        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
         require(!trialApplications[trialId][proof.nullifier], "Already applied to this trial");
         require(address(eligibilityEngine) != address(0), "Eligibility engine not set");
 
@@ -241,32 +512,48 @@ contract MedVaultRegistry {
             permitRecipient
         );
 
+        anonymousApplyDeadlines[proof.nullifier] = deadline;
+
         bytes32 blindedRef = keccak256(abi.encodePacked(proof.nullifier, trialId));
         emit AnonymousApplyStaged(trialId, proof.nullifier, blindedRef, finalCt);
     }
 
     /**
-     * @notice Phase 2b: Verify CoFHE decrypt for staged `finalResult == true`, then record application.
+     * @notice Phase 2b: finalize with Noir proof after local FHE decrypt (no KMS public decrypt).
      */
-    function finalizeAnonymousApply(
+    function finalizeAnonymousApplyWithProof(
         uint256 trialId,
         ISemaphore.SemaphoreProof calldata proof,
         uint256 commitment,
         address permitRecipient,
-        bool decryptedEligible,
-        bytes calldata decryptSig
+        address consentWallet,
+        uint256 deadline,
+        bytes calldata permitSignature,
+        bytes calldata consentWalletSignature,
+        bytes calldata noirProof,
+        bytes32[] calldata publicInputs,
+        bool eligible
     ) external {
-        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient);
+        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
+        _verifyConsentWalletBinding(
+            proof.nullifier,
+            trialId,
+            consentWallet,
+            deadline,
+            consentWalletSignature
+        );
         require(!trialApplications[trialId][proof.nullifier], "Already applied to this trial");
         require(address(eligibilityEngine) != address(0), "Eligibility engine not set");
 
-        eligibilityEngine.finalizeAnonymousEligibility(
+        eligibilityEngine.finalizeAnonymousEligibilityWithProof(
             commitment,
-            trialId,
             proof.nullifier,
+            trialId,
             permitRecipient,
-            decryptedEligible,
-            decryptSig
+            consentWallet,
+            noirProof,
+            publicInputs,
+            eligible
         );
 
         trialApplications[trialId][proof.nullifier] = true;
@@ -277,57 +564,55 @@ contract MedVaultRegistry {
 
     /**
      * @notice Clear orphaned FHE staging when finalize never completes (e.g. ineligible decrypt).
-     * @dev Callable by anyone with a valid Semaphore proof for the same trial; does not mark applied.
+     * @dev M-4: Callable only by the permit recipient (the patient) via a fresh EIP-712 cancel
+     *      signature. Previously anyone holding the publicly-broadcast apply proof + permit
+     *      signature could loop stage→cancel and repeatedly destroy the patient's staged FHE
+     *      eligibility. The cancel signature uses a distinct typehash so the apply permit cannot
+     *      be replayed here. Does not mark applied.
      */
     function cancelAnonymousApplyStage(
         uint256 trialId,
         ISemaphore.SemaphoreProof calldata proof,
         uint256 commitment,
-        address permitRecipient
+        address permitRecipient,
+        uint256 deadline,
+        bytes calldata permitSignature,
+        bytes calldata cancelSignature
     ) external {
-        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient);
+        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
         require(!trialApplications[trialId][proof.nullifier], "Already applied to this trial");
         require(address(eligibilityEngine) != address(0), "Eligibility engine not set");
-        eligibilityEngine.cancelStagedAnonymousEligibility(proof.nullifier, trialId);
+
+        // M-4: require a distinct cancel authorization from the permit recipient.
+        require(block.timestamp <= deadline, "Cancel signature expired");
+        bytes32 cancelStructHash = keccak256(
+            abi.encode(
+                CANCEL_ANONYMOUS_APPLY_TYPEHASH,
+                trialId,
+                proof.nullifier,
+                permitRecipient,
+                deadline
+            )
+        );
+        bytes32 cancelDigest = keccak256(
+            abi.encodePacked("\x19\x01", _domainSeparator(), cancelStructHash)
+        );
+        address cancelSigner = _recoverSigner(cancelDigest, cancelSignature);
+        require(cancelSigner == permitRecipient, "Invalid cancel signature");
+
+        eligibilityEngine.cancelStagedAnonymousEligibility(proof.nullifier, trialId, permitRecipient);
     }
 
-    // MED-4: Separate event for wallet-linked applications (not anonymous)
-    event WalletLinkedApplication(uint256 indexed trialId, address indexed wallet, bytes32 blindedRef);
-
+    // MED-4: Wallet-linked apply is deprecated; use anonymous Semaphore + Noir flow.
     /**
-     * @notice MED-4: Apply to trial with FHE consent gating (wallet-linked, NOT anonymous)
-     * @dev WARNING: This function LINKS your wallet address to the trial application.
-     *      For true anonymity, use stageAnonymousApply + finalizeAnonymousApply with a Semaphore ZK proof instead.
-     *      This function requires the patient's wallet address to look up encrypted consent.
-     * @param trialId The trial being applied to
-     * @param commitment The Semaphore identity commitment (must match this wallet's registration)
-     * @param nullifier The nullifier hash (prevent double application)
-     * @dev Patient must call this themselves (msg.sender must match wallet that registered commitment)
+     * @notice DEPRECATED: wallet-linked apply removed for security (nullifier not bound to identity).
      */
     function applyToTrialWithConsent(
-        uint256 trialId,
-        uint256 commitment,
-        uint256 nullifier
-    ) external {
-        require(registered[msg.sender], "Wallet not registered");
-        require(walletToCommitment[msg.sender] == commitment, "Commitment does not match wallet");
-        require(!trialApplications[trialId][nullifier], "Already applied to this trial");
-        trialApplications[trialId][nullifier] = true;
-
-        // Trigger FHE eligibility computation with consent gating
-        if (address(eligibilityEngine) != address(0)) {
-            eligibilityEngine.checkAnonymousEligibilityWithConsent(
-                commitment,
-                trialId,
-                nullifier,
-                msg.sender,  // Auto-grant decrypt permit to the caller
-                msg.sender   // Patient's wallet address for consent lookup
-            );
-        }
-
-        // MED-4: Emit wallet-linked event, NOT AnonymousApplication
-        bytes32 blindedRef = keccak256(abi.encodePacked(nullifier, trialId));
-        emit WalletLinkedApplication(trialId, msg.sender, blindedRef);
+        uint256 /* trialId */,
+        uint256 /* commitment */,
+        uint256 /* nullifier */
+    ) external pure {
+        revert("Deprecated: use stageAnonymousApply + finalizeAnonymousApplyWithProof");
     }
     
     /**

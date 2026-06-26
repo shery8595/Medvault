@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import "./TrialManager.sol";
+import "./DataAccessLog.sol";
 
 // H-4: Interface to check if patient is registered participant.
 // AUDIT-LOW: removed the stale `pools(...)` entry. `pools` is a private
@@ -29,6 +30,7 @@ contract TrialMilestoneManager {
 
     TrialManager public trialManager;
     ISponsorIncentiveVault public vault; // H-4: Vault reference for participant validation
+    DataAccessLog public dataAccessLog;
     address public owner;
     address public pendingOwner; // FINDING 11: Two-step ownership transfer
 
@@ -82,6 +84,10 @@ contract TrialMilestoneManager {
         vault = ISponsorIncentiveVault(_vault);
     }
 
+    function setDataAccessLog(address _log) external onlyOwner {
+        dataAccessLog = DataAccessLog(_log);
+    }
+
     /**
      * @notice Update the linked TrialManager contract
      */
@@ -102,9 +108,13 @@ contract TrialMilestoneManager {
         uint16[] calldata _weights,
         uint256[] calldata _deadlines
     ) external onlySponsor(_trialId) {
+        require(address(vault) != address(0), "Vault not configured");
+        require(trialManager.getTrial(_trialId).endTime > 0, "Trial does not exist");
         require(!trialPhases[_trialId].initialized, "Already initialized");
         require(_names.length > 0 && _names.length <= 4, "1-4 milestones allowed");
         require(_names.length == _weights.length && _names.length == _deadlines.length, "Length mismatch");
+        // M-3: ensure the sponsor is still verified before accepting milestone definitions.
+        require(trialManager.isTrialSponsorVerified(_trialId), "Sponsor no longer verified");
 
         // MED-6: Validate deadlines
         TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
@@ -141,6 +151,12 @@ contract TrialMilestoneManager {
     function completeMilestone(uint256 _trialId, address _patient, uint256 _milestoneIndex) external onlySponsor(_trialId) {
         require(trialPhases[_trialId].initialized, "Trial not initialized");
         require(_milestoneIndex < trialPhases[_trialId].milestones.length, "Invalid index");
+        // M-3: ensure the sponsor is still verified before signing off milestone completions.
+        require(trialManager.isTrialSponsorVerified(_trialId), "Sponsor no longer verified");
+        require(
+            block.timestamp <= trialPhases[_trialId].milestones[_milestoneIndex].deadline,
+            "Milestone deadline passed"
+        );
 
         // H-4: Verify patient is a registered participant
         require(
@@ -157,6 +173,13 @@ contract TrialMilestoneManager {
         require(_milestoneIndex == currentProgress, "Must complete milestones in order");
 
         participantProgress[_trialId][_patient] = _milestoneIndex + 1;
+        if (address(dataAccessLog) != address(0)) {
+            dataAccessLog.logAction(
+                DataAccessLog.ActionType.MILESTONE_COMPLETED,
+                _trialId,
+                keccak256(abi.encodePacked(_patient, _milestoneIndex, block.timestamp))
+            );
+        }
         emit MilestoneCompleted(_trialId, _patient, _milestoneIndex);
     }
 

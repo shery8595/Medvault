@@ -20,7 +20,7 @@ export function DocsFooter() {
                 </a>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-[#00685f]/8 text-[#00685f] rounded-full text-xs font-semibold border border-[#00685f]/15">
                     <BookOpen className="w-4 h-4" />
-                    Arbitrum Sepolia · MedVault
+                    Ethereum Sepolia · MedVault
                 </div>
             </div>
         </div>

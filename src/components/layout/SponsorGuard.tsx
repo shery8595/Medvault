@@ -27,7 +27,7 @@ export function SponsorGuard({ children }: SponsorGuardProps) {
                     Sign in to continue
                 </h1>
                 <p className="text-slate-600 text-sm leading-relaxed max-w-sm text-center mb-8">
-                    The Sponsor Portal uses Privy: sign in with email or social to get an in-app wallet on Arbitrum Sepolia
+                    The Sponsor Portal uses Privy: sign in with email or social to get an in-app wallet on Ethereum Sepolia
                     (testnet gas required for transactions).
                 </p>
                 <Button

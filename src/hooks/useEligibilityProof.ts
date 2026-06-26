@@ -1,47 +1,49 @@
 /**
- * useEligibilityProof — React hook for Noir proof generation and on-chain certification
+ * useEligibilityProof — React hook for Noir attestation seal generation and on-chain submission.
  *
  * Flow:
- *   1. Patient decrypts their FHE eligibility result (existing flow in PatientResultsPage)
- *   2. Patient clicks "Certify Result"
- *   3. This hook generates a Noir proof binding (identity, trial, result) together
- *   4. Submits to EligibilityEngine.verifyEligibilityProof() on-chain
- *   5. Sponsor can read noirVerifiedResults[nullifier][trialId] to confirm
+ *   1. Zama FHE computes and stores encrypted eligibility (authoritative compute).
+ *   2. Patient decrypts locally.
+ *   3. Patient generates a Noir compliance seal bound to the Zama FHE stage handle.
+ *   4. Submits to EligibilityEngine.verifyEligibilityProof() on-chain.
+ *   5. Sponsors read attestationReceipt / subgraph metadata (no PHI).
  */
 
 import { useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "../lib/Web3Context";
-import { getStoredIdentity } from "../lib/semaphore";
+import { getStoredIdentity, getAnonymousNullifier } from "../lib/semaphore";
 import { formatCertifyFailure, runCertifyPreflight } from "../lib/certifyDiagnostics";
-import { generateEligibilityProof } from "../lib/noir";
+import {
+    generateEligibilityProof,
+    fetchFheStageHandleForAttestation,
+    ELIGIBILITY_PUBLIC_INPUT_COUNT,
+} from "../lib/noir";
+import { getStoredPatientProfilePlain } from "../lib/profileStorage";
+import { fetchTrialCriteria } from "../lib/trialCriteria";
 import { parseFieldElement, parseTrialId } from "../lib/field";
 import { getContractAddressForChain } from "../lib/contracts";
 import addresses from "../lib/contracts/addresses.json";
 import EligibilityEngineAbi from "../lib/contracts/abis/EligibilityEngine.json";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type CertifyStatus = "idle" | "generating" | "submitting" | "certified" | "error";
+type SealStatus = "idle" | "generating" | "submitting" | "certified" | "error";
 
 interface UseEligibilityProofResult {
-    /** Current certification status */
-    status: CertifyStatus;
-    /** Error message if status === "error" */
+    status: SealStatus;
     error: string | null;
-    /** Certify an eligibility result for a trial */
+    /** Generate and submit a Zama-bound compliance seal for a trial result. */
+    sealResult: (trialId: string, eligible: boolean) => Promise<boolean>;
+    /** @deprecated Use sealResult */
     certifyResult: (trialId: string, eligible: boolean) => Promise<boolean>;
-    /** Check if a (nullifier, trialId) pair has already been Noir-certified on-chain */
+    isNullifierSealed: (nullifier: string, trialId: string) => Promise<boolean>;
+    /** @deprecated Use isNullifierSealed */
     isNullifierCertified: (nullifier: string, trialId: string) => Promise<boolean>;
-    /** Reset status back to idle */
     reset: () => void;
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
 export function useEligibilityProof(): UseEligibilityProofResult {
     const { signer, chainId } = useWeb3();
-    const [status, setStatus] = useState<CertifyStatus>("idle");
+    const [status, setStatus] = useState<SealStatus>("idle");
     const [error, setError] = useState<string | null>(null);
 
     const reset = useCallback(() => {
@@ -49,11 +51,7 @@ export function useEligibilityProof(): UseEligibilityProofResult {
         setError(null);
     }, []);
 
-    /**
-     * Generates a Noir proof and submits it to EligibilityEngine.verifyEligibilityProof().
-     * Returns true if the proof was accepted on-chain.
-     */
-    const certifyResult = useCallback(
+    const sealResult = useCallback(
         async (trialId: string, eligible: boolean): Promise<boolean> => {
             if (!signer) {
                 setError("Wallet not connected");
@@ -76,33 +74,63 @@ export function useEligibilityProof(): UseEligibilityProofResult {
             }
 
             try {
-                // ── Phase 1: Generate Noir proof (runs in browser using WASM) ──────────
                 setStatus("generating");
                 setError(null);
 
                 const trialIdBigInt = parseTrialId(trialId);
-                const proofData = await generateEligibilityProof(identity, trialIdBigInt, eligible);
-
-                // ── Phase 2: Submit proof on-chain ────────────────────────────────────
-                setStatus("submitting");
+                const profile = getStoredPatientProfilePlain();
+                if (!profile) {
+                    throw new Error(
+                        "No local health profile found. Re-register your vault before sealing."
+                    );
+                }
 
                 const abi = Array.isArray(EligibilityEngineAbi)
                     ? EligibilityEngineAbi
-                    : (EligibilityEngineAbi as any).abi;
-
+                    : (EligibilityEngineAbi as { abi: ethers.InterfaceAbi }).abi;
                 const engine = new ethers.Contract(engineAddress, abi, signer);
 
-                const { nullifier } = proofData.inputs;
+                const criteria = await fetchTrialCriteria(
+                    signer.provider!,
+                    trialIdBigInt,
+                    chainId ?? undefined
+                );
+
+                const storedNullifier = getAnonymousNullifier(trialIdBigInt);
+                if (storedNullifier === null) {
+                    throw new Error("Apply to this trial before sealing your Zama match.");
+                }
+
+                const fheStageHandle = await fetchFheStageHandleForAttestation(
+                    engine,
+                    storedNullifier,
+                    trialIdBigInt
+                );
+
+                const proofData = await generateEligibilityProof(
+                    identity,
+                    identity.commitment,
+                    trialIdBigInt,
+                    profile,
+                    criteria,
+                    eligible,
+                    fheStageHandle
+                );
+
+                setStatus("submitting");
+
+                const { nullifier: proofNullifier } = proofData.inputs;
 
                 const networkKey =
-                    chainId === 421614n
-                        ? "arbSepolia"
+                    chainId === 11155111n
+                        ? "sepolia"
                         : chainId === 42161n
                           ? "arbitrum"
                           : null;
                 const expectedVerifier =
                     networkKey && (addresses as Record<string, Record<string, string>>)[networkKey]
-                        ? (addresses as Record<string, Record<string, string>>)[networkKey].HonkVerifier
+                        ? (addresses as Record<string, Record<string, string>>)[networkKey]
+                              .HonkVerifier
                         : getContractAddressForChain("HonkVerifier", chainId ?? undefined);
 
                 const onChainVerifier = (await engine.eligibilityVerifier()) as string;
@@ -112,10 +140,11 @@ export function useEligibilityProof(): UseEligibilityProofResult {
                     honkVerifierAddress: onChainVerifier,
                     proofData,
                     trialId: trialIdBigInt,
-                    nullifier,
+                    nullifier: proofNullifier,
                     eligible,
                     expectedHonkVerifier: expectedVerifier,
                     chainId: chainId ?? undefined,
+                    fheStageHandle,
                 });
                 if (preflightError) {
                     throw new Error(preflightError);
@@ -125,7 +154,8 @@ export function useEligibilityProof(): UseEligibilityProofResult {
                     proofData.proofBytes,
                     proofData.publicInputs,
                     trialIdBigInt,
-                    nullifier,
+                    proofNullifier,
+                    identity.commitment,
                     eligible,
                 ] as const;
 
@@ -137,7 +167,6 @@ export function useEligibilityProof(): UseEligibilityProofResult {
                 }
 
                 const tx = await engine.verifyEligibilityProof(...txArgs);
-
                 await tx.wait();
 
                 setStatus("certified");
@@ -145,12 +174,17 @@ export function useEligibilityProof(): UseEligibilityProofResult {
             } catch (err: unknown) {
                 const msg = formatCertifyFailure(err);
 
-                if (msg.includes("already certified") || msg.includes("Already certified")) {
+                if (
+                    msg.includes("already sealed") ||
+                    msg.includes("Already sealed") ||
+                    msg.includes("already certified") ||
+                    msg.includes("Already certified")
+                ) {
                     setStatus("certified");
                     return true;
                 }
 
-                console.error("[Certify] failed:", err);
+                console.error("[Attestation seal] failed:", err);
                 setError(msg);
                 setStatus("error");
                 return false;
@@ -159,11 +193,7 @@ export function useEligibilityProof(): UseEligibilityProofResult {
         [signer, chainId]
     );
 
-    /**
-     * Reads noirVerifiedResults[nullifier][trialId] directly from the contract.
-     * Useful for sponsors and the patient results page.
-     */
-    const isNullifierCertified = useCallback(
+    const isNullifierSealed = useCallback(
         async (nullifier: string, trialId: string): Promise<boolean> => {
             if (!signer) return false;
 
@@ -173,10 +203,13 @@ export function useEligibilityProof(): UseEligibilityProofResult {
             try {
                 const abi = Array.isArray(EligibilityEngineAbi)
                     ? EligibilityEngineAbi
-                    : (EligibilityEngineAbi as any).abi;
+                    : (EligibilityEngineAbi as { abi: ethers.InterfaceAbi }).abi;
 
                 const engine = new ethers.Contract(engineAddress, abi, signer);
-                return await engine.noirVerifiedResults(parseFieldElement(nullifier), parseTrialId(trialId));
+                return await engine.noirVerifiedResults(
+                    parseFieldElement(nullifier),
+                    parseTrialId(trialId)
+                );
             } catch {
                 return false;
             }
@@ -184,7 +217,15 @@ export function useEligibilityProof(): UseEligibilityProofResult {
         [signer, chainId]
     );
 
-    return { status, error, certifyResult, isNullifierCertified, reset };
+    return {
+        status,
+        error,
+        sealResult,
+        certifyResult: sealResult,
+        isNullifierSealed,
+        isNullifierCertified: isNullifierSealed,
+        reset,
+    };
 }
 
 export { useAnonymousCertification, useIsNullifierCertified } from "./useAnonymousCertification";

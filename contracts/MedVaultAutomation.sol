@@ -27,16 +27,19 @@ contract MedVaultAutomation is AutomationCompatibleInterface {
     address public chainlinkForwarder;
 
     event TrialFinalized(uint256 indexed trialId, bool distributed, bool deactivated);
+    event DistributionBatchFailed(uint256 indexed trialId, bytes reason);
     event OwnershipProposed(address indexed proposedOwner); // FINDING 11
     event OwnershipAccepted(address indexed newOwner); // FINDING 11
 
     constructor(
         address _trialManager,
-        address payable _vault
+        address payable _vault,
+        address _chainlinkForwarder
     ) {
         owner = msg.sender;
         trialManager = TrialManager(_trialManager);
         vault = SponsorIncentiveVault(_vault);
+        chainlinkForwarder = _chainlinkForwarder;
     }
 
     modifier onlyOwner() {
@@ -59,6 +62,7 @@ contract MedVaultAutomation is AutomationCompatibleInterface {
     }
 
     function setVault(address payable _vault) external onlyOwner {
+        require(_vault != address(0), "Zero vault");
         vault = SponsorIncentiveVault(_vault);
     }
 
@@ -137,39 +141,71 @@ contract MedVaultAutomation is AutomationCompatibleInterface {
         return (false, "");
     }
 
+    uint256 public constant PAGINATED_DISTRIBUTION_THRESHOLD = 50;
+    uint256 public constant PAGINATION_BATCH_SIZE = 25;
+
+    mapping(uint256 => bool) public distributionInProgress;
+
     function performUpkeep(bytes calldata performData) external override onlyForwarder {
         (uint8 taskType, uint256 indexOrId) = abi.decode(performData, (uint8, uint256));
         
         if (taskType == 1) {
-            // ========== Finalize Trial (Task Type 1) ==========
             uint256 trialId = indexOrId;
+            require(activeTrialIndex[trialId] > 0, "Trial not in active set");
             TrialManager.Trial memory trial = trialManager.getTrial(trialId);
             
-            // Safety checks
             require(trial.active, "Trial not active");
             require(trial.endTime > 0 && block.timestamp >= trial.endTime, "Trial not expired");
             require(!finalized[trialId], "Already finalized");
             
-            finalized[trialId] = true;
-            
-            // Step 1: Distribute incentive rewards (if pool exists and has participants)
             bool distributed = false;
-            try vault.distribute(trialId) {
+            uint256 pCount = vault.getParticipantCount(trialId);
+
+            if (pCount > 0 && !vault.isDistributed(trialId)) {
+                if (pCount > PAGINATED_DISTRIBUTION_THRESHOLD) {
+                    uint256 startIndex = vault.lastProcessedIndex(trialId, 0);
+                    if (startIndex == 0 && !vault.paginationStarted(trialId, 0)) {
+                        distributionInProgress[trialId] = true;
+                    }
+                    (bool success, bytes memory reason) = address(vault).call(
+                        abi.encodeWithSignature(
+                            "distributePartialPaginated(uint256,uint256,uint256,uint256)",
+                            trialId,
+                            0,
+                            startIndex,
+                            PAGINATION_BATCH_SIZE
+                        )
+                    );
+                    if (!success) {
+                        emit DistributionBatchFailed(trialId, reason);
+                    } else {
+                        distributed = vault.milestoneDistributed(trialId, 0);
+                    }
+                } else {
+                    (bool success, bytes memory reason) = address(vault).call(
+                        abi.encodeWithSignature("distribute(uint256)", trialId)
+                    );
+                    if (!success) {
+                        emit DistributionBatchFailed(trialId, reason);
+                    } else {
+                        distributed = vault.isDistributed(trialId);
+                    }
+                }
+            } else if (vault.isDistributed(trialId)) {
                 distributed = true;
-            } catch {
-                // Distribution may fail if no pool funded or no participants — that's OK
             }
             
-            // Step 2: Deactivate the trial on-chain
             bool deactivated = false;
             try trialManager.deactivateTrial(trialId) {
                 deactivated = true;
-            } catch {
-                // Should not fail if automation is authorized, but handle gracefully
+            } catch {}
+
+            if (distributed && deactivated) {
+                finalized[trialId] = true;
+                distributionInProgress[trialId] = false;
             }
             
             emit TrialFinalized(trialId, distributed, deactivated);
         }
-        // HIGH-1: Type 0 (legacy eligibility check) removed — engine.checkEligibility() always reverts
     }
 }

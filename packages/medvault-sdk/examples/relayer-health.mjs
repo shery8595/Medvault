@@ -10,7 +10,7 @@ const DEFAULT_RELAYER = "https://medvault-relayer-production.up.railway.app";
 
 const sdk = MedVaultSDK.create({
   relayerUrl: process.env.MEDVAULT_RELAYER_URL?.trim() || DEFAULT_RELAYER,
-  rpcUrl: process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc",
+  rpcUrl: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
   subgraphUrl: process.env.MEDVAULT_SUBGRAPH_URL || "https://example.com",
 });
 

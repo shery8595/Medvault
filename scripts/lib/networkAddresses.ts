@@ -4,8 +4,7 @@ import path from "path";
 const ADDRESSES_PATH = path.join(__dirname, "../../src/lib/contracts/addresses.json");
 
 export function networkKeyFromHardhatName(hardhatNetwork: string): string {
-  if (hardhatNetwork === "arbitrumSepolia") return "arbSepolia";
-  return hardhatNetwork;
+  return hardhatNetwork === "hardhat" ? "hardhat" : "sepolia";
 }
 
 export function loadAddresses(networkKey: string): Record<string, string> {

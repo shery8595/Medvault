@@ -1,0 +1,4 @@
+# Android signing keystore (do not commit)
+keystore.properties
+*.keystore
+!debug.keystore

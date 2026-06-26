@@ -19,8 +19,8 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "emerald",
         role: "Trial lifecycle",
         summary:
-            "Creates and manages trials: public metadata (name, phase, location) plus encrypted requirement bounds (euint32). Calls SponsorRegistry before createTrial. Exposes encrypted criteria to EligibilityEngine.",
-        keyFunctions: ["createTrial(...)", "getTrialEncryptedRequirements(trialId)", "haltTrial(trialId)"],
+            "Creates and manages trials: public metadata (name, phase, location) plus **public** eligibility bounds (age, Hb, flags) in `TrialManager`. Calls SponsorRegistry before createTrial on non-Sepolia networks. `EligibilityEngine` compares these bounds against encrypted patient profiles.",
+        keyFunctions: ["createTrial(...)", "getTrial(trialId)", "deactivateTrial(trialId)"],
         related: ["SponsorRegistry", "Chainlink price feeds (compensation)"],
     },
     {
@@ -29,7 +29,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "blue",
         role: "Patient vault & Semaphore bridge",
         summary:
-            "Patient-facing registry: validates Semaphore proofs, forwards encrypted profiles to AnonymousPatientRegistry, and orchestrates apply/stage flows with EligibilityEngine. Uses CoFHE InEuint inputs + proofs from @cofhe/sdk.",
+            "Patient-facing registry: validates Semaphore proofs, forwards encrypted profiles to AnonymousPatientRegistry, and orchestrates apply/stage flows with EligibilityEngine. Uses Zama FHE InEuint inputs + proofs from @zama-fhe/sdk.",
         keyFunctions: ["registerPatient(...)", "applyToTrial(...)", "stageEligibility(...)"],
         related: ["AnonymousPatientRegistry", "MockSemaphore / ISemaphore", "EligibilityEngine"],
     },
@@ -49,7 +49,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "purple",
         role: "FHE matching core",
         summary:
-            "Homomorphic scoring over encrypted patient metrics vs trial bounds (CMUX-weighted rubric). Supports legacy address flow and anonymous nullifier flow with staging/finalize, consent-gated checks, and optional Honk proof verification.",
+            "Homomorphic scoring over encrypted patient metrics vs trial bounds (CMUX-weighted rubric). Supports legacy address flow and anonymous nullifier flow with staging/finalize, consent-gated checks, and optional Noir attestation via verifyEligibilityProof / finalizeWithProof (FHE stage binding).",
         keyFunctions: [
             "stageAnonymousEligibility(...)",
             "finalizeAnonymousEligibility(...)",
@@ -109,7 +109,12 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         role: "Escrow & payouts",
         summary:
             "Trial incentive escrow, participant registration, and phased reward distribution coordinated with TrialMilestoneManager and automation.",
-        keyFunctions: ["fundTrial(...)", "registerParticipant(...)", "distributeReward(...)"],
+        keyFunctions: [
+            "fundTrial(...)",
+            "registerAnonymousParticipant(...)",
+            "claimParticipantRewards(..., encryptedUnits, inputProof)",
+            "distributePartial(...)",
+        ],
         related: ["TrialMilestoneManager", "MedVaultAutomation", "StakingManager"],
     },
     {
@@ -128,8 +133,14 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "emerald",
         role: "Private yield",
         summary:
-            "Routes rewards through ConfidentialETH into Aave V3 on Arbitrum Sepolia; encrypted balance tracking for patients.",
-        keyFunctions: ["stake(...)", "unstake(...)", "getPrivateBalance(address)"],
+            "Dual staking paths: public Aave V3 stake/unstake (amounts visible) and confidential stakeFromConfidential / private unstake (encrypted cETH ledger, no Aave exit).",
+        keyFunctions: [
+            "stake()",
+            "stakeFromConfidential(encryptedUnits, inputProof)",
+            "requestPrivateUnstake / completePrivateUnstake",
+            "requestPublicUnstake / completePublicUnstake",
+            "getEncryptedTotalStaked(address)",
+        ],
         related: ["ConfidentialETH"],
     },
     {
@@ -138,8 +149,15 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "blue",
         role: "Encrypted ETH wrapper",
         summary:
-            "Shield/unshield ETH into euint32 balances; homomorphic transfer with FHE.add/sub and ACL on handles.",
-        keyFunctions: ["shield()", "unshield(amount)", "transferEncrypted(to, amount)"],
+            "Encrypted ETH wrapper (euint64 balances, UNIT_SCALE = 1e12 wei per unit). Encrypted requestWithdraw / requestWithdrawTo staging, two-phase KMS completion, EIP-712 completePublicExit to stealth recipients.",
+        keyFunctions: [
+            "deposit() / depositFor()",
+            "requestWithdraw(encryptedUnits, inputProof)",
+            "requestWithdrawTo(user, dest, encryptedUnits, inputProof)",
+            "revealWithdrawAmount / completeWithdraw",
+            "completePublicExit (EIP-712 + relayer)",
+            "transferEncrypted(from, to, amount)",
+        ],
     },
     {
         id: "13",
@@ -167,9 +185,9 @@ export const PROTOCOL_OPTIONAL_CONTRACTS: ProtocolContractEntry[] = [
         id: "ZK",
         name: "HonkVerifier.sol",
         accent: "rose",
-        role: "Noir / Honk proofs",
+        role: "Noir / Honk attestation",
         summary:
-            "On-chain verifier for eligibility Noir circuits (optional path via verifyEligibilityProof). Build with npm run build:circuit before deployment.",
+            "On-chain verifier for eligibility_proof compliance seal (16 public inputs). Binds Semaphore nullifier and Zama FHE stage handle. Build with npm run build:circuit before deployment.",
         keyFunctions: ["verify(bytes proof, bytes32[] publicInputs)"],
         related: ["EligibilityEngine"],
     },
@@ -205,6 +223,16 @@ export const CONTRACT_INTERACTION_ROWS = [
         caller: "MedVaultAutomation",
         callee: "SponsorIncentiveVault",
         purpose: "Keeper-triggered distributions",
+    },
+    {
+        caller: "SponsorIncentiveVault",
+        callee: "ConfidentialETH",
+        purpose: "Encrypted claim staging via requestWithdrawTo",
+    },
+    {
+        caller: "StakingManager",
+        callee: "ConfidentialETH",
+        purpose: "stakeFromConfidential / private unstake transferEncrypted",
     },
     {
         caller: "ConsentManager / MedVaultRegistry / EligibilityEngine",

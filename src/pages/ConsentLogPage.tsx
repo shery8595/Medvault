@@ -10,6 +10,7 @@ import { ConsentSecureBanner } from "../components/consent/ConsentSecureBanner";
 import { ConsentStatCards, buildConsentStats } from "../components/consent/ConsentStatCards";
 import { ConsentLogList } from "../components/consent/ConsentLogList";
 import { ConsentSidebarPanels } from "../components/consent/ConsentSidebarPanels";
+import { PrivacyTimeline, buildDefaultPrivacyTimeline } from "../components/privacy/PrivacyTimeline";
 import { PatientConnectPrompt } from "../components/dashboard/PatientConnectPrompt";
 import { consentRowVariant } from "../lib/consentDisplay";
 
@@ -255,6 +256,19 @@ export function ConsentLogPage() {
           Could not refresh all data: {error.message}. Showing the last loaded snapshot.
         </div>
       ) : null}
+
+      <motion.div {...fadeUp(0.06)}>
+        <PrivacyTimeline
+          events={buildDefaultPrivacyTimeline({
+            hasProfile: true,
+            hasConsent: consents.length > 0,
+            hasSemaphoreIdentity: true,
+            hasApplied: applications.length > 0,
+            applicationAccepted: applications.some((a: { status?: string }) => a.status === "Accepted"),
+            rewardClaimed: formattedLogs.some((l) => l.status === "Accepted"),
+          })}
+        />
+      </motion.div>
 
       <motion.div {...fadeUp(0.04)}>
         <ConsentSecureBanner />

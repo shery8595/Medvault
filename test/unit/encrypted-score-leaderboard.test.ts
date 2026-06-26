@@ -122,7 +122,7 @@ describe("Unit: EncryptedScoreLeaderboard", function () {
         await stack.encryptedScoreLeaderboard
             .connect(stack.owner)
             .deauthorizeSponsor(stack.sponsor.address);
-        expect(await stack.encryptedScoreLeaderboard.authorizedSponsors(stack.sponsor.address)).to.equal(
+        expect(await stack.encryptedScoreLeaderboard.globalAuthorizedSponsors(stack.sponsor.address)).to.equal(
             false
         );
     });

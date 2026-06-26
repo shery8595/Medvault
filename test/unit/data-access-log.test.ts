@@ -40,11 +40,14 @@ describe("Unit: DataAccessLog", function () {
         expect(entry.patientHash).to.equal(hash);
     });
 
-    it("DAL-05: owner sets authorized logger", async function () {
+    it("DAL-05: owner schedules and applies authorized logger", async function () {
         const stack = await deployMedVaultStack();
+        const { time } = await import("@nomicfoundation/hardhat-network-helpers");
         await stack.dataAccessLog
             .connect(stack.owner)
-            .setAuthorizedLogger(stack.stranger.address, true);
+            .scheduleAuthorizedLogger(stack.stranger.address, true);
+        await time.increase(Number(await stack.dataAccessLog.LOGGER_CHANGE_DELAY()) + 1);
+        await stack.dataAccessLog.connect(stack.owner).applyAuthorizedLogger(stack.stranger.address);
         expect(await stack.dataAccessLog.isAuthorizedLogger(stack.stranger.address)).to.equal(true);
     });
 

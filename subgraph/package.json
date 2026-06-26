@@ -5,8 +5,8 @@
     "scripts": {
         "codegen": "graph codegen",
         "build": "graph build",
-        "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ medvault-final --version-label v0.1.0",
-        "deploy:studio": "graph deploy --node https://api.studio.thegraph.com/deploy/ medvault-final --version-label v0.1.0",
+        "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ medvault --version-label v0.1.0",
+        "deploy:studio": "graph deploy --node https://api.studio.thegraph.com/deploy/ medvault --version-label v0.1.0",
         "create-local": "graph create --node http://localhost:8020/ medvault-subgraph",
         "remove-local": "graph remove --node http://localhost:8020/ medvault-subgraph",
         "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 medvault-subgraph"

@@ -1,5 +1,5 @@
 /**
- * Find MedVaultRegistry PatientRegistered block for a wallet (Arbitrum Sepolia).
+ * Find MedVaultRegistry PatientRegistered block for a wallet (Ethereum Sepolia).
  * Usage: node scripts/find-registration-block.mjs [wallet]
  */
 import fs from "fs";
@@ -14,12 +14,13 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 const wallet = (process.argv[2] || "0xb8664841528e9Bd60D91AbB1bCF2975e67Fa0e17").toLowerCase();
 const addresses = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../src/lib/contracts/addresses.json"), "utf8")
-).arbSepolia;
+).sepolia;
 const REG = addresses.MedVaultRegistry;
 const rpc =
-  process.env.ARBITRUM_SEPOLIA_RPC_URL ||
-  process.env.VITE_ARBITRUM_SEPOLIA_RPC_URL ||
-  "https://sepolia-rollup.arbitrum.io/rpc";
+  process.env.SEPOLIA_RPC_URL ||
+  process.env.VITE_SEPOLIA_RPC_URL ||
+  process.env.VITE_RPC_URL ||
+  "https://ethereum-sepolia-rpc.publicnode.com";
 
 const provider = new ethers.JsonRpcProvider(rpc);
 const abi = ["event PatientRegistered(uint256 indexed commitment)", "function isRegistered() view returns (bool)"];
@@ -34,7 +35,7 @@ console.log("isRegistered(wallet):", registered);
 
 /** Scan tx list to registry (faster than all PatientRegistered logs). */
 const CHUNK = 25_000;
-const floor = 272_150_000;
+const floor = 5_000_000;
 let hit = null;
 
 for (let to = latest; to >= floor && !hit; to -= CHUNK) {
@@ -60,7 +61,7 @@ if (!hit) {
 }
 
 const startBlock = Math.max(floor, hit.block - 2_000);
-const outPath = path.join(__dirname, "../subgraph/arbSepolia-start-blocks.json");
+const outPath = path.join(__dirname, "../subgraph/sepolia-start-blocks.json");
 const existing = JSON.parse(fs.readFileSync(outPath, "utf8"));
 for (const key of Object.keys(existing)) {
   existing[key] = startBlock;

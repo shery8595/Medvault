@@ -22,12 +22,6 @@ export function serializeProofForRelay(proof: RelayerSemaphoreProof) {
   };
 }
 
-function normalizeThresholdSignature(sig: string): string {
-  let s = String(sig).trim();
-  if (!s.startsWith("0x")) s = "0x" + s;
-  return s;
-}
-
 async function postRelay(
   baseUrl: string,
   path: string,
@@ -42,10 +36,13 @@ async function postRelay(
   if (!response.ok) {
     let errorMsg = "Relayer request failed";
     try {
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; code?: string };
       if (data.error) errorMsg = data.error;
-    } catch {
-      /* ignore */
+      if (data.code === "NOT_ELIGIBLE") {
+        throw new Error(NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message === NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE) throw e;
     }
     throw new Error(errorMsg);
   }
@@ -81,17 +78,13 @@ export function createRelayerModule(config: MedVaultConfig) {
     },
 
     async finalizeApply(params: RelayerFinalizeApplyParams): Promise<string> {
-      if (params.decryptedEligible !== true) {
-        throw new Error(NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE);
-      }
       const base = getBase();
       return postRelay(base, "/relay/apply-finalize", {
         trialId: Number(params.trialId),
         proof: serializeProofForRelay(params.proof),
         commitment: params.commitment.toString(),
         permitRecipient: params.permitRecipient,
-        decryptedEligible: true,
-        decryptSignature: normalizeThresholdSignature(params.decryptSignature),
+        stageTxHash: params.stageTxHash,
       });
     },
   };

@@ -43,7 +43,9 @@ import { SubgraphIndexingDoc } from "./pages/docs/SubgraphIndexingDoc";
 import { FrontendArchitectureDoc } from "./pages/docs/FrontendArchitectureDoc";
 import { UserGuideDoc } from "./pages/docs/UserGuideDoc";
 import { DeploymentGuideDoc } from "./pages/docs/DeploymentGuideDoc";
+import { AndroidApkDoc } from "./pages/docs/AndroidApkDoc";
 import { PrivateStakingDoc } from "./pages/docs/PrivateStakingDoc";
+import { PrivateWithdrawalsDoc } from "./pages/docs/PrivateWithdrawalsDoc";
 import { TestingOverviewDoc } from "./pages/docs/testing/TestingOverviewDoc";
 import { TestingMatrixDoc } from "./pages/docs/testing/TestingMatrixDoc";
 import { TestingInfrastructureDoc } from "./pages/docs/testing/TestingInfrastructureDoc";
@@ -55,7 +57,7 @@ import { ChangelogDoc } from "./pages/docs/ChangelogDoc";
 import { IdentityPrivacyDoc } from "./pages/docs/IdentityPrivacyDoc";
 import { SemaphoreDoc } from "./pages/docs/SemaphoreDoc";
 import { NoirDoc } from "./pages/docs/NoirDoc";
-import { FhenixCofheDoc } from "./pages/docs/FhenixCofheDoc";
+import { ZamaFheDoc } from "./pages/docs/ZamaFheDoc";
 import { ChainlinkAutomationDoc } from "./pages/docs/ChainlinkAutomationDoc";
 import { McpServerDoc } from "./pages/docs/McpServerDoc";
 import { McpSetupDoc } from "./pages/docs/McpSetupDoc";
@@ -63,10 +65,14 @@ import { McpToolsDoc } from "./pages/docs/McpToolsDoc";
 import { SdkDoc } from "./pages/docs/SdkDoc";
 
 import { PrivyProvider } from "@privy-io/react-auth";
-import { arbitrumSepolia } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { Web3Provider } from "./lib/Web3Context";
+import { ZamaSDKProvider } from "./lib/ZamaSDKProvider";
 import { EncryptedDataProvider } from "./lib/EncryptedDataContext";
 import { ScrollToTop } from "./components/ui/ScrollToTop";
+import { MobileAppShell } from "./components/mobile/MobileAppShell";
+import { MobileLaunchRedirect } from "./components/mobile/MobileLaunchRedirect";
+import { isNativeApp } from "./lib/mobile";
 
 const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 
@@ -80,7 +86,7 @@ export default function App() {
           <a href="https://dashboard.privy.io" className="text-teal-400 underline" target="_blank" rel="noreferrer">
             Privy dashboard
           </a>
-          ). The app uses Privy for sign-in and embedded Arbitrum Sepolia wallets.
+          ). The app uses Privy for sign-in and embedded Ethereum Sepolia wallets.
         </p>
       </div>
     );
@@ -90,14 +96,23 @@ export default function App() {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        defaultChain: arbitrumSepolia,
-        supportedChains: [arbitrumSepolia],
+        defaultChain: sepolia,
+        supportedChains: [sepolia],
         // Nested `ethereum` is required; a top-level `createOnLogin` is ignored and breaks auto-creation.
         embeddedWallets: {
           ethereum: {
             createOnLogin: "all-users",
           },
         },
+        // Capacitor WebView uses https://localhost — add this origin in the Privy dashboard.
+        ...(isNativeApp()
+          ? {
+              legal: {
+                termsAndConditionsUrl: "https://med-vault.xyz/privacy",
+                privacyPolicyUrl: "https://med-vault.xyz/privacy",
+              },
+            }
+          : {}),
       }}
     >
       <MedVaultRoutes />
@@ -122,8 +137,10 @@ function MedVaultRoutes() {
 
   return (
     <Web3Provider>
+      <ZamaSDKProvider>
       <EncryptedDataProvider>
         <Router>
+          <MobileAppShell>
           <ScrollToTop />
           <Routes>
             {/* Landing Page Route */}
@@ -131,6 +148,7 @@ function MedVaultRoutes() {
               path="/"
               element={
                 <LandingLayout>
+                  <MobileLaunchRedirect />
                   <LandingPage />
                 </LandingLayout>
               }
@@ -314,10 +332,26 @@ function MedVaultRoutes() {
               }
             />
             <Route
+              path="/docs/private-withdrawals"
+              element={
+                <DocsLayout>
+                  <PrivateWithdrawalsDoc />
+                </DocsLayout>
+              }
+            />
+            <Route
               path="/docs/deployment"
               element={
                 <DocsLayout>
                   <DeploymentGuideDoc />
+                </DocsLayout>
+              }
+            />
+            <Route
+              path="/docs/mobile/android-apk"
+              element={
+                <DocsLayout>
+                  <AndroidApkDoc />
                 </DocsLayout>
               }
             />
@@ -426,10 +460,10 @@ function MedVaultRoutes() {
               }
             />
             <Route
-              path="/docs/fhenix-cofhe"
+              path="/docs/zama-fhe"
               element={
                 <DocsLayout>
-                  <FhenixCofheDoc />
+                  <ZamaFheDoc />
                 </DocsLayout>
               }
             />
@@ -453,8 +487,10 @@ function MedVaultRoutes() {
             {/* Legacy global redirects */}
             <Route path="/consent" element={<Navigate to="/patient/consent-logs" replace />} />
           </Routes>
+          </MobileAppShell>
         </Router>
       </EncryptedDataProvider>
+      </ZamaSDKProvider>
     </Web3Provider>
   );
 }

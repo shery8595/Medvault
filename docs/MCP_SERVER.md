@@ -1,101 +1,88 @@
 # MedVault MCP Server
 
-Standalone MCP server for **developers** and **sponsors** on Arbitrum Sepolia. Does not modify the React dapp runtime; lives in `mcp-server/`, `packages/medvault-core/`, and `packages/medvault-sdk/`.
-
-## TypeScript SDK
-
-| Resource | Location |
-|----------|----------|
-| Package | `packages/medvault-sdk/` (`@medvault/sdk`) |
-| README | [packages/medvault-sdk/README.md](../packages/medvault-sdk/README.md) |
-| In-app docs | [/docs/mcp/sdk](https://med-vault.xyz/docs/mcp/sdk) |
-
-```bash
-npm run sdk:build
-npm run sdk:test
-npm run sync-sdk-assets   # copy addresses/ABIs from src/lib/contracts after deploy
-```
-
-`MedVaultSDK` provides `trials`, `sponsor`, `protocol`, and `relayer` modules. MCP `medvault_get_config` uses the SDK for deployed addresses. Integrators can use the SDK without running MCP.
+Standalone MCP server for **developers** and **sponsors** on Ethereum Sepolia — a local AI-native admin/dev console, not a patient-facing product. Lives in `mcp-server/`, `packages/medvault-core/`, and `packages/medvault-sdk/`.
 
 ## Quick start
 
 ```bash
 npm install
 npm run mcp:build
-npm run mcp:export-config
+npm run mcp:export-config    # portable templates + local .cursor/mcp.json, .mcp.json
+npm run mcp:validate-config
+npm run mcp:doctor           # optional setup check
+npm run mcp:smoke            # offline smoke; use mcp:smoke:live for Sepolia
 ```
 
-Set environment variables (see below), then enable MCP in your client using [config/mcp/README.md](../config/mcp/README.md).
+Set environment variables (see below), then enable MCP using [config/mcp/README.md](../config/mcp/README.md).
+
+Committed files under `config/mcp/` are **portable templates** (`<REPO_ROOT>` or `${workspaceFolder}`). Machine-specific `.mcp.json` and `.cursor/mcp.json` are gitignored.
 
 ## Environment
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `ARBITRUM_SEPOLIA_RPC_URL` | Yes (reads) | JSON-RPC for Arbitrum Sepolia |
+| `SEPOLIA_RPC_URL` | Yes (reads) | JSON-RPC for Ethereum Sepolia |
 | `MEDVAULT_SUBGRAPH_URL` | Yes (indexed reads) | The Graph endpoint (`VITE_SUBGRAPH_URL` in the dapp) |
-| `MCP_PRIVATE_KEY` | Writes only | Hot wallet for sponsor transactions |
+| `MCP_PRIVATE_KEY` | Writes / sponsor pool amounts | Hot wallet for sponsor transactions |
 | `MEDVAULT_SPONSOR_OPEN_ACCESS` | No | `true` skips SponsorRegistry verification (testnet only) |
 | `MCP_MAX_ETH_PER_TX` | No | Max ETH per `medvault_fund_trial_pool` |
-| `MEDVAULT_RELAYER_URL` | No | Base URL for `medvault_relayer_health` / SDK `sdk.relayer` |
+| `MEDVAULT_RELAYER_URL` | No | Base URL for `medvault_relayer_health` |
+| `MCP_READ_ONLY` | No | `true` disables write tools even if a key is set |
+| `MCP_AUDIT_LOG` | No | Set `false` to disable local write audit log (default: on) |
 
-## Tools (v1)
+## Pool privacy
 
-### Read
+Trial incentive pool **amounts are sponsor-private** on-chain.
 
-- `medvault_get_config` — addresses, URLs, server version (via `@medvault/sdk`)
-- `medvault_list_protocol_contracts` — protocol catalog
-- `medvault_check_wiring` — vault/automation/milestone cross-checks
-- `medvault_subgraph_query` — allowlisted GraphQL only
-- `medvault_get_active_trials`
-- `medvault_get_sponsor_trials` / `medvault_get_sponsor_matches` / `medvault_get_sponsor_stats`
-- `medvault_get_audit_logs`
-- `medvault_get_sponsor_verification`
-- `medvault_get_trial_pool_status`
-- `medvault_read_contract_view`
-- `medvault_relayer_health`
+| Data | Public (`medvault_get_trial_pool_status`) | Sponsor signer (`medvault_get_sponsor_trial_pool_details`) |
+|------|-------------------------------------------|----------------------------------------------------------|
+| Pool funded (bool) | yes | yes |
+| Participant count | yes | yes |
+| Distribution / reclaim flags | yes | yes |
+| Deposited / reclaimable ETH | **no** | yes |
 
-### Write (sponsor only)
+`medvault_read_contract_view` blocklists `getTotalDeposited` and other sensitive vault views.
+
+## Tools
+
+### Read / diagnostic
+
+- `medvault_get_config`, `medvault_list_protocol_contracts`, `medvault_check_wiring`
+- `medvault_subgraph_query` (allowlisted GraphQL only)
+- `medvault_get_active_trials`, `medvault_get_sponsor_trials`, `medvault_get_sponsor_matches`, `medvault_get_sponsor_stats`
+- `medvault_get_audit_logs`, `medvault_get_sponsor_verification`
+- `medvault_get_trial_pool_status` — public coarse pool status only
+- `medvault_get_sponsor_trial_pool_details` — sponsor-authorized amounts
+- `medvault_read_contract_view`, `medvault_relayer_health`
+- `medvault_doctor`, `medvault_list_capabilities`, `medvault_get_client_config_help`, `medvault_get_protocol_health`
+- `medvault_get_sponsor_overview`, `medvault_preview_fund_trial_pool`, `medvault_get_trial_operations_timeline`
+
+### Write (sponsor only, disabled when `MCP_READ_ONLY=true`)
 
 Requires verified sponsor (or open-access flag) and `MCP_PRIVATE_KEY`:
 
-- `medvault_create_trial`
-- `medvault_set_trial_milestones`
-- `medvault_fund_trial_pool`
-- `medvault_update_application_status`
-- `medvault_deactivate_trial`
-- `medvault_distribute_milestone`
-- `medvault_register_anonymous_participant`
-- `medvault_reclaim_trial_pool`
+- `medvault_create_trial`, `medvault_set_trial_milestones`, `medvault_fund_trial_pool`
+- `medvault_update_application_status`, `medvault_deactivate_trial`, `medvault_distribute_milestone`
+- `medvault_register_anonymous_participant`, `medvault_reclaim_trial_pool`
 
-Patient/FHE writes are **not** included in v1.
+Patient/FHE writes are **not** included.
 
 ## Clients
 
-| Client | Config |
-|--------|--------|
-| Cursor | `.cursor/mcp.json` |
-| Claude Code | `.mcp.json` |
-| OpenAI Codex | `config/mcp/codex.toml` → `~/.codex/config.toml` |
-| ChatGPT Desktop | `config/mcp/chatgpt.mcp.json` |
-| Google Antigravity | `config/mcp/antigravity.mcp.json` |
-| OpenClaw | `config/mcp/openclaw.json` |
-
-Regenerate after moving the repo: `npm run mcp:export-config`
+See [config/mcp/README.md](../config/mcp/README.md) for per-client install paths, env interpolation (`${env:VAR}` vs `${VAR}`), and HTTP templates.
 
 ## HTTP transport (optional)
-
-For clients that need a remote URL:
 
 ```bash
 npm run mcp:http
 # http://127.0.0.1:3100/mcp  (health: /health)
 ```
 
-Use a tunnel (ngrok, etc.) for ChatGPT **Connectors** developer mode.
+Use `config/mcp/chatgpt-http.mcp.json` or `antigravity-http.mcp.json` for URL-based clients. Do not tunnel with write-capable keys unless you trust the network.
 
 ## Security
 
-- Use a **dedicated Sepolia test wallet** with minimal funds.
-- Never commit `MCP_PRIVATE_KEY`.
-- MCP does not decrypt patient health data or run the anonymous relayer.
+- Dedicated Sepolia test wallet with minimal funds.
+- Never commit `MCP_PRIVATE_KEY` or paste it into config files.
+- MCP does not decrypt patient health data or run anonymous relayer finalize flows.
+- Write attempts are appended to `.mcp-audit.log` (gitignored) unless disabled.

@@ -1,10 +1,9 @@
 {
-  "sha256": "bc74914c9f1601d5c8466efa179ed1974cd37c614575f422b6cb9491f8b33fbd",
-  "circuitSize": 2048,
+  "sha256": "4ae6e30085c29752779afee1d0a4e01217133aa328088b410b1b5035633e9fd1",
+  "circuitSize": 1024,
   "publicInputs": 4,
-  "logN": 11,
   "verifierTarget": "evm-no-zk",
   "noirVersion": "1.0.0-beta.21",
   "bbVersion": "5.0.0-nightly.20260324",
-  "generatedAt": "2026-05-29T12:10:40.556Z"
+  "generatedAt": "2026-06-26T02:48:02.765Z"
 }

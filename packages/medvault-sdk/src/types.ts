@@ -34,8 +34,7 @@ export interface RelayerStageApplyParams {
 }
 
 export interface RelayerFinalizeApplyParams extends RelayerStageApplyParams {
-  decryptedEligible: boolean;
-  decryptSignature: string;
+  stageTxHash: string;
 }
 
 export interface RelayerHealthResponse {

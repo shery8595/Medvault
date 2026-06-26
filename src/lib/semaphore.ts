@@ -4,9 +4,14 @@ import { generateProof, verifyProof, SemaphoreProof } from '@semaphore-protocol/
 import { keccak256 } from 'ethers/crypto';
 import { toBeHex } from 'ethers/utils';
 import { ethers } from 'ethers';
-import { getMedVaultRegistry, getEligibilityEngine } from './contracts';
+import { getMedVaultRegistry, getEligibilityEngine, getTrialManager, resolveChainIdFrom } from './contracts';
 import { parseFieldElement, parseTrialId } from './field';
-import { FheTypes, decryptBoolForTxWithPermit } from './fhe';
+import { FheTypes, decryptForViewWithEphemeral } from './fhe';
+import { computeProfileCommitment, type PatientProfilePlain } from './profileCommitment';
+import { generateEligibilityProof } from './noir';
+import { BN254_FIELD_ORDER } from './criteriaSchema';
+import { fetchTrialCriteria } from './trialCriteria';
+import { getStoredPatientProfilePlain } from './profileStorage';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -62,6 +67,182 @@ export function getEphemeralSigner(identity: Identity, provider: ethers.Provider
     const identitySecret = identity.secretScalar.toString();
     const privateKey = ethers.keccak256(ethers.toUtf8Bytes(`medvault:ephemeral:${identitySecret}`));
     return new ethers.Wallet(privateKey, provider);
+}
+
+export const VAULT_EIP712_DOMAIN = {
+    name: 'MedVault SponsorIncentiveVault',
+    version: '1',
+} as const;
+
+export const REGISTRY_EIP712_DOMAIN = {
+    name: 'MedVaultRegistry',
+    version: '1',
+} as const;
+
+async function registryTypedDomain(registryAddress: string, chainId: bigint) {
+    return {
+        name: REGISTRY_EIP712_DOMAIN.name,
+        version: REGISTRY_EIP712_DOMAIN.version,
+        chainId,
+        verifyingContract: registryAddress,
+    };
+}
+
+export async function signAnonymousApplyPermit(
+    signer: ethers.Signer,
+    registryAddress: string,
+    chainId: bigint,
+    params: {
+        trialId: bigint;
+        commitment: bigint;
+        nullifier: bigint;
+        permitRecipient: string;
+        deadline: bigint;
+    }
+): Promise<string> {
+    return signer.signTypedData(
+        await registryTypedDomain(registryAddress, chainId),
+        {
+            AnonymousApply: [
+                { name: 'trialId', type: 'uint256' },
+                { name: 'commitment', type: 'uint256' },
+                { name: 'nullifier', type: 'uint256' },
+                { name: 'permitRecipient', type: 'address' },
+                { name: 'deadline', type: 'uint256' },
+            ],
+        },
+        params
+    );
+}
+
+/** M-2: bind consent-granting wallet to nullifier at apply finalize. */
+export async function signConsentWalletBinding(
+    signer: ethers.Signer,
+    registryAddress: string,
+    chainId: bigint,
+    params: {
+        nullifier: bigint;
+        trialId: bigint;
+        consentWallet: string;
+        deadline: bigint;
+    }
+): Promise<string> {
+    return signer.signTypedData(
+        await registryTypedDomain(registryAddress, chainId),
+        {
+            ConsentWalletBinding: [
+                { name: 'nullifier', type: 'uint256' },
+                { name: 'trialId', type: 'uint256' },
+                { name: 'consentWallet', type: 'address' },
+                { name: 'deadline', type: 'uint256' },
+            ],
+        },
+        params
+    );
+}
+
+async function resolveEligibilityProofOptions(
+    provider: ethers.Provider,
+    trialId: bigint,
+    chainId?: bigint | number
+) {
+    const trialManager = getTrialManager(provider, chainId);
+    const trial = await trialManager.getTrial(trialId);
+    if (!trial.encryptedCriteria) {
+        return { criteriaMode: 0 as const };
+    }
+    const engine = getEligibilityEngine(provider, chainId);
+    const bindingHash = await engine.encryptedCriteriaBindingHash(trialId);
+    return {
+        criteriaMode: 1 as const,
+        encryptedCriteriaBindingHash: BigInt(bindingHash) % BN254_FIELD_ORDER,
+    };
+}
+
+export async function signClaimAuthorization(
+    identity: Identity,
+    provider: ethers.Provider,
+    params: {
+        vaultAddress: string;
+        chainId: bigint;
+        trialId: bigint;
+        nullifier: bigint;
+        permitHolder: string;
+        destination: string;
+        units: bigint;
+        nonce: bigint;
+        deadline: bigint;
+    }
+): Promise<string> {
+    const signer = getEphemeralSigner(identity, provider);
+    return signer.signTypedData(
+        {
+            name: VAULT_EIP712_DOMAIN.name,
+            version: VAULT_EIP712_DOMAIN.version,
+            chainId: params.chainId,
+            verifyingContract: params.vaultAddress,
+        },
+        {
+            ClaimAuthorization: [
+                { name: 'trialId', type: 'uint256' },
+                { name: 'nullifier', type: 'uint256' },
+                { name: 'permitHolder', type: 'address' },
+                { name: 'destination', type: 'address' },
+                { name: 'units', type: 'uint256' },
+                { name: 'nonce', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' },
+            ],
+        },
+        {
+            trialId: params.trialId,
+            nullifier: params.nullifier,
+            permitHolder: params.permitHolder,
+            destination: params.destination,
+            units: params.units,
+            nonce: params.nonce,
+            deadline: params.deadline,
+        }
+    );
+}
+
+export async function signRegisterAuthorization(
+    identity: Identity,
+    provider: ethers.Provider,
+    params: {
+        vaultAddress: string;
+        chainId: bigint;
+        trialId: bigint;
+        nullifier: bigint;
+        permitHolder: string;
+        nonce: bigint;
+        deadline: bigint;
+    }
+): Promise<string> {
+    const signer = getEphemeralSigner(identity, provider);
+    return signer.signTypedData(
+        {
+            name: VAULT_EIP712_DOMAIN.name,
+            version: VAULT_EIP712_DOMAIN.version,
+            chainId: params.chainId,
+            verifyingContract: params.vaultAddress,
+        },
+        {
+            RegisterAuthorization: [
+                { name: 'trialId', type: 'uint256' },
+                { name: 'nullifier', type: 'uint256' },
+                { name: 'permitHolder', type: 'address' },
+                { name: 'nonce', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' },
+            ],
+        },
+        {
+            trialId: params.trialId,
+            nullifier: params.nullifier,
+            permitHolder: params.permitHolder,
+            nonce: params.nonce,
+            deadline: params.deadline,
+        }
+    );
 }
 
 // Sepolia Semaphore contract address
@@ -325,36 +506,40 @@ export async function registerPatientWithHealthData(
     signer: ethers.Signer,
     identity: Identity,
     encryptedData: {
-        age: any;
-        gender: any;
-        weight: any;
-        height: any;
-        hasDiabetes: any;
-        hbLevel: any;
-        isSmoker: any;
-        hasHypertension: any;
-    }
+        age: { handle: string };
+        gender: { handle: string };
+        weight: { handle: string };
+        height: { handle: string };
+        hasDiabetes: { handle: string };
+        hbLevel: { handle: string };
+        isSmoker: { handle: string };
+        hasHypertension: { handle: string };
+        inputProof: string;
+    },
+    profilePlain: PatientProfilePlain
 ): Promise<string> {
     const registry = getMedVaultRegistry(signer);
     const commitment = identity.commitment;
-
-    // Derive the ephemeral address from the identity SECRET (not the wallet address).
-    // This is passed as the FHE permit recipient so AnonymousPatientRegistry can call
-    // FHE.allow(handle, ephemeralAddress) without ever learning the patient's wallet.
-    // Only someone who holds the Semaphore identity secrets can re-derive this address.
     const ephemeralAddress = await generateEphemeralAddress(identity);
+    const profileCommitment = computeProfileCommitment(commitment, profilePlain);
+    const profileCommitmentBytes32 = ethers.zeroPadValue(
+        ethers.toBeHex(profileCommitment),
+        32
+    ) as `0x${string}`;
 
     const tx = await registry.registerPatient(
         commitment,
-        ephemeralAddress,     // _viewPermitRecipient: ephemeral, not wallet
-        encryptedData.age,
-        encryptedData.gender,
-        encryptedData.weight,
-        encryptedData.height,
-        encryptedData.hasDiabetes,
-        encryptedData.hbLevel,
-        encryptedData.isSmoker,
-        encryptedData.hasHypertension
+        ephemeralAddress,
+        profileCommitmentBytes32,
+        encryptedData.age.handle,
+        encryptedData.gender.handle,
+        encryptedData.weight.handle,
+        encryptedData.height.handle,
+        encryptedData.hasDiabetes.handle,
+        encryptedData.hbLevel.handle,
+        encryptedData.isSmoker.handle,
+        encryptedData.hasHypertension.handle,
+        encryptedData.inputProof
     );
     await tx.wait();
     return tx.hash;
@@ -418,8 +603,8 @@ export async function fetchGroup(
  * Generates a Semaphore ZK proof for anonymous trial application.
  * Phase 2: This is completely unlinkable to the wallet.
  *
- * FINDING 4: Consent is now encoded in the proof signal itself.
- * The signal is keccak256(abi.encodePacked(commitment, trialId, "CONSENT"))
+ * FINDING 4: Semaphore signal MUST equal identity commitment on-chain.
+ * Permit recipient binding is enforced at EligibilityEngine staging.
  *
  * IMPORTANT: This function fetches the latest group state immediately before proof generation
  * to avoid Semaphore__MerkleTreeRootIsExpired errors. The proof must be submitted immediately
@@ -430,7 +615,7 @@ export async function fetchGroup(
  * 2. Patient generates proof with consent + ephemeral recipient encoded in signal
  * 3. Contract verifies consent and decrypt recipient are in the signal
  * 4. Contract extracts commitment from signal and fetches encrypted data
- * 5. FHENIX computes eligibility
+ * 5. Zama FHE computes eligibility
  *
  * @param identity The patient's Semaphore identity (from localStorage)
  * @param provider The ethers provider to fetch the latest group state
@@ -450,12 +635,8 @@ export async function generateAnonymousProof(
 
     const scope = BigInt(trialId); // externalNullifier = trialId
 
-    // Bind consent to the ephemeral FHE decrypt recipient, not the gas wallet.
-    // This prevents relayers/frontrunners from swapping decrypt rights.
-    const signal = ethers.solidityPackedKeccak256(
-        ['uint256', 'uint256', 'address', 'string'],
-        [identity.commitment, BigInt(trialId), permitRecipient, 'CONSENT']
-    );
+    // Bind Semaphore signal to identity commitment (prevents cross-identity message injection).
+    const signal = identity.commitment;
 
     const proof = await generateProof(
         identity,
@@ -497,7 +678,7 @@ export function parseAnonymousApplyStagedFinalCt(
     throw new Error('AnonymousApplyStaged event not found in receipt');
 }
 
-function toContractSemaphoreProof(proof: SemaphoreProof) {
+export function toContractSemaphoreProof(proof: SemaphoreProof) {
     return {
         merkleTreeDepth: proof.merkleTreeDepth,
         merkleTreeRoot: proof.merkleTreeRoot,
@@ -509,9 +690,7 @@ function toContractSemaphoreProof(proof: SemaphoreProof) {
 }
 
 /**
- * Submits an anonymous trial application (stage FHE → ephemeral decrypt-for-tx → finalize with proof).
- *
- * @param identity Same Semaphore identity used to derive `permitRecipient` (ephemeral CoFHE permit holder).
+ * Submits an anonymous trial application (stage FHE → local decrypt → Noir proof finalize).
  */
 export async function submitAnonymousApplication(
     signer: ethers.Signer,
@@ -519,38 +698,106 @@ export async function submitAnonymousApplication(
     proof: SemaphoreProof,
     commitment: bigint,
     permitRecipient: string,
-    identity: Identity
+    identity: Identity,
+    profilePlain?: PatientProfilePlain
 ): Promise<string> {
     const registry = getMedVaultRegistry(signer);
     const provider = signer.provider;
     if (!provider) throw new Error('Signer must be connected to a provider');
 
+    const profile = profilePlain ?? getStoredPatientProfilePlain();
+    if (!profile) {
+        throw new Error('Patient profile not found locally. Re-register your health vault first.');
+    }
+
     const semaphoreProof = toContractSemaphoreProof(proof);
+    const ephemeralSigner = getEphemeralSigner(identity, provider);
+
+    const registryAddr = await registry.getAddress();
+    const chainId = await resolveChainIdFrom(signer);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const nullifier = proof.nullifier;
+    const permitSignature = await signAnonymousApplyPermit(
+        ephemeralSigner,
+        registryAddr,
+        chainId,
+        {
+            trialId: BigInt(trialId),
+            commitment,
+            nullifier,
+            permitRecipient,
+            deadline,
+        }
+    );
+    const consentWallet = await signer.getAddress();
+    const consentWalletSignature = await signConsentWalletBinding(
+        signer,
+        registryAddr,
+        chainId,
+        {
+            nullifier,
+            trialId: BigInt(trialId),
+            consentWallet,
+            deadline,
+        }
+    );
 
     const tx1 = await registry.stageAnonymousApply(
         BigInt(trialId),
         semaphoreProof,
         commitment,
-        permitRecipient
+        permitRecipient,
+        deadline,
+        permitSignature
     );
     const receipt1 = await tx1.wait();
     if (!receipt1) throw new Error('Stage transaction receipt missing');
 
-    const registryAddr = await registry.getAddress();
     const finalCt = parseAnonymousApplyStagedFinalCt(receipt1, registryAddr);
+    const engine = getEligibilityEngine(provider, chainId);
+    const engineAddress = await engine.getAddress();
 
-    const ephemeralSigner = getEphemeralSigner(identity, provider);
-    const { decryptedEligible, signature } = await decryptBoolForTxWithPermit(finalCt, provider, ephemeralSigner);
+    const eligible = Boolean(
+        await decryptForViewWithEphemeral(ephemeralSigner, finalCt, FheTypes.Bool, engineAddress)
+    );
 
     const proofFresh = await generateAnonymousProof(identity, provider, trialId, permitRecipient);
 
-    const tx2 = await registry.finalizeAnonymousApply(
+    if (!eligible) {
+        await registry.cancelAnonymousApplyStage(
+            BigInt(trialId),
+            toContractSemaphoreProof(proofFresh),
+            commitment,
+            permitRecipient
+        );
+        throw new Error("Not eligible for this trial");
+    }
+
+    const criteria = await fetchTrialCriteria(provider, BigInt(trialId));
+    const proofOptions = await resolveEligibilityProofOptions(provider, BigInt(trialId), chainId);
+    const { proofBytes, publicInputs } = await generateEligibilityProof(
+        identity,
+        commitment,
+        BigInt(trialId),
+        profile,
+        criteria,
+        true,
+        finalCt,
+        proofOptions
+    );
+
+    const tx2 = await registry.finalizeAnonymousApplyWithProof(
         BigInt(trialId),
         toContractSemaphoreProof(proofFresh),
         commitment,
         permitRecipient,
-        decryptedEligible,
-        signature
+        consentWallet,
+        deadline,
+        permitSignature,
+        consentWalletSignature,
+        proofBytes,
+        publicInputs,
+        true
     );
     await tx2.wait();
     return tx2.hash;
@@ -602,39 +849,39 @@ export function isValidSemaphoreProof(obj: any): obj is SemaphoreProof {
  * Decrypts the eligibility result and score for a patient.
  * Must be called AFTER claimDecryptPermission() has been confirmed on-chain.
  *
- * @param client The Fhenix CoFHE client (already connected with publicClient + walletClient)
+ * @param client The Zama FHE SDK client (already connected with publicClient + walletClient)
  * @param eligibilityEngine The EligibilityEngine contract instance (read-only provider is fine)
  * @param commitment The patient's Semaphore identity commitment
  * @param trialId The trial ID
  * @returns { isEligible: boolean, score: bigint }
  */
 export async function decryptEligibilityResult(
-    client: any,
-    eligibilityEngine: any,
+    eligibilityEngine: ethers.Contract,
     nullifier: bigint,
-    trialId: number | bigint
+    trialId: number | bigint,
+    engineAddress: string
 ): Promise<{ isEligible: boolean; score: bigint }> {
     const identity = getStoredIdentity();
     if (!identity) {
         throw new Error("No Semaphore identity found for ephemeral decrypt.");
     }
 
-    const ephemeralSigner = getEphemeralSigner(identity, client.publicClient as ethers.Provider);
-    const permit = await client.permits.getOrCreateSelfPermit(ephemeralSigner.address);
+    const provider = eligibilityEngine.runner?.provider;
+    if (!provider) {
+        throw new Error("EligibilityEngine provider unavailable.");
+    }
 
+    const ephemeralSigner = getEphemeralSigner(identity, provider as ethers.Provider);
     const trialIdBig = BigInt(trialId);
     const resultHandle = await eligibilityEngine.getAnonymousResult(nullifier, trialIdBig);
     const scoreHandle = await eligibilityEngine.getAnonymousScore(nullifier, trialIdBig);
 
-    const isEligible: boolean = await client
-        .decryptForView(resultHandle, FheTypes.Bool)
-        .withPermit(permit)
-        .execute();
-
-    const score: bigint = await client
-        .decryptForView(scoreHandle, FheTypes.Uint8)
-        .withPermit(permit)
-        .execute();
+    const isEligible = Boolean(
+        await decryptForViewWithEphemeral(ephemeralSigner, resultHandle, FheTypes.Bool, engineAddress)
+    );
+    const score = BigInt(
+        await decryptForViewWithEphemeral(ephemeralSigner, scoreHandle, FheTypes.Uint8, engineAddress)
+    );
 
     return { isEligible, score };
 }

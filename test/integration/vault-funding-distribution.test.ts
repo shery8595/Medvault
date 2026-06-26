@@ -1,31 +1,14 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { Identity } from "@semaphore-protocol/identity";
-import {
-    deployMedVaultStack,
-    createTrialForSponsor,
-    registerPatientOnRegistry,
-} from "../../test-support/deployments";
-import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
-import { deriveNullifier } from "../../test-support/semaphore";
+import { registerPatient, walletApplyWithConsent, deployMedVaultStack, createTrialForSponsor } from "../../test-support/journey";
 import { DEFAULT_TRIAL_PARAMS } from "../../test-support/constants";
 
 describe("Integration: vault funding and distribution", function () {
     async function fundedParticipant(stack: Awaited<ReturnType<typeof deployMedVaultStack>>) {
-        const id = new Identity();
-        await registerPatientOnRegistry(
-            stack,
-            stack.patient,
-            id.commitment,
-            stack.patient.address,
-            ELIGIBLE_PROFILE
-        );
+        const patient = await registerPatient(stack);
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient, stack.patient, false);
         await stack.eligibilityEngine
             .connect(stack.sponsor)
             .updateAnonymousApplicationStatus(trialId, nullifier, 2);

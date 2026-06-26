@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool, euint16, InEuint8, InEbool, InEuint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint8, ebool, euint16, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./DataAccessLog.sol";
 
 /**
@@ -17,11 +18,11 @@ import "./DataAccessLog.sol";
  *      1. Registration: Wallet → Semaphore commitment → Encrypted data
  *      2. Application: Semaphore proof (with commitment as signal) → Fetch data → FHE compute
  */
-contract AnonymousPatientRegistry {
+contract AnonymousPatientRegistry is ZamaEthereumConfig {
 
     /**
      * @notice Encrypted patient profile
-     * @dev All fields are FHENIX encrypted types - never visible in plaintext on-chain
+     * @dev All fields are Zama FHE encrypted types - never visible in plaintext on-chain
      */
     struct EncryptedPatient {
         euint8 age;              // Age in years (0-255)
@@ -32,6 +33,7 @@ contract AnonymousPatientRegistry {
         euint16 hbLevel;         // HbA1c level or similar metric
         ebool isSmoker;          // Smoking status
         ebool hasHypertension;   // Hypertension status
+        bytes32 profileCommitment; // Poseidon commitment to plaintext profile (ZK-bound)
         bool exists;             // Whether this record exists
     }
 
@@ -80,12 +82,9 @@ contract AnonymousPatientRegistry {
     event PatientRegistered(uint256 indexed commitment, uint256 timestamp);
 
     /**
-     * @notice Emitted when patient data is accessed
-     * @param commitment The commitment whose data was accessed
-     * @param accessor The contract that accessed the data
-     * @param timestamp Access time
+     * @notice Emitted when patient data is accessed (aggregate signal only; no commitment in logs).
      */
-    event DataAccessed(uint256 indexed commitment, address indexed accessor, uint256 timestamp);
+    event ProfileAccessed(address indexed accessor, uint256 timestamp);
     event OwnershipProposed(address indexed proposedOwner);
     event OwnershipAccepted(address indexed newOwner);
 
@@ -128,6 +127,7 @@ contract AnonymousPatientRegistry {
      */
     function setAuthorizedRegistry(address _registry) external onlyOwner {
         require(_registry != address(0), "Zero address");
+        require(_patientCount == 0, "Cannot change registry after registrations");
         authorizedRegistry = _registry;
     }
 
@@ -173,27 +173,29 @@ contract AnonymousPatientRegistry {
     function registerPatient(
         uint256 _commitment,
         address _permitRecipient,
-        InEuint8 calldata _age,
-        InEbool calldata _gender,
-        InEuint16 calldata _weight,
-        InEuint8 calldata _height,
-        InEbool calldata _hasDiabetes,
-        InEuint16 calldata _hbLevel,
-        InEbool calldata _isSmoker,
-        InEbool calldata _hasHypertension
+        bytes32 _profileCommitment,
+        externalEuint8 _age,
+        externalEbool _gender,
+        externalEuint16 _weight,
+        externalEuint8 _height,
+        externalEbool _hasDiabetes,
+        externalEuint16 _hbLevel,
+        externalEbool _isSmoker,
+        externalEbool _hasHypertension,
+        bytes calldata inputProof
     ) external onlyAuthorizedRegistry {
         require(_permitRecipient != address(0), "Zero permit recipient");
+        require(_profileCommitment != bytes32(0), "Zero profile commitment");
         require(!isRegistered[_commitment], "Commitment already registered");
 
-        // Convert input types to FHENIX encrypted types
-        euint8 age = FHE.asEuint8(_age);
-        ebool gender = FHE.asEbool(_gender);
-        euint16 weight = FHE.asEuint16(_weight);
-        euint8 height = FHE.asEuint8(_height);
-        ebool hasDiabetes = FHE.asEbool(_hasDiabetes);
-        euint16 hbLevel = FHE.asEuint16(_hbLevel);
-        ebool isSmoker = FHE.asEbool(_isSmoker);
-        ebool hasHypertension = FHE.asEbool(_hasHypertension);
+        euint8 age = FHE.fromExternal(_age, inputProof);
+        ebool gender = FHE.fromExternal(_gender, inputProof);
+        euint16 weight = FHE.fromExternal(_weight, inputProof);
+        euint8 height = FHE.fromExternal(_height, inputProof);
+        ebool hasDiabetes = FHE.fromExternal(_hasDiabetes, inputProof);
+        euint16 hbLevel = FHE.fromExternal(_hbLevel, inputProof);
+        ebool isSmoker = FHE.fromExternal(_isSmoker, inputProof);
+        ebool hasHypertension = FHE.fromExternal(_hasHypertension, inputProof);
 
         // Allow contract to perform operations on this data
         FHE.allowThis(age);
@@ -240,6 +242,7 @@ contract AnonymousPatientRegistry {
             hbLevel: hbLevel,
             isSmoker: isSmoker,
             hasHypertension: hasHypertension,
+            profileCommitment: _profileCommitment,
             exists: true
         });
 
@@ -297,7 +300,7 @@ contract AnonymousPatientRegistry {
             );
         }
 
-        emit DataAccessed(_commitment, msg.sender, block.timestamp);
+        emit ProfileAccessed(msg.sender, block.timestamp);
 
         return p;
     }
@@ -310,6 +313,10 @@ contract AnonymousPatientRegistry {
      * @return The encrypted patient data handles
      */
     function getPatientProfile(uint256 _commitment) external view returns (EncryptedPatient memory) {
+        require(
+            msg.sender == authorizedRegistry || msg.sender == authorizedEngine,
+            "Not authorized"
+        );
         EncryptedPatient memory p = patients[_commitment];
         require(p.exists, "Patient not found for this commitment");
         return p;
@@ -322,6 +329,14 @@ contract AnonymousPatientRegistry {
      */
     function checkRegistration(uint256 _commitment) external view returns (bool) {
         return isRegistered[_commitment];
+    }
+
+    /**
+     * @notice Poseidon profile commitment stored at registration (for Noir eligibility proofs).
+     */
+    function getProfileCommitment(uint256 _commitment) external view returns (bytes32) {
+        require(patients[_commitment].exists, "Patient not found for this commitment");
+        return patients[_commitment].profileCommitment;
     }
 
     /**

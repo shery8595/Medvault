@@ -23,6 +23,12 @@ jobs:
       - name: Compile contracts
         run: npm run compile
 
+      - name: Verify production deploy guards
+        run: node scripts/verify-production-deploy.mjs
+
+      - name: Verify HonkVerifier artifact
+        run: node scripts/verify-honk-verifier.mjs
+
       - name: Unit and staking tests
         run: npm run test:unit
         env:

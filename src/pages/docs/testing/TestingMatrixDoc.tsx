@@ -116,7 +116,7 @@ export function TestingMatrixDoc() {
                 <h2>Skipped / optional</h2>
                 <ul>
                     <li>
-                        <code>TM-03</code> — Arbitrum Sepolia chain-id bypass (requires{" "}
+                        <code>TM-03</code> — Ethereum Sepolia chain-id bypass (requires{" "}
                         <code>hardhat_setChainId</code>, not on default provider).
                     </li>
                     <li>

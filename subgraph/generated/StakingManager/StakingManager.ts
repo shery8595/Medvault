@@ -10,6 +10,28 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class ConfidentialStakeRequested extends ethereum.Event {
+  get params(): ConfidentialStakeRequested__Params {
+    return new ConfidentialStakeRequested__Params(this);
+  }
+}
+
+export class ConfidentialStakeRequested__Params {
+  _event: ConfidentialStakeRequested;
+
+  constructor(event: ConfidentialStakeRequested) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get sufficientHandle(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+}
+
 export class OwnershipAccepted extends ethereum.Event {
   get params(): OwnershipAccepted__Params {
     return new OwnershipAccepted__Params(this);
@@ -46,6 +68,108 @@ export class OwnershipProposed__Params {
   }
 }
 
+export class PrivateUnstakeRequested extends ethereum.Event {
+  get params(): PrivateUnstakeRequested__Params {
+    return new PrivateUnstakeRequested__Params(this);
+  }
+}
+
+export class PrivateUnstakeRequested__Params {
+  _event: PrivateUnstakeRequested;
+
+  constructor(event: PrivateUnstakeRequested) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get sufficientHandle(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+}
+
+export class PrivateUnstaked extends ethereum.Event {
+  get params(): PrivateUnstaked__Params {
+    return new PrivateUnstaked__Params(this);
+  }
+}
+
+export class PrivateUnstaked__Params {
+  _event: PrivateUnstaked;
+
+  constructor(event: PrivateUnstaked) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+}
+
+export class PublicDecryptionVerified extends ethereum.Event {
+  get params(): PublicDecryptionVerified__Params {
+    return new PublicDecryptionVerified__Params(this);
+  }
+}
+
+export class PublicDecryptionVerified__Params {
+  _event: PublicDecryptionVerified;
+
+  constructor(event: PublicDecryptionVerified) {
+    this._event = event;
+  }
+
+  get handlesList(): Array<Bytes> {
+    return this._event.parameters[0].value.toBytesArray();
+  }
+
+  get abiEncodedCleartexts(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+}
+
+export class PublicUnstakeRequested extends ethereum.Event {
+  get params(): PublicUnstakeRequested__Params {
+    return new PublicUnstakeRequested__Params(this);
+  }
+}
+
+export class PublicUnstakeRequested__Params {
+  _event: PublicUnstakeRequested;
+
+  constructor(event: PublicUnstakeRequested) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get sufficientHandle(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+}
+
+export class PublicUnstaked extends ethereum.Event {
+  get params(): PublicUnstaked__Params {
+    return new PublicUnstaked__Params(this);
+  }
+}
+
+export class PublicUnstaked__Params {
+  _event: PublicUnstaked;
+
+  constructor(event: PublicUnstaked) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+}
+
 export class Staked extends ethereum.Event {
   get params(): Staked__Params {
     return new Staked__Params(this);
@@ -62,9 +186,23 @@ export class Staked__Params {
   get user(): Address {
     return this._event.parameters[0].value.toAddress();
   }
+}
 
-  get amount(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
+export class UnstakeCancelled extends ethereum.Event {
+  get params(): UnstakeCancelled__Params {
+    return new UnstakeCancelled__Params(this);
+  }
+}
+
+export class UnstakeCancelled__Params {
+  _event: UnstakeCancelled;
+
+  constructor(event: UnstakeCancelled) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
   }
 }
 
@@ -84,10 +222,6 @@ export class Unstaked__Params {
   get user(): Address {
     return this._event.parameters[0].value.toAddress();
   }
-
-  get amount(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
 }
 
 export class StakingManager extends ethereum.SmartContract {
@@ -95,14 +229,37 @@ export class StakingManager extends ethereum.SmartContract {
     return new StakingManager("StakingManager", address);
   }
 
-  AAVE_POOL(): Address {
-    let result = super.call("AAVE_POOL", "AAVE_POOL():(address)", []);
+  CANCEL_TIMEOUT_FUNDS(): BigInt {
+    let result = super.call(
+      "CANCEL_TIMEOUT_FUNDS",
+      "CANCEL_TIMEOUT_FUNDS():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_CANCEL_TIMEOUT_FUNDS(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "CANCEL_TIMEOUT_FUNDS",
+      "CANCEL_TIMEOUT_FUNDS():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  aWeth(): Address {
+    let result = super.call("aWeth", "aWeth():(address)", []);
 
     return result[0].toAddress();
   }
 
-  try_AAVE_POOL(): ethereum.CallResult<Address> {
-    let result = super.tryCall("AAVE_POOL", "AAVE_POOL():(address)", []);
+  try_aWeth(): ethereum.CallResult<Address> {
+    let result = super.tryCall("aWeth", "aWeth():(address)", []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -110,29 +267,14 @@ export class StakingManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  AWETH(): Address {
-    let result = super.call("AWETH", "AWETH():(address)", []);
+  aavePool(): Address {
+    let result = super.call("aavePool", "aavePool():(address)", []);
 
     return result[0].toAddress();
   }
 
-  try_AWETH(): ethereum.CallResult<Address> {
-    let result = super.tryCall("AWETH", "AWETH():(address)", []);
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toAddress());
-  }
-
-  WETH_GATEWAY(): Address {
-    let result = super.call("WETH_GATEWAY", "WETH_GATEWAY():(address)", []);
-
-    return result[0].toAddress();
-  }
-
-  try_WETH_GATEWAY(): ethereum.CallResult<Address> {
-    let result = super.tryCall("WETH_GATEWAY", "WETH_GATEWAY():(address)", []);
+  try_aavePool(): ethereum.CallResult<Address> {
+    let result = super.tryCall("aavePool", "aavePool():(address)", []);
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -153,6 +295,75 @@ export class StakingManager extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  getEncryptedPrivateStaked(user: Address): Bytes {
+    let result = super.call(
+      "getEncryptedPrivateStaked",
+      "getEncryptedPrivateStaked(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_getEncryptedPrivateStaked(user: Address): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "getEncryptedPrivateStaked",
+      "getEncryptedPrivateStaked(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  getEncryptedPublicStaked(user: Address): Bytes {
+    let result = super.call(
+      "getEncryptedPublicStaked",
+      "getEncryptedPublicStaked(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_getEncryptedPublicStaked(user: Address): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "getEncryptedPublicStaked",
+      "getEncryptedPublicStaked(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   getEncryptedTotalStaked(user: Address): Bytes {
@@ -208,27 +419,88 @@ export class StakingManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  unstakeNonces(param0: Address): BigInt {
+  pendingUnstakeHandle(user: Address): Bytes {
     let result = super.call(
-      "unstakeNonces",
-      "unstakeNonces(address):(uint256)",
-      [ethereum.Value.fromAddress(param0)],
+      "pendingUnstakeHandle",
+      "pendingUnstakeHandle(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
     );
 
-    return result[0].toBigInt();
+    return result[0].toBytes();
   }
 
-  try_unstakeNonces(param0: Address): ethereum.CallResult<BigInt> {
+  try_pendingUnstakeHandle(user: Address): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "unstakeNonces",
-      "unstakeNonces(address):(uint256)",
-      [ethereum.Value.fromAddress(param0)],
+      "pendingUnstakeHandle",
+      "pendingUnstakeHandle(address):(bytes32)",
+      [ethereum.Value.fromAddress(user)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  previewConfidentialStakeTransfer(): Bytes {
+    let result = super.call(
+      "previewConfidentialStakeTransfer",
+      "previewConfidentialStakeTransfer():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_previewConfidentialStakeTransfer(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "previewConfidentialStakeTransfer",
+      "previewConfidentialStakeTransfer():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  previewPrivateUnstakeTransfer(): Bytes {
+    let result = super.call(
+      "previewPrivateUnstakeTransfer",
+      "previewPrivateUnstakeTransfer():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_previewPrivateUnstakeTransfer(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "previewPrivateUnstakeTransfer",
+      "previewPrivateUnstakeTransfer():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  wethGateway(): Address {
+    let result = super.call("wethGateway", "wethGateway():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_wethGateway(): ethereum.CallResult<Address> {
+    let result = super.tryCall("wethGateway", "wethGateway():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 }
 
@@ -251,6 +523,18 @@ export class ConstructorCall__Inputs {
 
   get _cETH(): Address {
     return this._call.inputValues[0].value.toAddress();
+  }
+
+  get _aavePool(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get _wethGateway(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get _aWeth(): Address {
+    return this._call.inputValues[3].value.toAddress();
   }
 }
 
@@ -288,6 +572,262 @@ export class AcceptOwnershipCall__Outputs {
   }
 }
 
+export class CancelPendingConfidentialStakeCall extends ethereum.Call {
+  get inputs(): CancelPendingConfidentialStakeCall__Inputs {
+    return new CancelPendingConfidentialStakeCall__Inputs(this);
+  }
+
+  get outputs(): CancelPendingConfidentialStakeCall__Outputs {
+    return new CancelPendingConfidentialStakeCall__Outputs(this);
+  }
+}
+
+export class CancelPendingConfidentialStakeCall__Inputs {
+  _call: CancelPendingConfidentialStakeCall;
+
+  constructor(call: CancelPendingConfidentialStakeCall) {
+    this._call = call;
+  }
+}
+
+export class CancelPendingConfidentialStakeCall__Outputs {
+  _call: CancelPendingConfidentialStakeCall;
+
+  constructor(call: CancelPendingConfidentialStakeCall) {
+    this._call = call;
+  }
+}
+
+export class CancelPendingUnstakeCall extends ethereum.Call {
+  get inputs(): CancelPendingUnstakeCall__Inputs {
+    return new CancelPendingUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): CancelPendingUnstakeCall__Outputs {
+    return new CancelPendingUnstakeCall__Outputs(this);
+  }
+}
+
+export class CancelPendingUnstakeCall__Inputs {
+  _call: CancelPendingUnstakeCall;
+
+  constructor(call: CancelPendingUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class CancelPendingUnstakeCall__Outputs {
+  _call: CancelPendingUnstakeCall;
+
+  constructor(call: CancelPendingUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class CompleteConfidentialStakeCall extends ethereum.Call {
+  get inputs(): CompleteConfidentialStakeCall__Inputs {
+    return new CompleteConfidentialStakeCall__Inputs(this);
+  }
+
+  get outputs(): CompleteConfidentialStakeCall__Outputs {
+    return new CompleteConfidentialStakeCall__Outputs(this);
+  }
+}
+
+export class CompleteConfidentialStakeCall__Inputs {
+  _call: CompleteConfidentialStakeCall;
+
+  constructor(call: CompleteConfidentialStakeCall) {
+    this._call = call;
+  }
+
+  get transferCleartexts(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get transferProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class CompleteConfidentialStakeCall__Outputs {
+  _call: CompleteConfidentialStakeCall;
+
+  constructor(call: CompleteConfidentialStakeCall) {
+    this._call = call;
+  }
+}
+
+export class CompletePrivateUnstakeCall extends ethereum.Call {
+  get inputs(): CompletePrivateUnstakeCall__Inputs {
+    return new CompletePrivateUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): CompletePrivateUnstakeCall__Outputs {
+    return new CompletePrivateUnstakeCall__Outputs(this);
+  }
+}
+
+export class CompletePrivateUnstakeCall__Inputs {
+  _call: CompletePrivateUnstakeCall;
+
+  constructor(call: CompletePrivateUnstakeCall) {
+    this._call = call;
+  }
+
+  get sufficientCleartexts(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get sufficientProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+
+  get transferCleartexts(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get transferProof(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class CompletePrivateUnstakeCall__Outputs {
+  _call: CompletePrivateUnstakeCall;
+
+  constructor(call: CompletePrivateUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class CompletePublicUnstakeCall extends ethereum.Call {
+  get inputs(): CompletePublicUnstakeCall__Inputs {
+    return new CompletePublicUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): CompletePublicUnstakeCall__Outputs {
+    return new CompletePublicUnstakeCall__Outputs(this);
+  }
+}
+
+export class CompletePublicUnstakeCall__Inputs {
+  _call: CompletePublicUnstakeCall;
+
+  constructor(call: CompletePublicUnstakeCall) {
+    this._call = call;
+  }
+
+  get sufficientCleartexts(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get sufficientProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class CompletePublicUnstakeCall__Outputs {
+  _call: CompletePublicUnstakeCall;
+
+  constructor(call: CompletePublicUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class CompleteUnstakeCall extends ethereum.Call {
+  get inputs(): CompleteUnstakeCall__Inputs {
+    return new CompleteUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): CompleteUnstakeCall__Outputs {
+    return new CompleteUnstakeCall__Outputs(this);
+  }
+}
+
+export class CompleteUnstakeCall__Inputs {
+  _call: CompleteUnstakeCall;
+
+  constructor(call: CompleteUnstakeCall) {
+    this._call = call;
+  }
+
+  get sufficientCleartexts(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get sufficientProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class CompleteUnstakeCall__Outputs {
+  _call: CompleteUnstakeCall;
+
+  constructor(call: CompleteUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class PreviewConfidentialStakeTransferCall extends ethereum.Call {
+  get inputs(): PreviewConfidentialStakeTransferCall__Inputs {
+    return new PreviewConfidentialStakeTransferCall__Inputs(this);
+  }
+
+  get outputs(): PreviewConfidentialStakeTransferCall__Outputs {
+    return new PreviewConfidentialStakeTransferCall__Outputs(this);
+  }
+}
+
+export class PreviewConfidentialStakeTransferCall__Inputs {
+  _call: PreviewConfidentialStakeTransferCall;
+
+  constructor(call: PreviewConfidentialStakeTransferCall) {
+    this._call = call;
+  }
+}
+
+export class PreviewConfidentialStakeTransferCall__Outputs {
+  _call: PreviewConfidentialStakeTransferCall;
+
+  constructor(call: PreviewConfidentialStakeTransferCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class PreviewPrivateUnstakeTransferCall extends ethereum.Call {
+  get inputs(): PreviewPrivateUnstakeTransferCall__Inputs {
+    return new PreviewPrivateUnstakeTransferCall__Inputs(this);
+  }
+
+  get outputs(): PreviewPrivateUnstakeTransferCall__Outputs {
+    return new PreviewPrivateUnstakeTransferCall__Outputs(this);
+  }
+}
+
+export class PreviewPrivateUnstakeTransferCall__Inputs {
+  _call: PreviewPrivateUnstakeTransferCall;
+
+  constructor(call: PreviewPrivateUnstakeTransferCall) {
+    this._call = call;
+  }
+}
+
+export class PreviewPrivateUnstakeTransferCall__Outputs {
+  _call: PreviewPrivateUnstakeTransferCall;
+
+  constructor(call: PreviewPrivateUnstakeTransferCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
 export class ProposeOwnershipCall extends ethereum.Call {
   get inputs(): ProposeOwnershipCall__Inputs {
     return new ProposeOwnershipCall__Inputs(this);
@@ -318,6 +858,134 @@ export class ProposeOwnershipCall__Outputs {
   }
 }
 
+export class RequestConfidentialStakeCall extends ethereum.Call {
+  get inputs(): RequestConfidentialStakeCall__Inputs {
+    return new RequestConfidentialStakeCall__Inputs(this);
+  }
+
+  get outputs(): RequestConfidentialStakeCall__Outputs {
+    return new RequestConfidentialStakeCall__Outputs(this);
+  }
+}
+
+export class RequestConfidentialStakeCall__Inputs {
+  _call: RequestConfidentialStakeCall;
+
+  constructor(call: RequestConfidentialStakeCall) {
+    this._call = call;
+  }
+
+  get encryptedUnits(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class RequestConfidentialStakeCall__Outputs {
+  _call: RequestConfidentialStakeCall;
+
+  constructor(call: RequestConfidentialStakeCall) {
+    this._call = call;
+  }
+}
+
+export class RequestPrivateUnstakeCall extends ethereum.Call {
+  get inputs(): RequestPrivateUnstakeCall__Inputs {
+    return new RequestPrivateUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): RequestPrivateUnstakeCall__Outputs {
+    return new RequestPrivateUnstakeCall__Outputs(this);
+  }
+}
+
+export class RequestPrivateUnstakeCall__Inputs {
+  _call: RequestPrivateUnstakeCall;
+
+  constructor(call: RequestPrivateUnstakeCall) {
+    this._call = call;
+  }
+
+  get encryptedGweiUnits(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class RequestPrivateUnstakeCall__Outputs {
+  _call: RequestPrivateUnstakeCall;
+
+  constructor(call: RequestPrivateUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class RequestPublicUnstakeCall extends ethereum.Call {
+  get inputs(): RequestPublicUnstakeCall__Inputs {
+    return new RequestPublicUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): RequestPublicUnstakeCall__Outputs {
+    return new RequestPublicUnstakeCall__Outputs(this);
+  }
+}
+
+export class RequestPublicUnstakeCall__Inputs {
+  _call: RequestPublicUnstakeCall;
+
+  constructor(call: RequestPublicUnstakeCall) {
+    this._call = call;
+  }
+
+  get amount(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class RequestPublicUnstakeCall__Outputs {
+  _call: RequestPublicUnstakeCall;
+
+  constructor(call: RequestPublicUnstakeCall) {
+    this._call = call;
+  }
+}
+
+export class RequestUnstakeCall extends ethereum.Call {
+  get inputs(): RequestUnstakeCall__Inputs {
+    return new RequestUnstakeCall__Inputs(this);
+  }
+
+  get outputs(): RequestUnstakeCall__Outputs {
+    return new RequestUnstakeCall__Outputs(this);
+  }
+}
+
+export class RequestUnstakeCall__Inputs {
+  _call: RequestUnstakeCall;
+
+  constructor(call: RequestUnstakeCall) {
+    this._call = call;
+  }
+
+  get amount(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class RequestUnstakeCall__Outputs {
+  _call: RequestUnstakeCall;
+
+  constructor(call: RequestUnstakeCall) {
+    this._call = call;
+  }
+}
+
 export class StakeCall extends ethereum.Call {
   get inputs(): StakeCall__Inputs {
     return new StakeCall__Inputs(this);
@@ -340,44 +1008,6 @@ export class StakeCall__Outputs {
   _call: StakeCall;
 
   constructor(call: StakeCall) {
-    this._call = call;
-  }
-}
-
-export class UnstakeCall extends ethereum.Call {
-  get inputs(): UnstakeCall__Inputs {
-    return new UnstakeCall__Inputs(this);
-  }
-
-  get outputs(): UnstakeCall__Outputs {
-    return new UnstakeCall__Outputs(this);
-  }
-}
-
-export class UnstakeCall__Inputs {
-  _call: UnstakeCall;
-
-  constructor(call: UnstakeCall) {
-    this._call = call;
-  }
-
-  get amount(): BigInt {
-    return this._call.inputValues[0].value.toBigInt();
-  }
-
-  get balanceSig(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
-  }
-
-  get stakedBalance(): BigInt {
-    return this._call.inputValues[2].value.toBigInt();
-  }
-}
-
-export class UnstakeCall__Outputs {
-  _call: UnstakeCall;
-
-  constructor(call: UnstakeCall) {
     this._call = call;
   }
 }

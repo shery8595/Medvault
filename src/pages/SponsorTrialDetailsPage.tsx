@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { CriteriaBuilder } from "../components/dashboard/CriteriaBuilder";
 import { AutomationHeartbeat } from "../components/dashboard/AutomationHeartbeat";
 import { BlindRankingPanel } from "../components/dashboard/BlindRankingPanel";
+import { TrialOpsTabs, type TrialOpsTabId } from "../components/sponsor/TrialOpsTabs";
 import {
     ArrowLeft,
     Users,
@@ -72,6 +73,7 @@ export function SponsorTrialDetailsPage() {
         },
     });
     const [reclaimStatus, setReclaimStatus] = useState<string | null>(null);
+    const [opsTab, setOpsTab] = useState<TrialOpsTabId>("overview");
     const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
     const [decisionMessage, setDecisionMessage] = useState("");
     const [decisionStatus, setDecisionStatus] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function SponsorTrialDetailsPage() {
             try {
                 const protocolData = await getTrialPoolAndMilestones(signer, id, trial?.endTime);
                 setPoolInfo({
-                    totalFunded: protocolData.totalFunded,
+                    totalFunded: protocolData.totalFunded ?? "0",
                     distributed: protocolData.distributed,
                     reclaim: protocolData.reclaim,
                 });
@@ -470,16 +472,22 @@ export function SponsorTrialDetailsPage() {
                 ))}
             </div>
 
+            <TrialOpsTabs activeTab={opsTab} onTabChange={setOpsTab}>
+                {(tab) => (
+            <>
+            {(tab === "overview" || tab === "matches") && (
             <BlindRankingPanel
                 trialId={id}
                 readProvider={readOnlyProvider}
                 sponsorAccount={account}
                 fallbackApplicantCount={anonymousMatches.length}
             />
+            )}
 
             <div className="grid gap-8 xl:grid-cols-12">
-                {/* ─── Left Column: Criteria Builder ─── */}
+                {/* ─── Left Column ─── */}
                 <div className="xl:col-span-7 space-y-8">
+                    {(tab === "overview") && (
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -506,8 +514,9 @@ export function SponsorTrialDetailsPage() {
                             All computations are performed on encrypted patient data.
                         </p>
                     </section>
+                    )}
 
-                    {/* ─── Incentive Pool Section ─── */}
+                    {(tab === "milestones" || tab === "rewards" || tab === "overview") && (
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -767,8 +776,9 @@ export function SponsorTrialDetailsPage() {
                             </CardContent>
                         </Card>
                     </section>
+                    )}
 
-                    {/* ─── Automation Section ─── */}
+                    {(tab === "automation" || tab === "overview") && (
                     <section className="space-y-4">
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             System Infrastructure
@@ -780,9 +790,10 @@ export function SponsorTrialDetailsPage() {
                             isActive={trial.active}
                         />
                     </section>
+                    )}
                 </div>
 
-                {/* ─── Right Column: Recent Matches ─── */}
+                {(tab === "matches" || tab === "overview") && (
                 <div className="xl:col-span-5 space-y-6">
                     <section className="space-y-4">
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white">Recent Matches</h3>
@@ -1089,7 +1100,11 @@ export function SponsorTrialDetailsPage() {
                         </div>
                     </section>
                 </div>
+                )}
             </div>
+            </>
+                )}
+            </TrialOpsTabs>
         </div>
     );
 }

@@ -15,18 +15,18 @@ export function SemaphoreDoc() {
                     MedVault uses <strong>Semaphore v4</strong> so patients can prove group membership and apply to
                     trials without revealing <em>which</em> registered member they are. Wallet-linked registration stores
                     encrypted health data; anonymous apply uses Semaphore proofs plus an <strong>ephemeral decrypt
-                    wallet</strong> for CoFHE permits.
+                    wallet</strong> for Zama FHE permits.
                 </p>
 
                 <Callout type="info" title="Related docs">
-                    <Link to="/docs/fhenix-cofhe" className="font-semibold text-[#00685f] hover:underline">
-                        Fhenix &amp; CoFHE
+                    <Link to="/docs/zama-fhe" className="font-semibold text-[#00685f] hover:underline">
+                        Zama FHE
                     </Link>{" "}
                     for encryption and decrypt-for-tx,{" "}
                     <Link to="/docs/noir" className="font-semibold text-[#00685f] hover:underline">
                         Noir &amp; Honk
                     </Link>{" "}
-                    for optional eligibility certification, and{" "}
+                    for optional compliance attestation after FHE matching, and{" "}
                     <Link to="/docs/identity-privacy" className="font-semibold text-[#00685f] hover:underline">
                         Identity &amp; privacy
                     </Link>{" "}
@@ -38,7 +38,7 @@ export function SemaphoreDoc() {
                     <li>
                         <strong>Registration (linkable):</strong> Patient wallet signs{" "}
                         <code>MedVaultRegistry.registerPatient</code> with a public <strong>identity commitment</strong>{" "}
-                        and CoFHE-encrypted profile fields.
+                        and Zama FHE-encrypted profile fields.
                     </li>
                     <li>
                         <strong>Anonymous apply (unlinkable):</strong> A Semaphore proof shows the caller is in the
@@ -143,7 +143,7 @@ export function getIdentityCommitment(identity: Identity): bigint {
                 <p className="text-sm">
                     After apply, the frontend stores per-trial nullifiers in{" "}
                     <code>medvault_anon_nullifiers</code> for fast UI lookups and for{" "}
-                    <Link to="/docs/noir">Noir proof</Link> witness alignment (
+                    <Link to="/docs/noir">Noir attestation</Link> witness alignment (
                     <code>deriveProofInputsWithStoredNullifier</code>).
                 </p>
 
@@ -158,12 +158,14 @@ export function getIdentityCommitment(identity: Identity): bigint {
                         staging on <code>EligibilityEngine</code>, stores encrypted boolean result keyed by nullifier.
                     </li>
                     <li>
-                        <strong>Decrypt-for-tx (browser):</strong> Ephemeral signer + CoFHE client decrypts staged{" "}
-                        <code>ebool</code> (see <Link to="/docs/fhenix-cofhe">Fhenix doc</Link>).
+                        <strong>Decrypt-for-tx (browser):</strong> Ephemeral signer + Zama SDK client decrypts staged{" "}
+                        <code>ebool</code> (see <Link to="/docs/zama-fhe">Zama doc</Link>).
                     </li>
                     <li>
                         <strong>Finalize:</strong> Submit plaintext boolean + permit signature to mark application
-                        applied (relayer may pay gas via <code>POST /relay/apply-finalize</code>).
+                        applied (relayer may pay gas via <code>POST /relay/apply-finalize</code>). Optionally bundle a
+                        Noir attestation via <code>finalizeAnonymousApplyWithProof</code> to bind the Zama{" "}
+                        <code>finalCt</code> stage handle.
                     </li>
                 </ol>
 

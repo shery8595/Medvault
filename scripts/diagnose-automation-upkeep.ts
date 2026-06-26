@@ -1,7 +1,7 @@
 /**
  * Diagnose why Chainlink Automation upkeep is not firing.
  *
- *   npx hardhat run scripts/diagnose-automation-upkeep.ts --network arbitrumSepolia
+ *   npx hardhat run scripts/diagnose-automation-upkeep.ts --network sepolia
  */
 import hre from "hardhat";
 import { ethers } from "hardhat";
@@ -32,7 +32,7 @@ async function main() {
   if (forwarder === ethers.ZeroAddress) {
     console.log("\n⚠ chainlinkForwarder is ZERO — performUpkeep will revert even if checkUpkeep is true.");
     console.log(
-      "  Fix: CHAINLINK_FORWARDER=0x2d3E... npx hardhat run scripts/set-chainlink-forwarder.ts --network arbitrumSepolia",
+      "  Fix: CHAINLINK_FORWARDER=0x2d3E... npx hardhat run scripts/set-chainlink-forwarder.ts --network sepolia",
     );
   }
 

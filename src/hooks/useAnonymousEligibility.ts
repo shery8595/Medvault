@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { getEligibilityEngine, resolveChainIdFrom } from '../lib/contracts';
-import { FheTypes, getFHEClient, resetFheClient } from '../lib/fhe';
+import { FheTypes, decryptForViewWithEphemeral } from '../lib/fhe';
 import { getAnonymousNullifier, getStoredIdentity, getEphemeralSigner } from '../lib/semaphore';
 
 /**
- * Hook for anonymous patients to decrypt their eligibility results.
- * Uses ephemeral permit recipient (derived from Semaphore identity secret).
+ * Optional post-finalize viewing of anonymous eligibility results (read-only userDecrypt).
+ * Eligibility certification is enforced by Noir proof at finalize time; this hook is for post-apply viewing only.
  */
 export function useAnonymousEligibility() {
     const [decrypting, setDecrypting] = useState<Record<string, boolean>>({});
@@ -33,29 +33,26 @@ export function useAnonymousEligibility() {
 
             const chainId = await resolveChainIdFrom(signer);
             const engine = getEligibilityEngine(signer, chainId);
+            const engineAddress = await engine.getAddress();
             const encryptedResult = await engine.getAnonymousResult(nullifier, BigInt(trialId));
 
             const ephemeralSigner = getEphemeralSigner(identity, signer.provider);
-            const client = await getFHEClient();
-            await client.connect({ provider: signer.provider, signer: ephemeralSigner });
-            const permit = await client.permits.getOrCreateSelfPermit(ephemeralSigner.address);
-
-            const isEligible: boolean = await client
-                .decryptForView(encryptedResult, FheTypes.Bool)
-                .setAccount(ephemeralSigner.address)
-                .setChainId(Number(chainId ?? 421614n))
-                .withPermit(permit)
-                .execute();
-
+            const isEligible = Boolean(
+                await decryptForViewWithEphemeral(
+                    ephemeralSigner,
+                    encryptedResult,
+                    FheTypes.Bool,
+                    engineAddress
+                )
+            );
             setResults(prev => ({ ...prev, [trialId]: isEligible }));
             return isEligible;
-        } catch (err: any) {
-            const message = err.message || 'Failed to decrypt result';
+        } catch (err: unknown) {
+            const message = (err as Error).message || 'Failed to decrypt result';
             setError(message);
             console.error('Decryption failed:', err);
             return null;
         } finally {
-            resetFheClient();
             setDecrypting(prev => ({ ...prev, [trialId]: false }));
         }
     }, []);
@@ -79,30 +76,25 @@ export function useAnonymousEligibility() {
 
             const chainId = await resolveChainIdFrom(signer);
             const engine = getEligibilityEngine(signer, chainId);
+            const engineAddress = await engine.getAddress();
             const encryptedScore = await engine.getAnonymousScore(nullifier, BigInt(trialId));
 
             const ephemeralSigner = getEphemeralSigner(identity, signer.provider);
-            const client = await getFHEClient();
-            await client.connect({ provider: signer.provider, signer: ephemeralSigner });
-            const permit = await client.permits.getOrCreateSelfPermit(ephemeralSigner.address);
-
-            const scoreVal: bigint = await client
-                .decryptForView(encryptedScore, FheTypes.Uint8)
-                .setAccount(ephemeralSigner.address)
-                .setChainId(Number(chainId ?? 421614n))
-                .withPermit(permit)
-                .execute();
-
+            const scoreVal = await decryptForViewWithEphemeral(
+                ephemeralSigner,
+                encryptedScore,
+                FheTypes.Uint8,
+                engineAddress
+            );
             const score = Number(scoreVal);
             setScores(prev => ({ ...prev, [trialId]: score }));
             return score;
-        } catch (err: any) {
-            const message = err.message || 'Failed to decrypt score';
+        } catch (err: unknown) {
+            const message = (err as Error).message || 'Failed to decrypt score';
             setError(message);
             console.error('Score decryption failed:', err);
             return null;
         } finally {
-            resetFheClient();
             setDecrypting(prev => ({ ...prev, [trialId]: false }));
         }
     }, []);
@@ -117,7 +109,7 @@ export function useAnonymousEligibility() {
             const engine = getEligibilityEngine(provider, chainId);
             const status = await engine.getAnonymousApplicationStatus(nullifier, trialId);
             return Number(status);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to get application status:', err);
             return null;
         }

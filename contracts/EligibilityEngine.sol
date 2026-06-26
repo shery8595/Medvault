@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool, euint16} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint8, ebool, euint16} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./AnonymousPatientRegistry.sol";
 import "./TrialManager.sol";
 import "./ConsentManager.sol";
@@ -30,12 +31,54 @@ interface IAnonymousPatientRegistry {
         euint16 hbLevel;
         ebool isSmoker;
         ebool hasHypertension;
+        bytes32 profileCommitment;
         bool exists;
     }
     function getPatient(uint256 _commitment) external returns (EncryptedPatient memory);
+    function getProfileCommitment(uint256 _commitment) external view returns (bytes32);
 }
 
-// FINDING 2: Updated interface — anonymous apply uses stage → finalize (CoFHE decrypt verify gate).
+interface ITrialManagerExtended {
+    struct Trial {
+        string name;
+        string phase;
+        string location;
+        string compensation;
+        address sponsor;
+        bool active;
+        uint8 minAge;
+        uint8 maxAge;
+        bool requiresDiabetes;
+        uint16 minHb;
+        uint8 genderRequirement;
+        uint8 minHeight;
+        uint16 maxWeight;
+        bool requiresNonSmoker;
+        bool requiresNormalBP;
+        uint256 endTime;
+        bool encryptedCriteria;
+    }
+    struct EncryptedCriteria {
+        euint8 minAge;
+        euint8 maxAge;
+        ebool requiresDiabetes;
+        euint16 minHb;
+        euint8 genderRequirement;
+        euint8 minHeight;
+        euint16 maxWeight;
+        ebool requiresNonSmoker;
+        ebool requiresNormalBP;
+    }
+    function getTrial(uint256 _trialId) external view returns (Trial memory);
+    function getEncryptedCriteria(uint256 _trialId) external view returns (EncryptedCriteria memory);
+}
+
+interface IEncryptedScoreLeaderboard {
+    function addToAggregate(uint256 _trialId, uint256 _nullifier, euint8 _score) external;
+    function addApplicant(uint256 _trialId, uint256 _nullifier) external;
+}
+
+// Anonymous apply: stage FHE → Noir proof finalize (no on-chain KMS decrypt).
 interface IEligibilityEngine {
     enum ApplicationStatus { None, Pending, Accepted, Rejected }
     function stageAnonymousEligibility(
@@ -44,15 +87,17 @@ interface IEligibilityEngine {
         uint256 _nullifier,
         address _permitRecipient
     ) external returns (bytes32 finalCt);
-    function finalizeAnonymousEligibility(
+    function finalizeAnonymousEligibilityWithProof(
         uint256 _commitment,
-        uint256 _trialId,
         uint256 _nullifier,
+        uint256 _trialId,
         address _permitRecipient,
-        bool _decryptedEligible,
-        bytes calldata _decryptSig
+        address _consentWallet,
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs,
+        bool _eligible
     ) external returns (ebool);
-    function cancelStagedAnonymousEligibility(uint256 _nullifier, uint256 _trialId) external;
+    function cancelStagedAnonymousEligibility(uint256 _nullifier, uint256 _trialId, address _permitRecipient) external;
     function updateAnonymousApplicationStatus(
         uint256 _trialId,
         uint256 _nullifier,
@@ -65,7 +110,7 @@ interface IEligibilityEngine {
  * @notice Performs privacy-preserving eligibility computation with expanded medical fields
  * @dev Supports both wallet-based (legacy) and anonymous (Semaphore-based) eligibility checks
  */
-contract EligibilityEngine {
+contract EligibilityEngine is ZamaEthereumConfig {
     // Anonymous architecture: commitment -> data
     IAnonymousPatientRegistry public patientRegistry;
     // Legacy support: address -> data (optional, for backwards compatibility)
@@ -74,8 +119,9 @@ contract EligibilityEngine {
     TrialManager public trialManager;
     ConsentManager public consentManager;
     DataAccessLog public dataAccessLog;
-    EncryptedConsentGate public consentGate; // FHENIX: Optional consent gate for FHE composition
+    EncryptedConsentGate public consentGate; // Zama FHE: Optional consent gate for FHE composition
     address public scoreLeaderboard; // EncryptedScoreLeaderboard — FHE.allow on persisted scores
+    address public sponsorIncentiveVault;
     address public automationContract;
     address public owner;
     address public pendingOwner; // FINDING 11: Two-step ownership transfer
@@ -84,12 +130,32 @@ contract EligibilityEngine {
     // ── Noir / HonkVerifier integration ──────────────────────────────────────
     IHonkVerifier public eligibilityVerifier;
 
-    // nullifier => trialId => whether a valid Noir proof was submitted
-    // Public so sponsors and the frontend can read it directly.
+    /// @notice Public input count for eligibility_proof attestation circuit.
+    uint256 public constant ELIGIBILITY_PUBLIC_INPUT_COUNT = 17;
+
+    /// @notice Versioned criteria schema hash (field-safe: keccak mod BN254 scalar field).
+    uint256 private constant BN254_FIELD_ORDER =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    bytes32 public constant CRITERIA_SCHEMA_HASH = bytes32(
+        uint256(keccak256("medvault.eligibility.criteria.v1")) % BN254_FIELD_ORDER
+    );
+
+    // nullifier => trialId => whether a valid Noir attestation seal was recorded
     mapping(uint256 => mapping(uint256 => bool)) public noirVerifiedResults;
 
-    // nullifier => trialId => the result_hash that was certified
+    // nullifier => trialId => attestation receipt fields (no PHI)
     mapping(uint256 => mapping(uint256 => bytes32)) public noirResultHashes;
+    mapping(uint256 => mapping(uint256 => bytes32)) public attestationProfileCommitments;
+    mapping(uint256 => mapping(uint256 => bytes32)) public attestationFheStageHashes;
+    mapping(uint256 => mapping(uint256 => bytes32)) public attestationCriteriaSchemaHashes;
+
+    struct AttestationReceipt {
+        bool verified;
+        bytes32 resultHash;
+        bytes32 profileCommitment;
+        bytes32 criteriaSchemaHash;
+        bytes32 fheStageHash;
+    }
 
     enum ApplicationStatus { None, Pending, Accepted, Rejected }
 
@@ -114,13 +180,18 @@ contract EligibilityEngine {
     // Anonymous application tracking by nullifier
     mapping(uint256 => mapping(uint256 => ApplicationStatus)) public anonymousApplications;
 
-    // Tracks which address has decrypt rights per nullifier
-    mapping(uint256 => address) public decryptPermitHolder;
+    // Tracks which address has decrypt rights per nullifier × trialId
+    mapping(uint256 => mapping(uint256 => address)) private _decryptPermitHolder;
 
-    /// @notice Staged FHE eligibility awaiting verified decrypt in finalize (nullifier × trialId).
+    /// @notice M-2: Wallet that granted consent, bound to nullifier at finalize (not caller-supplied at gate time).
+    mapping(uint256 => mapping(uint256 => address)) private _consentWalletForNullifier;
+
+    /// @notice Staged FHE eligibility awaiting Noir proof finalize (encrypted, no public KMS decrypt).
     struct PendingAnonymous {
         bytes32 finalCt;
         bytes32 scoreCt;
+        address permitRecipient;
+        uint256 timestamp;
     }
 
     mapping(uint256 => mapping(uint256 => PendingAnonymous)) internal pendingAnonymousEligibility;
@@ -138,16 +209,20 @@ contract EligibilityEngine {
     event AnonymousApplicationStatusUpdated(uint256 indexed nullifier, uint256 indexed trialId, ApplicationStatus status);
     event OwnershipProposed(address indexed proposedOwner); // FINDING 11
     event OwnershipAccepted(address indexed newOwner); // FINDING 11
+    event AuthorizedReaderChanged(bytes32 indexed role, address oldAddr, address newAddr);
 
-    /// @notice Emitted when a patient certifies their FHE eligibility result with a Noir proof
+    /// @notice Emitted when a Zama FHE match is sealed with a Noir compliance attestation.
     event EligibilityProofVerified(
         uint256 indexed nullifier,
         uint256 indexed trialId,
         bytes32 resultHash,
+        bytes32 fheStageHash,
+        bytes32 criteriaSchemaHash,
         bool eligible
     );
 
     constructor(address _registry, address _trialManager, address _consentManager) {
+        require(_registry != address(0) && _trialManager != address(0) && _consentManager != address(0), "Zero address");
         owner = msg.sender;
         patientRegistry = IAnonymousPatientRegistry(_registry);
         trialManager = TrialManager(_trialManager);
@@ -183,6 +258,7 @@ contract EligibilityEngine {
 
     function setAutomationContract(address _automation) external onlyOwner {
         require(_automation != address(0), "Zero address");
+        emit AuthorizedReaderChanged(keccak256("automation"), automationContract, _automation);
         automationContract = _automation;
     }
 
@@ -193,15 +269,17 @@ contract EligibilityEngine {
 
     function setAuthorizedRegistry(address _registry) external onlyOwner {
         require(_registry != address(0), "Zero address");
+        emit AuthorizedReaderChanged(keccak256("authorizedRegistry"), authorizedRegistry, _registry);
         authorizedRegistry = _registry;
     }
 
     /**
-     * @notice FHENIX: Set the encrypted consent gate contract
+     * @notice Zama FHE: Set the encrypted consent gate contract
      * @param _gate Address of the EncryptedConsentGate contract
      */
     function setConsentGate(address _gate) external onlyOwner {
         require(_gate != address(0), "Zero address");
+        emit AuthorizedReaderChanged(keccak256("consentGate"), address(consentGate), _gate);
         consentGate = EncryptedConsentGate(_gate);
     }
 
@@ -210,7 +288,80 @@ contract EligibilityEngine {
      */
     function setScoreLeaderboard(address _leaderboard) external onlyOwner {
         require(_leaderboard != address(0), "Zero address");
+        emit AuthorizedReaderChanged(keccak256("scoreLeaderboard"), scoreLeaderboard, _leaderboard);
         scoreLeaderboard = _leaderboard;
+    }
+
+    function setSponsorIncentiveVault(address _vault) external onlyOwner {
+        require(_vault != address(0), "Zero address");
+        emit AuthorizedReaderChanged(keccak256("sponsorIncentiveVault"), sponsorIncentiveVault, _vault);
+        sponsorIncentiveVault = _vault;
+    }
+
+    /**
+     * @notice Restricted lookup for permit holder — not a public deanonymization vector.
+     */
+    uint256 public constant STAGING_TTL = 7 days;
+
+    function getDecryptPermitHolder(uint256 _nullifier, uint256 _trialId) external view returns (address) {
+        address holder = _decryptPermitHolder[_nullifier][_trialId];
+        require(
+            msg.sender == holder ||
+            msg.sender == authorizedRegistry ||
+            msg.sender == sponsorIncentiveVault ||
+            msg.sender == scoreLeaderboard ||
+            msg.sender == address(consentGate) ||
+            msg.sender == owner,
+            "Not authorized"
+        );
+        return holder;
+    }
+
+    /// @notice M-2: Consent-granting wallet bound to this nullifier at apply finalize.
+    function getConsentWalletForNullifier(uint256 _nullifier, uint256 _trialId) external view returns (address) {
+        require(
+            msg.sender == address(consentGate) ||
+            msg.sender == authorizedRegistry ||
+            msg.sender == owner,
+            "Not authorized"
+        );
+        return _consentWalletForNullifier[_nullifier][_trialId];
+    }
+
+    function _requireTrialOpen(TrialManager.Trial memory trial) internal view {
+        require(trial.active, "Trial is not active");
+        require(trial.endTime > 0, "Trial does not exist");
+        require(block.timestamp < trial.endTime, "Trial ended");
+    }
+
+    function _encryptedCriteriaBindingHash(uint256 _trialId) internal view returns (bytes32) {
+        ITrialManagerExtended.EncryptedCriteria memory c = ITrialManagerExtended(
+            address(trialManager)
+        ).getEncryptedCriteria(_trialId);
+        return keccak256(
+            abi.encode(
+                euint8.unwrap(c.minAge),
+                euint8.unwrap(c.maxAge),
+                ebool.unwrap(c.requiresDiabetes),
+                euint16.unwrap(c.minHb),
+                euint8.unwrap(c.genderRequirement),
+                euint8.unwrap(c.minHeight),
+                euint16.unwrap(c.maxWeight),
+                ebool.unwrap(c.requiresNonSmoker),
+                ebool.unwrap(c.requiresNormalBP)
+            )
+        );
+    }
+
+    /**
+     * @notice Public echo of encrypted criteria binding hash for Noir proof generation.
+     * @dev Patients cannot read encrypted criteria handles; they fetch this hash and supply
+     *      it as public input 7 with criteria_mode=1 in the attestation circuit.
+     */
+    function encryptedCriteriaBindingHash(uint256 _trialId) external view returns (bytes32) {
+        TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
+        require(trial.encryptedCriteria, "Trial does not use encrypted criteria");
+        return _encryptedCriteriaBindingHash(_trialId);
     }
 
     /**
@@ -225,118 +376,228 @@ contract EligibilityEngine {
     }
 
     /**
-     * @notice Submit a Noir proof certifying a FHE eligibility result.
-     *
-     * @dev This is the "Result Certification Layer" — it sits on top of the FHE flow:
-     *      1. Patient applies via Semaphore (MedVaultRegistry.stage/finalizeAnonymousApply)
-     *      2. FHE computes encrypted eligibility result on-chain (checkAnonymousEligibility)
-     *      3. Patient decrypts result off-chain via CoFHE
-     *      4. Patient generates a Noir proof binding (identity, trial, result) together
-     *      5. Patient (or relayer) submits this function to certify the result on-chain
-     *
-     *      Sponsors can now read noirVerifiedResults[nullifier][trialId] to confirm
-     *      the applicant self-certified their eligibility without any FHE decryption required.
-     *
-     * @param _proof       Raw UltraHonk proof bytes (456 * 32 bytes from bb.js)
-     * @param _publicInputs Public inputs as bytes32[] in order: [scope, nullifier, result_hash, eligible]
-     * @param _trialId     The trial ID (must match scope in proof public inputs)
-     * @param _nullifier   The Semaphore nullifier (must match nullifier in proof public inputs)
-     * @param _eligible    The claimed eligibility result (true = eligible)
+     * @notice Submit a Noir attestation seal for an existing Zama FHE application (post-apply).
+     * @dev Zama FHE is the compute authority; Noir binds identity + profile + staged handle.
+     *      M-2: `_commitment` MUST be supplied so the attestation's profile commitment is bound to
+     *      the registered profile in AnonymousPatientRegistry. Previously this path passed
+     *      bytes32(0), which skipped the on-chain profile-commitment check and let a permit holder
+     *      seal an attestation for a profile commitment that did not match their registered data.
      */
     function verifyEligibilityProof(
         bytes calldata _proof,
         bytes32[] calldata _publicInputs,
         uint256 _trialId,
         uint256 _nullifier,
+        uint256 _commitment,
         bool _eligible
     ) external {
-        require(address(eligibilityVerifier) != address(0), "Verifier not set");
-        require(_publicInputs.length == 4, "Expected 4 public inputs: scope, nullifier, result_hash, eligible");
-        require(!noirVerifiedResults[_nullifier][_trialId], "Already certified");
-
-        // Public input layout (matches main.nr pub parameter order):
-        //   [0] scope       = trial_id as Field
-        //   [1] nullifier   = Poseidon([scope, secret])
-        //   [2] result_hash = Poseidon([eligible, scope, secret])
-        //   [3] eligible    = 0 or 1 Field, bound to result_hash inside the Noir proof
-
-        // Verify scope matches the claimed trial
-        require(uint256(_publicInputs[0]) == _trialId, "Scope mismatch: trial_id");
-
-        // Verify nullifier matches the on-chain Semaphore nullifier
-        require(uint256(_publicInputs[1]) == _nullifier, "Nullifier mismatch");
-
-        // Verify claimed eligibility matches the proof's public eligible bit
-        require(uint256(_publicInputs[3]) == (_eligible ? 1 : 0), "Eligible mismatch");
-
-        // Verify this nullifier has an existing FHE application (prevents spoofing fresh entries)
+        require(
+            msg.sender == authorizedRegistry ||
+            msg.sender == _decryptPermitHolder[_nullifier][_trialId],
+            "Not authorized"
+        );
+        require(_eligible, "Ineligible results cannot be sealed");
+        require(_commitment != 0, "Commitment required for sealing");
         require(
             anonymousApplications[_nullifier][_trialId] != ApplicationStatus.None,
             "No FHE application found for this nullifier"
         );
-
-        // Verify the Noir proof via HonkVerifier
-        require(eligibilityVerifier.verify(_proof, _publicInputs), "Invalid Noir proof");
-
-        // Store certification
-        bytes32 resultHash = _publicInputs[2];
-        noirVerifiedResults[_nullifier][_trialId] = true;
-        noirResultHashes[_nullifier][_trialId] = resultHash;
-
+        require(!noirVerifiedResults[_nullifier][_trialId], "Already sealed");
+        ebool persisted = anonymousResults[_nullifier][_trialId];
+        require(FHE.isInitialized(persisted), "No Zama FHE result");
+        bytes32 fheStageHash = ebool.unwrap(persisted);
+        _verifyEligibilityProofCore(
+            _proof,
+            _publicInputs,
+            _trialId,
+            _nullifier,
+            _eligible,
+            bytes32(_commitment),
+            fheStageHash
+        );
+        _recordAttestation(_nullifier, _trialId, _publicInputs, _eligible, fheStageHash);
         if (address(dataAccessLog) != address(0)) {
             dataAccessLog.logAction(
                 DataAccessLog.ActionType.ELIGIBILITY_CHECKED,
                 _trialId,
-                keccak256(abi.encodePacked(_nullifier, resultHash, block.timestamp, "NOIR_CERTIFIED"))
+                keccak256(abi.encodePacked(_nullifier, _publicInputs[3], block.timestamp, "ATTESTATION_SEAL"))
             );
         }
+        emit EligibilityProofVerified(
+            _nullifier,
+            _trialId,
+            _publicInputs[3],
+            fheStageHash,
+            _publicInputs[6],
+            _eligible
+        );
+    }
 
-        emit EligibilityProofVerified(_nullifier, _trialId, resultHash, _eligible);
+    function attestationReceipt(
+        uint256 _nullifier,
+        uint256 _trialId
+    ) external view returns (AttestationReceipt memory) {
+        return AttestationReceipt({
+            verified: noirVerifiedResults[_nullifier][_trialId],
+            resultHash: noirResultHashes[_nullifier][_trialId],
+            profileCommitment: attestationProfileCommitments[_nullifier][_trialId],
+            criteriaSchemaHash: attestationCriteriaSchemaHashes[_nullifier][_trialId],
+            fheStageHash: attestationFheStageHashes[_nullifier][_trialId]
+        });
+    }
+
+    function _recordAttestation(
+        uint256 _nullifier,
+        uint256 _trialId,
+        bytes32[] calldata _publicInputs,
+        bool _eligible,
+        bytes32 _fheStageHash
+    ) internal {
+        noirVerifiedResults[_nullifier][_trialId] = true;
+        noirResultHashes[_nullifier][_trialId] = _publicInputs[3];
+        attestationProfileCommitments[_nullifier][_trialId] = _publicInputs[2];
+        attestationFheStageHashes[_nullifier][_trialId] = _fheStageHash;
+        attestationCriteriaSchemaHashes[_nullifier][_trialId] = _publicInputs[6];
+        if (!_eligible) {
+            // sealed ineligible attestations are rejected earlier; keep branch for clarity
+            return;
+        }
     }
 
     /**
-     * @notice Private function to compute eligibility from encrypted patient data and trial criteria
-     * @dev Extracted to remove duplication between checkAnonymousEligibility and checkAnonymousEligibilityWithConsent
-     * @param patient The encrypted patient data
-     * @param trial The trial criteria
-     * @return finalResult The encrypted boolean eligibility result
-     * @return score The encrypted 0-100 eligibility score
+     * @dev Shared Noir + trial criteria + profile commitment verification.
+     * @param _commitment Semaphore commitment (0 skips on-chain profile check — standalone certify).
      */
-    function _computeEligibility(
-        IAnonymousPatientRegistry.EncryptedPatient memory patient,
-        TrialManager.Trial memory trial
-    ) private returns (ebool finalResult, euint8 score) {
-        // 1. Age check (inclusive min/max bounds)
-        ebool ageOk = FHE.and(
-            FHE.gte(patient.age, FHE.asEuint8(trial.minAge)),
-            FHE.lte(patient.age, FHE.asEuint8(trial.maxAge))
+    function _verifyEligibilityProofCore(
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs,
+        uint256 _trialId,
+        uint256 _nullifier,
+        bool _eligible,
+        bytes32 _commitment,
+        bytes32 _expectedFheStageHash
+    ) internal view {
+        require(address(eligibilityVerifier) != address(0), "Verifier not set");
+        require(
+            _publicInputs.length == ELIGIBILITY_PUBLIC_INPUT_COUNT,
+            "Expected 17 public inputs"
         );
+        require(uint256(_publicInputs[0]) == _trialId, "Scope mismatch: trial_id");
+        require(uint256(_publicInputs[1]) == _nullifier, "Nullifier mismatch");
+        require(uint256(_publicInputs[4]) == (_eligible ? 1 : 0), "Eligible mismatch");
+        require(
+            uint256(_publicInputs[5]) == uint256(_expectedFheStageHash) % BN254_FIELD_ORDER,
+            "FHE stage mismatch"
+        );
+        require(_publicInputs[6] == CRITERIA_SCHEMA_HASH, "Criteria schema mismatch");
 
-        // 2. Diabetes logic
-        ebool diabetesOk = trial.requiresDiabetes ? FHE.eq(patient.hasDiabetes, FHE.asEbool(true)) : FHE.asEbool(true);
-
-        // 3. Hb level check
-        ebool hbOk = FHE.gte(patient.hbLevel, FHE.asEuint16(trial.minHb));
-
-        // 4. Gender check
-        ebool genderOk;
-        if (trial.genderRequirement == 1) {
-            genderOk = FHE.eq(patient.gender, FHE.asEbool(true));
-        } else if (trial.genderRequirement == 2) {
-            genderOk = FHE.eq(patient.gender, FHE.asEbool(false));
-        } else {
-            genderOk = FHE.asEbool(true);
+        if (_commitment != bytes32(0)) {
+            bytes32 storedProfile = patientRegistry.getProfileCommitment(uint256(_commitment));
+            require(_publicInputs[2] == storedProfile, "Profile commitment mismatch");
         }
 
-        // 5. Vital Bio-Metrics
-        ebool heightOk = trial.minHeight > 0 ? FHE.gte(patient.height, FHE.asEuint8(trial.minHeight)) : FHE.asEbool(true);
-        ebool weightOk = trial.maxWeight > 0 ? FHE.lte(patient.weight, FHE.asEuint16(trial.maxWeight)) : FHE.asEbool(true);
+        TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
+        _requireTrialOpen(trial);
+        if (!trial.encryptedCriteria) {
+            require(uint256(_publicInputs[16]) == 0, "Plaintext mode flag");
+            require(uint256(_publicInputs[7]) == trial.minAge, "Criteria mismatch: minAge");
+            require(uint256(_publicInputs[8]) == trial.maxAge, "Criteria mismatch: maxAge");
+            require(uint256(_publicInputs[9]) == (trial.requiresDiabetes ? 1 : 0), "Criteria mismatch: diabetes");
+            require(uint256(_publicInputs[10]) == trial.minHb, "Criteria mismatch: minHb");
+            require(uint256(_publicInputs[11]) == trial.genderRequirement, "Criteria mismatch: gender");
+            require(uint256(_publicInputs[12]) == trial.minHeight, "Criteria mismatch: minHeight");
+            require(uint256(_publicInputs[13]) == trial.maxWeight, "Criteria mismatch: maxWeight");
+            require(uint256(_publicInputs[14]) == (trial.requiresNonSmoker ? 1 : 0), "Criteria mismatch: nonSmoker");
+            require(uint256(_publicInputs[15]) == (trial.requiresNormalBP ? 1 : 0), "Criteria mismatch: normalBP");
+        } else {
+            require(uint256(_publicInputs[16]) == 1, "Encrypted mode flag");
+            bytes32 criteriaBinding = _encryptedCriteriaBindingHash(_trialId);
+            require(
+                uint256(_publicInputs[7]) == uint256(criteriaBinding) % BN254_FIELD_ORDER,
+                "Encrypted criteria binding mismatch"
+            );
+        }
 
-        // 6. Lifestyle & Co-morbidities
-        ebool smokingOk = trial.requiresNonSmoker ? FHE.eq(patient.isSmoker, FHE.asEbool(false)) : FHE.asEbool(true);
-        ebool bpOk = trial.requiresNormalBP ? FHE.eq(patient.hasHypertension, FHE.asEbool(false)) : FHE.asEbool(true);
+        require(eligibilityVerifier.verify(_proof, _publicInputs), "Invalid Noir proof");
+    }
 
-        // --- SCORING LOGIC ---
+    function _persistStagedAnonymous(
+        uint256 _nullifier,
+        uint256 _trialId
+    ) internal {
+        PendingAnonymous memory pending = pendingAnonymousEligibility[_nullifier][_trialId];
+        require(pending.finalCt != bytes32(0), "Nothing staged");
+
+        ebool finalResult = ebool.wrap(pending.finalCt);
+        euint8 score = euint8.wrap(pending.scoreCt);
+        address permitRecipient = pending.permitRecipient;
+        require(permitRecipient != address(0), "Invalid permit recipient");
+
+        delete pendingAnonymousEligibility[_nullifier][_trialId];
+
+        FHE.allowThis(finalResult);
+        FHE.allowThis(score);
+        anonymousResults[_nullifier][_trialId] = finalResult;
+        anonymousScores[_nullifier][_trialId] = score;
+        FHE.allow(finalResult, permitRecipient);
+        FHE.allow(score, permitRecipient);
+        if (scoreLeaderboard != address(0)) {
+            FHE.allow(score, scoreLeaderboard);
+            try IEncryptedScoreLeaderboard(scoreLeaderboard).addApplicant(_trialId, _nullifier) {} catch {}
+            try IEncryptedScoreLeaderboard(scoreLeaderboard).addToAggregate(_trialId, _nullifier, score) {} catch {}
+        }
+        _decryptPermitHolder[_nullifier][_trialId] = permitRecipient;
+
+        emit AnonymousEncryptedPropensityCommitted(_nullifier, _trialId);
+    }
+
+    function _bindConsentWallet(uint256 _nullifier, uint256 _trialId, address _consentWallet) internal {
+        require(_consentWallet != address(0), "Zero consent wallet");
+        require(_consentWalletForNullifier[_nullifier][_trialId] == address(0), "Consent wallet already bound");
+        _consentWalletForNullifier[_nullifier][_trialId] = _consentWallet;
+    }
+
+    function _genderOkPlaintext(ebool patientGender, uint8 genderRequirement) private returns (ebool) {
+        if (genderRequirement == 1) {
+            return FHE.eq(patientGender, FHE.asEbool(true));
+        }
+        if (genderRequirement == 2) {
+            return FHE.eq(patientGender, FHE.asEbool(false));
+        }
+        return FHE.asEbool(true);
+    }
+
+    function _genderOkEncrypted(ebool patientGender, euint8 genderRequirementCt) private returns (ebool) {
+        FHE.allowThis(genderRequirementCt);
+        ebool reqMale = FHE.eq(genderRequirementCt, FHE.asEuint8(1));
+        ebool reqFemale = FHE.eq(genderRequirementCt, FHE.asEuint8(2));
+        ebool maleOk = FHE.eq(patientGender, FHE.asEbool(true));
+        ebool femaleOk = FHE.eq(patientGender, FHE.asEbool(false));
+        ebool anyOk = FHE.asEbool(true);
+        return FHE.select(reqMale, maleOk, FHE.select(reqFemale, femaleOk, anyOk));
+    }
+
+    function _computeEligibility(
+        IAnonymousPatientRegistry.EncryptedPatient memory patient,
+        TrialManager.Trial memory trial,
+        uint256 trialId
+    ) private returns (ebool finalResult, euint8 score) {
+        if (trial.encryptedCriteria) {
+            return _computeEligibilityEncrypted(patient, trialId);
+        }
+        return _computeEligibilityPlaintext(patient, trial);
+    }
+
+    function _scoreAndCombine(
+        ebool ageOk,
+        ebool diabetesOk,
+        ebool hbOk,
+        ebool genderOk,
+        ebool heightOk,
+        ebool weightOk,
+        ebool smokingOk,
+        ebool bpOk
+    ) private returns (ebool finalResult, euint8 score) {
         euint8 passCount = FHE.asEuint8(0);
         passCount = FHE.add(passCount, FHE.select(ageOk, FHE.asEuint8(1), FHE.asEuint8(0)));
         passCount = FHE.add(passCount, FHE.select(diabetesOk, FHE.asEuint8(1), FHE.asEuint8(0)));
@@ -347,14 +608,13 @@ contract EligibilityEngine {
         passCount = FHE.add(passCount, FHE.select(smokingOk, FHE.asEuint8(1), FHE.asEuint8(0)));
         passCount = FHE.add(passCount, FHE.select(bpOk, FHE.asEuint8(1), FHE.asEuint8(0)));
 
-        // Scale to 0-100
         score = FHE.mul(passCount, FHE.asEuint8(12));
-        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(2)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(4)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(6)), FHE.asEuint8(1), FHE.asEuint8(0)));
-        score = FHE.add(score, FHE.select(FHE.gte(passCount, FHE.asEuint8(8)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(2)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(4)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(6)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.add(score, FHE.select(FHE.ge(passCount, FHE.asEuint8(8)), FHE.asEuint8(1), FHE.asEuint8(0)));
+        score = FHE.select(FHE.le(score, FHE.asEuint8(100)), score, FHE.asEuint8(100));
 
-        // --- FINAL RESULT ---
         finalResult = FHE.and(ageOk, diabetesOk);
         finalResult = FHE.and(finalResult, hbOk);
         finalResult = FHE.and(finalResult, genderOk);
@@ -362,6 +622,94 @@ contract EligibilityEngine {
         finalResult = FHE.and(finalResult, weightOk);
         finalResult = FHE.and(finalResult, smokingOk);
         finalResult = FHE.and(finalResult, bpOk);
+    }
+
+    function _computeEligibilityPlaintext(
+        IAnonymousPatientRegistry.EncryptedPatient memory patient,
+        TrialManager.Trial memory trial
+    ) private returns (ebool finalResult, euint8 score) {
+        ebool ageOk = FHE.and(
+            FHE.ge(patient.age, FHE.asEuint8(trial.minAge)),
+            FHE.le(patient.age, FHE.asEuint8(trial.maxAge))
+        );
+
+        ebool diabetesOk = trial.requiresDiabetes
+            ? FHE.eq(patient.hasDiabetes, FHE.asEbool(true))
+            : FHE.asEbool(true);
+
+        ebool hbOk = FHE.ge(patient.hbLevel, FHE.asEuint16(trial.minHb));
+        ebool genderOk = _genderOkPlaintext(patient.gender, trial.genderRequirement);
+        ebool heightOk = trial.minHeight > 0
+            ? FHE.ge(patient.height, FHE.asEuint8(trial.minHeight))
+            : FHE.asEbool(true);
+        ebool weightOk = trial.maxWeight > 0
+            ? FHE.le(patient.weight, FHE.asEuint16(trial.maxWeight))
+            : FHE.asEbool(true);
+        ebool smokingOk = trial.requiresNonSmoker
+            ? FHE.eq(patient.isSmoker, FHE.asEbool(false))
+            : FHE.asEbool(true);
+        ebool bpOk = trial.requiresNormalBP
+            ? FHE.eq(patient.hasHypertension, FHE.asEbool(false))
+            : FHE.asEbool(true);
+
+        (finalResult, score) = _scoreAndCombine(
+            ageOk,
+            diabetesOk,
+            hbOk,
+            genderOk,
+            heightOk,
+            weightOk,
+            smokingOk,
+            bpOk
+        );
+    }
+
+    function _computeEligibilityEncrypted(
+        IAnonymousPatientRegistry.EncryptedPatient memory patient,
+        uint256 trialId
+    ) private returns (ebool finalResult, euint8 score) {
+        ITrialManagerExtended.EncryptedCriteria memory c = ITrialManagerExtended(
+            address(trialManager)
+        ).getEncryptedCriteria(trialId);
+
+        FHE.allowThis(c.minAge);
+        FHE.allowThis(c.maxAge);
+        FHE.allowThis(c.requiresDiabetes);
+        FHE.allowThis(c.minHb);
+        FHE.allowThis(c.genderRequirement);
+        FHE.allowThis(c.minHeight);
+        FHE.allowThis(c.maxWeight);
+        FHE.allowThis(c.requiresNonSmoker);
+        FHE.allowThis(c.requiresNormalBP);
+
+        ebool ageOk = FHE.and(FHE.ge(patient.age, c.minAge), FHE.le(patient.age, c.maxAge));
+        ebool diabetesOk = FHE.or(
+            FHE.not(c.requiresDiabetes),
+            FHE.eq(patient.hasDiabetes, FHE.asEbool(true))
+        );
+        ebool hbOk = FHE.ge(patient.hbLevel, c.minHb);
+        ebool genderOk = _genderOkEncrypted(patient.gender, c.genderRequirement);
+        ebool heightOk = FHE.ge(patient.height, c.minHeight);
+        ebool weightOk = FHE.le(patient.weight, c.maxWeight);
+        ebool smokingOk = FHE.or(
+            FHE.not(c.requiresNonSmoker),
+            FHE.eq(patient.isSmoker, FHE.asEbool(false))
+        );
+        ebool bpOk = FHE.or(
+            FHE.not(c.requiresNormalBP),
+            FHE.eq(patient.hasHypertension, FHE.asEbool(false))
+        );
+
+        (finalResult, score) = _scoreAndCombine(
+            ageOk,
+            diabetesOk,
+            hbOk,
+            genderOk,
+            heightOk,
+            weightOk,
+            smokingOk,
+            bpOk
+        );
     }
 
     /**
@@ -425,6 +773,9 @@ contract EligibilityEngine {
             msg.sender == trial.sponsor || msg.sender == authorizedRegistry,
             "Only sponsor or authorized registry can update status"
         );
+        if (_status == ApplicationStatus.Accepted) {
+            require(msg.sender == trial.sponsor, "Only sponsor can accept");
+        }
         require(anonymousApplications[_nullifier][_trialId] != ApplicationStatus.None, "No anonymous application found");
 
         anonymousApplications[_nullifier][_trialId] = _status;
@@ -442,7 +793,7 @@ contract EligibilityEngine {
 
     /**
      * @notice Phase 1: compute encrypted eligibility and stage ciphertext handles for decrypt verification.
-     * @dev Patient obtains CoFHE `decryptForTx` bundle off-chain (permitRecipient), then registry calls finalize.
+     * @dev Patient obtains Zama FHE `decryptForTx` bundle off-chain (permitRecipient), then registry calls finalize.
      */
     function stageAnonymousEligibility(
         uint256 _commitment,
@@ -458,17 +809,17 @@ contract EligibilityEngine {
         require(patient.exists, "Patient not found for this commitment");
 
         TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
-        require(trial.active, "Trial is not active");
+        _requireTrialOpen(trial);
 
-        (ebool finalResult, euint8 score) = _computeEligibility(patient, trial);
+        (ebool finalResult, euint8 score) = _computeEligibility(patient, trial, _trialId);
 
         pendingAnonymousEligibility[_nullifier][_trialId] = PendingAnonymous({
             finalCt: ebool.unwrap(finalResult),
-            scoreCt: euint8.unwrap(score)
+            scoreCt: euint8.unwrap(score),
+            permitRecipient: _permitRecipient,
+            timestamp: block.timestamp
         });
 
-        // TaskManager.verifyDecryptResult requires this contract as msg.sender on finalize tx.
-        // Transient same-tx ACL is insufficient across stage → finalize split.
         FHE.allowThis(finalResult);
         FHE.allowThis(score);
         FHE.allow(finalResult, _permitRecipient);
@@ -479,56 +830,76 @@ contract EligibilityEngine {
     }
 
     /**
-     * @notice Phase 2: verify Threshold decrypt attestation for staged `finalResult`; persist Pending only if plaintext is true.
+     * @notice Complete staged eligibility with a Noir proof (no on-chain KMS public decrypt).
+     * @dev Cryptographic gate: only persists when proof certifies eligible == true.
      */
-    function finalizeAnonymousEligibility(
+    function finalizeAnonymousEligibilityWithProof(
         uint256 _commitment,
-        uint256 _trialId,
         uint256 _nullifier,
+        uint256 _trialId,
         address _permitRecipient,
-        bool _decryptedEligible,
-        bytes calldata _decryptSig
+        address _consentWallet,
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs,
+        bool _eligible
     ) external returns (ebool finalResult) {
         require(msg.sender == authorizedRegistry, "Only authorized registry");
         require(_permitRecipient != address(0), "Invalid permit recipient");
-
-        PendingAnonymous memory pending = pendingAnonymousEligibility[_nullifier][_trialId];
-        require(pending.finalCt != bytes32(0), "Nothing staged");
-
-        finalResult = ebool.wrap(pending.finalCt);
-        euint8 score = euint8.wrap(pending.scoreCt);
-
+        require(_consentWallet != address(0), "Invalid consent wallet");
+        require(_eligible, "Not eligible for this trial");
         require(
-            FHE.verifyDecryptResult(finalResult, _decryptedEligible, _decryptSig),
-            "Invalid eligibility decryption"
+            pendingAnonymousEligibility[_nullifier][_trialId].finalCt != bytes32(0),
+            "Nothing staged"
         );
-        require(_decryptedEligible, "Not eligible for this trial");
+        require(
+            pendingAnonymousEligibility[_nullifier][_trialId].permitRecipient == _permitRecipient,
+            "Permit recipient mismatch"
+        );
+        require(
+            block.timestamp <=
+                pendingAnonymousEligibility[_nullifier][_trialId].timestamp + STAGING_TTL,
+            "Staging expired"
+        );
+        require(
+            anonymousApplications[_nullifier][_trialId] == ApplicationStatus.None,
+            "Already finalized"
+        );
 
-        delete pendingAnonymousEligibility[_nullifier][_trialId];
+        bytes32 stagedFheHash = pendingAnonymousEligibility[_nullifier][_trialId].finalCt;
+        _verifyEligibilityProofCore(
+            _proof,
+            _publicInputs,
+            _trialId,
+            _nullifier,
+            _eligible,
+            bytes32(_commitment),
+            stagedFheHash
+        );
 
-        FHE.allowThis(finalResult);
-        FHE.allowThis(score);
-        anonymousResults[_nullifier][_trialId] = finalResult;
-        anonymousScores[_nullifier][_trialId] = score;
-        FHE.allow(finalResult, _permitRecipient);
-        FHE.allow(score, _permitRecipient);
-        if (scoreLeaderboard != address(0)) {
-            FHE.allow(score, scoreLeaderboard);
-        }
-        decryptPermitHolder[_nullifier] = _permitRecipient;
+        _persistStagedAnonymous(_nullifier, _trialId);
+        _bindConsentWallet(_nullifier, _trialId, _consentWallet);
 
+        finalResult = anonymousResults[_nullifier][_trialId];
         anonymousApplications[_nullifier][_trialId] = ApplicationStatus.Pending;
 
-        emit AnonymousEncryptedPropensityCommitted(_nullifier, _trialId);
+        _recordAttestation(_nullifier, _trialId, _publicInputs, _eligible, stagedFheHash);
 
         if (address(dataAccessLog) != address(0)) {
             dataAccessLog.logAction(
                 DataAccessLog.ActionType.ELIGIBILITY_CHECKED,
                 _trialId,
-                keccak256(abi.encodePacked(_commitment, _nullifier, block.timestamp))
+                keccak256(abi.encodePacked(_nullifier, _publicInputs[3], block.timestamp, "ATTESTATION_FINALIZE"))
             );
         }
 
+        emit EligibilityProofVerified(
+            _nullifier,
+            _trialId,
+            _publicInputs[3],
+            stagedFheHash,
+            _publicInputs[6],
+            _eligible
+        );
         emit AnonymousApplicationStatusUpdated(_nullifier, _trialId, ApplicationStatus.Pending);
     }
 
@@ -536,8 +907,17 @@ contract EligibilityEngine {
      * @notice Clear staged FHE eligibility when finalize is abandoned (e.g. ineligible decrypt).
      * @dev Only callable by authorized registry after Semaphore proof verification.
      */
-    function cancelStagedAnonymousEligibility(uint256 _nullifier, uint256 _trialId) external {
+    function cancelStagedAnonymousEligibility(
+        uint256 _nullifier,
+        uint256 _trialId,
+        address _permitRecipient
+    ) external {
         require(msg.sender == authorizedRegistry, "Only authorized registry");
+        require(_permitRecipient != address(0), "Invalid permit recipient");
+        require(
+            pendingAnonymousEligibility[_nullifier][_trialId].permitRecipient == _permitRecipient,
+            "Permit recipient mismatch"
+        );
         require(pendingAnonymousEligibility[_nullifier][_trialId].finalCt != bytes32(0), "Nothing staged");
         delete pendingAnonymousEligibility[_nullifier][_trialId];
         emit AnonymousEligibilityStageCancelled(_nullifier, _trialId);
@@ -547,7 +927,7 @@ contract EligibilityEngine {
     // This prevents front-running attacks where anyone could claim decrypt rights with a publicly visible commitment
 
     /**
-     * @notice FHENIX: Check eligibility AND consent in one FHE-composed flow
+     * @notice Zama FHE: Check eligibility AND consent in one FHE-composed flow
      * @dev This is the HACKATHON SHOWCASE function - it demonstrates the complete
      *      FHE composition pipeline:
      *      1. Compute encrypted eligibility (8 field FHE comparison)
@@ -556,7 +936,7 @@ contract EligibilityEngine {
      *      4. If consentGate is set, forward to EncryptedConsentGate for storage
      *
      *      This creates: encrypted input → encrypted compute → encrypted gate → encrypted output
-     *      Zero plaintext at any step - the core Fhenix story.
+     *      Zero plaintext at any step - the core Zama FHE story.
      *
      * @param _commitment The Semaphore identity commitment
      * @param _trialId The trial ID
@@ -565,76 +945,77 @@ contract EligibilityEngine {
      * @param _patientAddress The patient address (for consent lookup)
      * @return gatedResult The final encrypted AND of eligibility AND consent
      */
+    /**
+     * @notice DEPRECATED: use stageAnonymousApply + finalizeAnonymousApplyWithProof with Noir attestation.
+     */
     function checkAnonymousEligibilityWithConsent(
+        uint256 /* _commitment */,
+        uint256 /* _trialId */,
+        uint256 /* _nullifier */,
+        address /* _permitRecipient */,
+        address /* _patientAddress */
+    ) external pure returns (ebool) {
+        revert("Deprecated: use finalizeAnonymousEligibilityWithProof with Noir attestation");
+    }
+
+    event BatchEligibilityComputed(uint256 indexed commitment, uint256 trialCount);
+    event BatchEligibilityTrialChecked(uint256 indexed commitment, uint256 indexed trialId, uint256 indexed nullifier);
+
+    mapping(uint256 => mapping(uint256 => bool)) public batchEligibilityChecked;
+
+    /**
+     * @notice Batch homomorphic eligibility for multiple trials in one authorized call.
+     * @dev Returns encrypted result handles per trial; reduces on-chain tx count for discovery flows.
+     */
+    function checkEligibilityBatch(
         uint256 _commitment,
-        uint256 _trialId,
-        uint256 _nullifier,
-        address _permitRecipient,
-        address _patientAddress
-    ) external returns (ebool) {
+        uint256[] calldata _trialIds,
+        uint256[] calldata _nullifiers,
+        address _permitRecipient
+    ) external returns (bytes32[] memory finalCts) {
         require(msg.sender == authorizedRegistry, "Only authorized registry");
         require(_permitRecipient != address(0), "Invalid permit recipient");
+        require(_trialIds.length > 0 && _trialIds.length <= 16, "Invalid batch size");
+        require(_trialIds.length == _nullifiers.length, "Length mismatch");
 
-        // H-1: Step 1: Use _computeEligibility helper instead of duplicated code
         IAnonymousPatientRegistry.EncryptedPatient memory patient = patientRegistry.getPatient(_commitment);
         require(patient.exists, "Patient not found for this commitment");
 
-        TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
-        require(trial.active, "Trial is not active");
+        finalCts = new bytes32[](_trialIds.length);
+        for (uint256 i = 0; i < _trialIds.length; i++) {
+            uint256 trialId = _trialIds[i];
+            uint256 nullifier = _nullifiers[i];
+            require(!batchEligibilityChecked[_commitment][trialId], "Trial already batch-checked");
+            batchEligibilityChecked[_commitment][trialId] = true;
 
-        // H-1: Call the shared helper function - no more duplicated logic
-        (ebool finalResult, euint8 score) = _computeEligibility(patient, trial);
+            TrialManager.Trial memory trial = trialManager.getTrial(trialId);
+            require(trial.active, "Trial is not active");
+            // M-5: reject trials whose endTime has passed — previously only `active` was checked,
+            // so a trial in the post-end / pre-deactivation window could still be batch-checked,
+            // producing stale eligibility disclosures.
+            require(trial.endTime > 0 && block.timestamp < trial.endTime, "Trial ended");
 
-        // Step 2: FHENIX - Get encrypted consent from ConsentManager
-        // SECURITY FIX (M-2): Using getActiveConsent() ensures revoked consent returns encrypted false
-        ebool consented = consentManager.getActiveConsent(_patientAddress, _trialId);
-
-        // MUST allow this contract to use consented handle BEFORE the FHE.and call
-        FHE.allowThis(consented);
-
-        // Step 3: FHENIX COMPOSITION - AND the encrypted eligibility with encrypted consent
-        // This is the core FHE story: computing on encrypted data without decryption
-        ebool gatedResult = FHE.and(finalResult, consented);
-
-        // Store the results
-        FHE.allowThis(finalResult);
-        FHE.allowThis(gatedResult);
-        FHE.allowThis(consented);
-        FHE.allowThis(score);
-        FHE.allow(finalResult, _permitRecipient);
-        FHE.allow(gatedResult, _permitRecipient);
-        FHE.allow(consented, _permitRecipient);
-        FHE.allow(score, _permitRecipient);
-        if (scoreLeaderboard != address(0)) {
-            FHE.allow(score, scoreLeaderboard);
+            (ebool finalResult, euint8 score) = _computeEligibility(patient, trial, trialId);
+            FHE.allowThis(finalResult);
+            FHE.allowThis(score);
+            FHE.allow(finalResult, _permitRecipient);
+            FHE.allow(score, _permitRecipient);
+            if (scoreLeaderboard != address(0)) {
+                FHE.allow(score, scoreLeaderboard);
+            }
+            finalCts[i] = ebool.unwrap(finalResult);
+            emit BatchEligibilityTrialChecked(_commitment, trialId, nullifier);
         }
 
-        // Store the consent-gated result indexed by nullifier × trialId.
-        anonymousResults[_nullifier][_trialId] = gatedResult;
-        anonymousScores[_nullifier][_trialId] = score;
-        anonymousApplications[_nullifier][_trialId] = ApplicationStatus.Pending;
+        emit BatchEligibilityComputed(_commitment, _trialIds.length);
+    }
 
-        decryptPermitHolder[_nullifier] = _permitRecipient;
-
-        emit AnonymousEncryptedPropensityCommitted(_nullifier, _trialId);
-
-        // Step 4: If consentGate is set, forward for additional storage/processing
-        if (address(consentGate) != address(0)) {
-            // The gate will re-compute or use this result
-            // This demonstrates FHE contract composability
-        }
-
-        if (address(dataAccessLog) != address(0)) {
-            dataAccessLog.logAction(
-                DataAccessLog.ActionType.ELIGIBILITY_CHECKED,
-                _trialId,
-                keccak256(abi.encodePacked(_commitment, _nullifier, block.timestamp, "WITH_CONSENT"))
-            );
-        }
-
-        emit AnonymousApplicationStatusUpdated(_nullifier, _trialId, ApplicationStatus.Pending);
-
-        return gatedResult;
+    /// @notice M-5: Reset the one-shot batch-check flag for a commitment/trial pair so a patient
+    ///         can re-evaluate eligibility after sponsor criteria changes or profile updates.
+    /// @dev Callable by the owner or the authorized registry (which relays patient intent).
+    function resetBatchEligibilityCheck(uint256 _commitment, uint256 _trialId) external {
+        require(msg.sender == owner || msg.sender == authorizedRegistry, "Not authorized");
+        batchEligibilityChecked[_commitment][_trialId] = false;
     }
 
     // --- LEGACY GETTERS (address-based) ---
@@ -658,6 +1039,17 @@ contract EligibilityEngine {
      * @return The encrypted eligibility result
      */
     function getAnonymousResult(uint256 _nullifier, uint256 _trialId) external view returns (ebool) {
+        address holder = _decryptPermitHolder[_nullifier][_trialId];
+        TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
+        require(
+            msg.sender == holder ||
+            msg.sender == trial.sponsor ||
+            msg.sender == scoreLeaderboard ||
+            msg.sender == authorizedRegistry ||
+            msg.sender == address(consentGate) ||
+            msg.sender == owner,
+            "Not authorized"
+        );
         return anonymousResults[_nullifier][_trialId];
     }
 
@@ -668,6 +1060,17 @@ contract EligibilityEngine {
      * @return The encrypted eligibility score
      */
     function getAnonymousScore(uint256 _nullifier, uint256 _trialId) external view returns (euint8) {
+        address holder = _decryptPermitHolder[_nullifier][_trialId];
+        TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
+        require(
+            msg.sender == holder ||
+            msg.sender == trial.sponsor ||
+            msg.sender == scoreLeaderboard ||
+            msg.sender == authorizedRegistry ||
+            msg.sender == address(consentGate) ||
+            msg.sender == owner,
+            "Not authorized"
+        );
         return anonymousScores[_nullifier][_trialId];
     }
 

@@ -8,12 +8,12 @@ import { CheckCircle2, Layers, ShieldCheck, ArrowRight } from "lucide-react";
 import { SUITE_STATS, REPO_LAYOUT } from "./testSuiteData";
 
 const pillars = [
-    { label: "Infra", count: 4, desc: "Hardhat signers, CoFHE plugin, full stack deploy" },
+    { label: "Infra", count: 4, desc: "Hardhat signers, Zama FHE plugin, full stack deploy" },
     { label: "ACL / ownership", count: 34, desc: "Two-step ownership, DAL loggers, TM/SR access" },
-    { label: "FHE / CoFHE", count: 72, desc: "Encrypted profiles, consent, eligibility, gates" },
-    { label: "ZK / Semaphore", count: 16, desc: "MockSemaphore apply/stage, nullifier, Honk optional" },
-    { label: "ETH / vault", count: 46, desc: "ConfidentialETH, incentive vault, milestones, staking" },
-    { label: "E2E", count: 8, desc: "Patient register → apply → fund → distribute" },
+    { label: "Zama FHE", count: 90, desc: "Encrypted profiles, consent, eligibility, v0.9 proofs" },
+    { label: "ZK / Semaphore", count: 22, desc: "MockSemaphore apply/stage, nullifier, attestation binding (ATT-*), Honk optional" },
+    { label: "ETH / vault", count: 50, desc: "ConfidentialETH, incentive vault, milestones, staking" },
+    { label: "E2E", count: 25, desc: "Patient register → apply → fund → claim (FLOW-*)" },
 ];
 
 export function TestingOverviewDoc() {
@@ -37,7 +37,7 @@ export function TestingOverviewDoc() {
                             </h2>
                             <p className="text-slate-600 m-0 text-xs leading-relaxed">
                                 Real Mocha/Chai assertions on the local Hardhat network with{" "}
-                                <strong>@cofhe/hardhat-plugin</strong> mocks — no placeholder{" "}
+                                <strong>@fhevm/hardhat-plugin</strong> mocks — no placeholder{" "}
                                 <code>expect(true)</code> loops. Last verified {SUITE_STATS.lastVerified}.
                             </p>
                         </div>
@@ -47,7 +47,7 @@ export function TestingOverviewDoc() {
                 <h2>What this section covers</h2>
                 <p>
                     Use the <strong>Tests</strong> tab in this documentation for everything on the Hardhat side:
-                    layout, case IDs, shared fixtures, CoFHE encryption helpers, CI, and how tests map to audit
+                    layout, case IDs, shared fixtures, Zama FHE encryption helpers, CI, and how tests map to audit
                     findings. The repo also ships markdown references at{" "}
                     <code>docs/TESTING_GUIDE.md</code> and <code>docs/TEST_MATRIX.md</code> for auditors who prefer
                     GitHub.
@@ -171,9 +171,9 @@ npm run test:integration   # flows (~40s)
 npm test                   # full CI-equivalent suite`}
                 />
 
-                <Callout type="info" title="CoFHE 0.5 (not legacy fhevm)">
-                    Tests use <code>hre.cofhe.createClientWithBatteries()</code> and{" "}
-                    <code>@cofhe/sdk</code> <code>Encryptable</code> types. Encryption proofs must bind to the
+                <Callout type="info" title="Zama FHE (not legacy fhevm)">
+                    Tests use <code>hre.fhevm.createClientWithBatteries()</code> and{" "}
+                    <code>@zama-fhe/sdk</code> <code>Encryptable</code> types. Encryption proofs must bind to the
                     Solidity <code>msg.sender</code> at the FHE verify site (e.g. MedVaultRegistry for patient
                     registration). See{" "}
                     <Link to="/docs/testing/infrastructure" className="text-[#00685f] font-semibold">

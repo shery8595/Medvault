@@ -5,6 +5,42 @@ import { motion } from "framer-motion";
 const entries: { date: string; title: string; items: string[] }[] = [
     {
         date: "2026-06",
+        title: "Android demo APK (Capacitor)",
+        items: [
+            "Capacitor Android shell (xyz.medvault.app) bundles Vite dist/ in WebView with https://localhost origin.",
+            "src/lib/mobile.ts — native detection, direct HTTPS relayer URLs when Vite/Vercel proxies unavailable.",
+            "Mobile UX: back button, offline banner, launch redirect to patient dashboard, FHE/wallet hints.",
+            "npm scripts: mobile:studio, mobile:build, mobile:apk:debug; docs at /docs/mobile/android-apk and docs/ANDROID_APK.md.",
+            "Ops: Privy + relayer must allow https://localhost; android/local.properties + JDK 21 for Gradle.",
+        ],
+    },
+    {
+        date: "2026-06",
+        title: "Private withdrawals (encrypted staging + public exit modes)",
+        items: [
+            "ConfidentialETH: encrypted requestWithdraw / requestWithdrawTo, euint64 pending state, two-phase reveal + complete.",
+            "EIP-712 completePublicExit to stealth recipients; fast vs private-batch relayer settlement.",
+            "SponsorIncentiveVault.claimParticipantRewards uses externalEuint64; vault address as FHE proof account.",
+            "StakingManager: stakeFromConfidential, requestPrivateUnstake / completePrivateUnstake (no Aave); public unstake kept separate.",
+            "Client: encryptUint64, withdrawFlow.ts, WithdrawModeSelector UI, stealthAddress.ts.",
+            "Relayer: POST /relay/public-exit, batch-exit-queue.mjs, updated watcher ABIs.",
+            "Tests: V09-09–13, PEX-01–05, BEX-01–03; docs at /docs/private-withdrawals and docs/PRIVATE_WITHDRAWALS.md.",
+        ],
+    },
+    {
+        date: "2026-06",
+        title: "Noir attestation repositioning & Sepolia upgrade",
+        items: [
+            "Noir reframed as public compliance attestation seal — Zama FHE remains authoritative compute.",
+            "eligibility_proof circuit: 16 public inputs (FHE stage handle + criteria schema hash binding).",
+            "EligibilityEngine: attestationReceipt(), finalizeWithProof stage binding, extended EligibilityProofVerified event.",
+            "Frontend sealResult() API, sponsor audit bundle export, subgraph attestation fields.",
+            "Sepolia redeploy: HonkVerifier + EligibilityEngine + rewired registry/vault; subgraph v0.1.1.",
+            "test/unit/attestation-binding.test.ts — FHE vs Noir differential and anti-replay coverage.",
+        ],
+    },
+    {
+        date: "2026-06",
         title: "TypeScript SDK & MCP",
         items: [
             "Added @medvault/sdk (packages/medvault-sdk/) — MedVaultSDK facade for trials, sponsor ops, protocol metadata, and relayer HTTP.",
@@ -30,7 +66,7 @@ const entries: { date: string; title: string; items: string[] }[] = [
         title: "Documentation & routing",
         items: [
             "Added tabbed documentation shell with search and per-page copy link.",
-            "Aligned technical copy with Arbitrum Sepolia and AnonymousPatientRegistry / MedVaultRegistry naming.",
+            "Aligned technical copy with Ethereum Sepolia and AnonymousPatientRegistry / MedVaultRegistry naming.",
         ],
     },
     {

@@ -35,6 +35,7 @@ import {
   getSponsorIncentiveVault,
   getContractAddressForChain
 } from "../../lib/contracts";
+import { ETHEREUM_SEPOLIA_CHAIN_ID } from "../../lib/zamaChain";
 import { useEncryptedData } from "../../lib/EncryptedDataContext";
 import {
   getOrCreateIdentity,
@@ -43,8 +44,9 @@ import {
   resolveAnonymousNullifier,
 } from "../../lib/semaphore";
 import { useAnonymousApplication } from "../../hooks/useAnonymousRegistration";
+import { AnonymousApplyWizard, type ApplyWizardPhase } from "../apply/AnonymousApplyWizard";
 
-import { forceConnectFHE, reencryptUint8, getFHEClient } from "../../lib/fhe";
+import { reencryptUint8, reencryptUint8WithEphemeral } from "../../lib/fhe";
 import { ethers } from "ethers";
 import { EncryptionAnimation } from "../ui/EncryptionAnimation";
 import { formatPhaseBadge, formatTrialDurationLabel, trialDiscoverDescription } from "../../lib/trialDisplay";
@@ -129,6 +131,8 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
   /** After first on-chain read of pool + isParticipantRegistered — avoids auto-enroll racing ahead of "already registered". */
   const [incentiveCheckDone, setIncentiveCheckDone] = useState(false);
 
+  const [applyWizardNullifier, setApplyWizardNullifier] = useState<bigint | null>(null);
+
   // Semaphore Anonymous Apply state
   const [registrationStatus, setRegistrationStatus] = useState<'idle' | 'registering' | 'done' | 'error'>('idle');
   const [registrationError, setRegistrationError] = useState<string | null>(null);
@@ -145,6 +149,23 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
     reset
   } = useAnonymousApplication(signer || undefined, signer?.provider || undefined);
 
+  const applyWizardPhase: ApplyWizardPhase = (() => {
+    if (trial.applicationStatus || hasApplied || applyStatus === "applied") return "applied";
+    if (registrationError || semaphoreError) return "error";
+    if (isSubmitting) return "finalizing";
+    if (isGeneratingSemaphore) return "generating-proof";
+    if (isRegistering || registrationStatus === "registering") return "registering-profile";
+    if (applyStatus === "consenting" || applyStatus === "computing") return "checking-identity";
+    return "idle";
+  })();
+
+  useEffect(() => {
+    if (!signer?.provider || !(hasApplied || trial.applicationStatus)) return;
+    void resolveAnonymousNullifier(signer.provider, BigInt(trial.id)).then((n) => {
+      if (n) setApplyWizardNullifier(n);
+    });
+  }, [signer, trial.id, hasApplied, trial.applicationStatus]);
+
   // FIX 1: Track eligibility bool + signature separately from score
   const [isEligibleDecrypted, setIsEligibleDecrypted] = useState<boolean | null>(null);
   const [eligibilitySignature, setEligibilitySignature] = useState<string | null>(null);
@@ -154,7 +175,6 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
     autoEnrollAttemptedRef.current = false;
   }, [trial.id]);
 
-  // FIX 2: Use correct network key — arbSepolia not sepolia
   const engineAddress = getContractAddressForChain("EligibilityEngine");
 
   // Incentive Pool Logic
@@ -177,7 +197,10 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
             ? await resolveAnonymousNullifier(signer.provider, BigInt(trial.id))
             : null;
           if (nullifier) {
-            const holder = await getEligibilityEngine(signer).decryptPermitHolder(nullifier);
+            const holder = await getEligibilityEngine(signer).getDecryptPermitHolder(
+              nullifier,
+              BigInt(trial.id)
+            );
             if (holder && holder !== ethers.ZeroAddress) {
               participantAddress = holder;
             }
@@ -212,7 +235,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
     }
     try {
       const network = await signer.provider.getNetwork();
-      if (network.chainId !== 421614n) {
+      if (network.chainId !== BigInt(ETHEREUM_SEPOLIA_CHAIN_ID)) {
         setIsSemaphoreRegistered(false);
         return { registered: false, missingIdentity: false, mismatch: false, walletRegistered: false, wrongNetwork: true };
       }
@@ -312,6 +335,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
         }
       }
 
+      let score: unknown;
       if (usedAnonymousHandle) {
         const identity = getStoredIdentity();
         if (!identity || !signer.provider) {
@@ -321,16 +345,9 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
           ethers.toUtf8Bytes(`medvault:ephemeral:${identity.secretScalar.toString()}`)
         );
         const ephemeralWallet = new ethers.Wallet(privateKey, signer.provider);
-        await forceConnectFHE(signer.provider, ephemeralWallet);
-      }
-
-      let score: unknown;
-      try {
+        score = await reencryptUint8WithEphemeral(ephemeralWallet, engineAddress, handle);
+      } else {
         score = await reencryptUint8(engineAddress, account, handle);
-      } finally {
-        if (usedAnonymousHandle && signer.provider) {
-          await forceConnectFHE(signer.provider, signer);
-        }
       }
 
       const scoreNum = Number(score);
@@ -365,7 +382,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
       // Step 1: Check registration live right before apply to avoid stale UI state
       const membership = await refreshMembership();
       if (membership.wrongNetwork) {
-        throw new Error("Wrong network. Please switch your wallet to Arbitrum Sepolia and retry.");
+        throw new Error("Wrong network. Please switch your wallet to Ethereum Sepolia and retry.");
       }
       if (membership.missingIdentity) {
         throw new Error("No local anonymous identity found in this browser/profile. Use the same browser/profile used for registration, or re-register with a new wallet.");
@@ -374,7 +391,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
         throw new Error("Identity mismatch detected: this wallet is registered with a different anonymous identity than the one currently stored in your browser. Use the original browser/profile used at registration, or register again with a new wallet.");
       }
       if (!membership.walletRegistered) {
-        throw new Error("Wallet is not registered in MedVaultRegistry on Arbitrum Sepolia. Please register your health profile from this same wallet/network first.");
+        throw new Error("Wallet is not registered in MedVaultRegistry on Ethereum Sepolia. Please register your health profile from this same wallet/network first.");
       }
       if (!membership.registered) {
         throw new Error("Registered wallet found, but current local anonymous identity is not in the Semaphore group. Use the original browser/profile used at registration.");
@@ -418,7 +435,10 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
       if (!nullifier) {
         throw new Error("Unable to recover anonymous application nullifier for this trial. Re-open the original browser profile used during apply and retry.");
       }
-      const permitHolder = await eligibilityEngine.decryptPermitHolder(nullifier);
+      const permitHolder = await eligibilityEngine.getDecryptPermitHolder(
+        nullifier,
+        BigInt(trial.id)
+      );
       if (!permitHolder || permitHolder === ethers.ZeroAddress) {
         throw new Error("No reward permit holder found for this anonymous application.");
       }
@@ -718,6 +738,20 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                 ) && <ArrowRight className="h-4 w-4 opacity-90" />}
               </Button>
             </div>
+
+            {(isSubmitting || isGeneratingSemaphore || hasApplied || trial.applicationStatus || registrationError || semaphoreError) && (
+              <AnonymousApplyWizard
+                phase={applyWizardPhase}
+                walletRegistered={isSemaphoreRegistered}
+                semaphoreRegistered={isSemaphoreRegistered}
+                hasProfile={isRegistered || isSemaphoreRegistered}
+                trialId={trial.id}
+                nullifier={applyWizardNullifier}
+                provider={signer?.provider ?? null}
+                errorMessage={registrationError || semaphoreError || applyError}
+                className="mt-4"
+              />
+            )}
 
             {(registrationError || semaphoreError) && (
               <AnonymousApplyFeedback registrationError={registrationError} semaphoreError={semaphoreError} />
@@ -1372,6 +1406,19 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                           >
                             {getApplyButtonContent()}
                           </Button>
+
+                          {(isSubmitting || isGeneratingSemaphore || hasApplied || trial.applicationStatus || registrationError || semaphoreError) && (
+                            <AnonymousApplyWizard
+                              phase={applyWizardPhase}
+                              walletRegistered={isSemaphoreRegistered}
+                              semaphoreRegistered={isSemaphoreRegistered}
+                              hasProfile={isRegistered || isSemaphoreRegistered}
+                              trialId={trial.id}
+                              nullifier={applyWizardNullifier}
+                              provider={signer?.provider ?? null}
+                              errorMessage={registrationError || semaphoreError || applyError}
+                            />
+                          )}
 
                           {/* Semaphore error message */}
                           {(registrationError || semaphoreError) && (

@@ -4,7 +4,7 @@ import { useWeb3 } from "../lib/Web3Context";
 const REFRESH_MS = 20_000;
 
 /**
- * Native ETH balance for the active account on the read-only Arbitrum Sepolia provider.
+ * Native ETH balance for the active account on the read-only Ethereum Sepolia provider.
  * Used for gas / FHE tx prompts; not the confidential(vault) balance.
  */
 export function useNativeEthBalance() {

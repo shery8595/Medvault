@@ -1,0 +1,25 @@
+{
+	"appId": "xyz.medvault.app",
+	"appName": "MedVault",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": false,
+		"captureInput": true,
+		"webContentsDebuggingEnabled": true
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": true,
+			"launchShowDuration": 1200,
+			"backgroundColor": "#0f172a",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "DARK",
+			"backgroundColor": "#0f172a"
+		}
+	}
+}

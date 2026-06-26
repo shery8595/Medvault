@@ -1,0 +1,183 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ITrialManagerExtended",
+  "sourceName": "contracts/EligibilityEngine.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_trialId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getEncryptedCriteria",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "euint8",
+              "name": "minAge",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint8",
+              "name": "maxAge",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "ebool",
+              "name": "requiresDiabetes",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint16",
+              "name": "minHb",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint8",
+              "name": "genderRequirement",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint8",
+              "name": "minHeight",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint16",
+              "name": "maxWeight",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "ebool",
+              "name": "requiresNonSmoker",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "ebool",
+              "name": "requiresNormalBP",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct ITrialManagerExtended.EncryptedCriteria",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_trialId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getTrial",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "phase",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "location",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "compensation",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "sponsor",
+              "type": "address"
+            },
+            {
+              "internalType": "bool",
+              "name": "active",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint8",
+              "name": "minAge",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "maxAge",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresDiabetes",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint16",
+              "name": "minHb",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint8",
+              "name": "genderRequirement",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "minHeight",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint16",
+              "name": "maxWeight",
+              "type": "uint16"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresNonSmoker",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresNormalBP",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint256",
+              "name": "endTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "encryptedCriteria",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct ITrialManagerExtended.Trial",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

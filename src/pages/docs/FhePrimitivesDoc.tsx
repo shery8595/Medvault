@@ -83,18 +83,11 @@ export function FhePrimitivesDoc() {
                     ))}
                 </div>
 
-                <Callout type="info" title="CoFHE 0.5 (not legacy fhevm)">
-                    MedVault uses <code>@fhenixprotocol/cofhe-contracts</code> in Solidity and{" "}
-                    <code>@cofhe/sdk</code> + <code>@cofhe/hardhat-plugin</code> in tests. Encryption proofs must use the
-                    correct <strong>proof account</strong> (signer that matches <code>msg.sender</code> at verify). See{" "}
-                    <a href="/docs/testing/infrastructure">test infrastructure</a>.
-                </Callout>
-
                 <hr className="my-8 border-slate-200" />
 
                 <h2>I. Encrypted Integer Types (e-Types)</h2>
                 <p>
-                    The Fhenix CoFHE stack exposes encrypted versions of Solidity unsigned integer types. Each type trades
+                    The Zama FHE stack exposes encrypted versions of Solidity unsigned integer types. Each type trades
                     bit-width against coprocessor cost. MedVault primarily uses <code>euint32</code> for health metrics and{" "}
                     <code>euint8</code> for compact eligibility scores.
                 </p>
@@ -153,7 +146,7 @@ export function FhePrimitivesDoc() {
 
                 <h2>II. The FHE.sol Standard Library</h2>
                 <p>
-                    All arithmetic, comparisons, and logic operations on encrypted types must go through the <code>FHE.sol</code> library shipped by Fhenix. Internally, these functions translate to specialized EVM precompile calls that trigger FHE computation in the Fhenix coprocessor, not in the EVM itself.
+                    All arithmetic, comparisons, and logic operations on encrypted types must go through the <code>FHE.sol</code> library shipped by Zama. Internally, these functions translate to specialized EVM precompile calls that trigger FHE computation in the Zama FHE coprocessor, not in the EVM itself.
                 </p>
 
                 {/* FHE Function Reference Table */}
@@ -218,7 +211,7 @@ export function FhePrimitivesDoc() {
                 <CodeBlock
                     filename="EligibilityEngine.sol — Age Check Pattern"
                     language="solidity"
-                    code={`import "@fhenixprotocol/cofhe-contracts/FHE.sol";
+                    code={`import "@fhevm/solidity/FHE.sol";
 
 // Patient's encrypted age (stored in MedVaultRegistry)
 euint32 encryptedAge = registry.getPatientAge(patientAddr);
@@ -248,7 +241,7 @@ euint32 agePoints = FHE.cmux(
 
                 <h2>IV. Permission Management (ACL)</h2>
                 <p>
-                    When a contract stores a ciphertext, only specific addresses can access it. The Fhenix fhEVM enforces this via an on-chain Access Control List (ACL). When <code>FHE.allow(handle, address)</code> is called, the specified address is granted the right to request decryption of that specific ciphertext handle.
+                    When a contract stores a ciphertext, only specific addresses can access it. The Zama fhEVM enforces this via an on-chain Access Control List (ACL). When <code>FHE.allow(handle, address)</code> is called, the specified address is granted the right to request decryption of that specific ciphertext handle.
                 </p>
                 <p>
                     MedVault calls <code>FHE.allowThis(score)</code> immediately after computing the match score so the <code>EligibilityEngine</code> itself can pass it into storage, and <code>FHE.allow(score, patientAddress)</code> so the patient wallet can later decrypt it.

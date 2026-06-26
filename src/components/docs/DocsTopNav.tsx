@@ -20,7 +20,7 @@ import { DOCS_TABS, type DocsTabId, getTabForPath, searchDocsNav, getNavItemsFor
 const tabIcons: Record<DocsTabId, typeof Rocket> = {
     "getting-started": Rocket,
     protocol: Layers,
-    fhenix: Lock,
+    zama: Lock,
     semaphore: Fingerprint,
     noir: GitBranch,
     clients: Code2,

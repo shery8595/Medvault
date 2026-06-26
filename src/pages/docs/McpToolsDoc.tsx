@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
 const READ_TOOLS = [
-    { name: "medvault_get_config", desc: "Addresses, URLs, server version, optional signer" },
+    { name: "medvault_get_config", desc: "Addresses, URLs, safety summary, optional signer" },
     { name: "medvault_list_protocol_contracts", desc: "Protocol contract catalog" },
     { name: "medvault_check_wiring", desc: "Vault / automation / milestone cross-checks" },
     { name: "medvault_subgraph_query", desc: "Allowlisted GraphQL only (no arbitrary queries)" },
@@ -15,15 +15,29 @@ const READ_TOOLS = [
     { name: "medvault_get_sponsor_stats", desc: "Sponsor dashboard aggregates" },
     { name: "medvault_get_audit_logs", desc: "Subgraph + chain audit entries" },
     { name: "medvault_get_sponsor_verification", desc: "SponsorRegistry status" },
-    { name: "medvault_get_trial_pool_status", desc: "Incentive pool / reclaim status" },
-    { name: "medvault_read_contract_view", desc: "Generic eth_call (dev)" },
+    {
+        name: "medvault_get_trial_pool_status",
+        desc: "Public coarse pool status (funded flag, participants, reclaim flags) — no amounts",
+    },
+    {
+        name: "medvault_get_sponsor_trial_pool_details",
+        desc: "Sponsor-authorized deposited/reclaimable amounts (requires trial sponsor MCP_PRIVATE_KEY)",
+    },
+    { name: "medvault_read_contract_view", desc: "Generic eth_call (dev); sensitive vault views blocklisted" },
     { name: "medvault_relayer_health", desc: "GET /health when MEDVAULT_RELAYER_URL set" },
+    { name: "medvault_doctor", desc: "Setup diagnostic: env, build, RPC, subgraph, sponsor" },
+    { name: "medvault_list_capabilities", desc: "Tools, transports, read-only mode, privacy boundaries" },
+    { name: "medvault_get_client_config_help", desc: "Per-client config paths and env interpolation" },
+    { name: "medvault_get_protocol_health", desc: "Wiring + subgraph + relayer health aggregate" },
+    { name: "medvault_get_sponsor_overview", desc: "Trials, matches, stats; amounts only when signer is sponsor" },
+    { name: "medvault_preview_fund_trial_pool", desc: "Dry-run fundTrial preview without submitting tx" },
+    { name: "medvault_get_trial_operations_timeline", desc: "Pool status + subgraph context for a trial" },
 ];
 
 const WRITE_TOOLS = [
     { name: "medvault_create_trial", desc: "TrialManager.createTrial + optional milestones / fund" },
     { name: "medvault_set_trial_milestones", desc: "Phased payout schedule" },
-    { name: "medvault_fund_trial_pool", desc: "Send ETH to incentive vault" },
+    { name: "medvault_fund_trial_pool", desc: "Send ETH to incentive vault (sponsor only)" },
     { name: "medvault_update_application_status", desc: "EligibilityEngine status (+ vault register on accept)" },
     { name: "medvault_deactivate_trial", desc: "TrialManager.deactivateTrial" },
     { name: "medvault_distribute_milestone", desc: "Partial milestone distribution" },
@@ -61,18 +75,26 @@ export function McpToolsDoc() {
                 <DocsPageHeaderForRoute />
 
                 <p className="lead not-prose text-base text-slate-600 max-w-3xl">
-                    All tools are prefixed with <code>medvault_</code> and run against <strong>Arbitrum Sepolia</strong> (
-                    chain id <code>421614</code>). Write tools require a verified sponsor wallet unless{" "}
-                    <code>MEDVAULT_SPONSOR_OPEN_ACCESS=true</code>.
+                    All tools are prefixed with <code>medvault_</code> and run against <strong>Ethereum Sepolia</strong> (
+                    chain id <code>11155111</code>). MCP is a <strong>sponsor/developer console</strong> — not for
+                    patients. Write tools require a verified sponsor wallet unless{" "}
+                    <code>MEDVAULT_SPONSOR_OPEN_ACCESS=true</code>. Set <code>MCP_READ_ONLY=true</code> to disable
+                    writes.
                 </p>
 
+                <Callout type="info" title="Pool amount privacy">
+                    Ask &quot;Is the pool funded?&quot; via <code>medvault_get_trial_pool_status</code>. Exact ETH
+                    amounts require <code>medvault_get_sponsor_trial_pool_details</code> with the trial sponsor&apos;s{" "}
+                    <code>MCP_PRIVATE_KEY</code>.
+                </Callout>
+
                 <h2>Read tools</h2>
-                <p>No private key required unless a tool needs a signer for a specific view call.</p>
+                <p>Most read tools work without a private key. Pool amounts are the main exception.</p>
                 <ToolTable tools={READ_TOOLS} />
 
                 <h2>Write tools (sponsor)</h2>
                 <p>
-                    Require <code>MCP_PRIVATE_KEY</code> and{" "}
+                    Require <code>MCP_PRIVATE_KEY</code>, not <code>MCP_READ_ONLY</code>, and{" "}
                     <Link to="/docs/sponsor-system" className="text-[#00685f] font-semibold hover:underline">
                         sponsor verification
                     </Link>

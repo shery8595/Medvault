@@ -31,6 +31,7 @@ import {
   History,
 } from "lucide-react";
 import { PatientDashboardHero } from "../components/dashboard/PatientDashboardHero";
+import { IndexerHealthBanner } from "../components/observability/IndexerHealthBanner";
 import { useWeb3 } from "../lib/Web3Context";
 import { emphasizeSparklineValues, pronouncedChartMax } from "../lib/chartScale";
 import { useTrials } from "../hooks/useTrials";
@@ -462,6 +463,8 @@ export function PatientDashboard() {
         connectError={connectError}
         nextStep={nextStep}
       />
+
+      <IndexerHealthBanner />
 
       {/* Metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">

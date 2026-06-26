@@ -26,7 +26,7 @@ const layers = [
         color: "blue",
         icon: <Users className="h-4 w-4" />,
         title: "Client layer",
-        body: "React + Vite, Privy wallets, @cofhe/sdk for encryption and proofs. Plaintext health metrics never leave the browser unencrypted.",
+        body: "React + Vite, Privy wallets, @zama-fhe/sdk for encryption and proofs. Plaintext health metrics never leave the browser unencrypted.",
     },
     {
         color: "teal",
@@ -38,19 +38,19 @@ const layers = [
         color: "purple",
         icon: <Activity className="h-4 w-4" />,
         title: "FHE computation layer",
-        body: "EligibilityEngine, ConsentManager, EncryptedConsentGate, EncryptedScoreLeaderboard — homomorphic scoring and consent-gated access on Arbitrum Sepolia via CoFHE.",
+        body: "EligibilityEngine, ConsentManager, EncryptedConsentGate, EncryptedScoreLeaderboard — homomorphic scoring and consent-gated access on Ethereum Sepolia via Zama FHE.",
     },
     {
         color: "amber",
         icon: <Coins className="h-4 w-4" />,
         title: "DeFi & automation layer",
-        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH, MedVaultAutomation (Chainlink Keepers).",
+        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH (encrypted withdraw + EIP-712 public exit), MedVaultAutomation (Chainlink Keepers).",
     },
     {
         color: "rose",
         icon: <Server className="h-4 w-4" />,
         title: "Indexing & audit",
-        body: "The Graph subgraph for trials/applications; DataAccessLog for immutable anonymized audit hashes (HIPAA/GDPR-friendly record-keeping).",
+        body: "The Graph subgraph for trials/applications; DataAccessLog for immutable anonymized audit hashes (compliance-oriented record-keeping, not HIPAA/GDPR certification).",
     },
 ];
 
@@ -62,9 +62,9 @@ export function ArchitectureDoc() {
 
                 <div className="not-prose mb-6 p-4 rounded-xl border border-[#00685f]/20 bg-gradient-to-br from-[#00685f]/5 to-white">
                     <p className="text-sm text-slate-700 m-0 leading-relaxed">
-                        MedVault on <strong>Arbitrum Sepolia</strong> combines{" "}
-                        <strong>Semaphore</strong> identity, <strong>CoFHE</strong> homomorphic eligibility, optional{" "}
-                        <strong>Noir/Honk</strong> proofs, and <strong>{DOCS_CONTRACT_COUNT}</strong> production Solidity
+                        MedVault on <strong>Ethereum Sepolia</strong> combines{" "}
+                        <strong>Semaphore</strong> identity, <strong>Zama FHE</strong> homomorphic eligibility (authoritative compute), optional{" "}
+                        <strong>Noir/Honk</strong> compliance attestation seals, and <strong>{DOCS_CONTRACT_COUNT}</strong> production Solidity
                         contracts. Addresses: <code>src/lib/contracts/addresses.json</code>.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
@@ -75,10 +75,10 @@ export function ArchitectureDoc() {
                             Contract reference →
                         </Link>
                         <Link
-                            to="/docs/fhenix-cofhe"
+                            to="/docs/zama-fhe"
                             className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full hover:bg-slate-50"
                         >
-                            Fhenix / CoFHE
+                            Zama FHE
                         </Link>
                         <Link
                             to="/docs/semaphore"
@@ -90,7 +90,7 @@ export function ArchitectureDoc() {
                             to="/docs/testing"
                             className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full hover:bg-emerald-100"
                         >
-                            Test suite (191+)
+                            Test suite (265)
                         </Link>
                     </div>
                 </div>
@@ -114,10 +114,10 @@ export function ArchitectureDoc() {
                     </h3>
                     <ul className="text-slate-600 space-y-1.5 list-disc list-inside text-sm m-0">
                         <li>
-                            <strong>Frontend:</strong> React, Privy, @cofhe/sdk (encryptInputs + proofAccount binding).
+                            <strong>Frontend:</strong> React, Privy, @zama-fhe/sdk (encryptInputs + proofAccount binding).
                         </li>
                         <li>
-                            <strong>Contracts:</strong> CoFHE Solidity ({PROTOCOL_CONTRACTS.length} core contracts in
+                            <strong>Contracts:</strong> Zama FHE Solidity ({PROTOCOL_CONTRACTS.length} core contracts in
                             catalog).
                         </li>
                         <li>
@@ -151,7 +151,7 @@ export function ArchitectureDoc() {
                 <h2>Patient apply flow (anonymous path)</h2>
                 <ol className="text-sm space-y-2 max-w-prose">
                     <li>
-                        <strong>Encrypt in browser:</strong> @cofhe/sdk builds InEuint inputs + proofs; proof account
+                        <strong>Encrypt in browser:</strong> @zama-fhe/sdk builds InEuint inputs + proofs; proof account
                         matches the contract that will verify (often MedVaultRegistry).
                     </li>
                     <li>
@@ -167,7 +167,7 @@ export function ArchitectureDoc() {
                         <code>checkAnonymousEligibilityWithConsent</code> for sponsor-visible flows.
                     </li>
                     <li>
-                        <strong>Decrypt (off-chain):</strong> Patient uses CoFHE client decrypt — scores are never
+                        <strong>Decrypt (off-chain):</strong> Patient uses Zama SDK client decrypt — scores are never
                         plaintext on-chain.
                     </li>
                     <li>
@@ -206,7 +206,7 @@ export function ArchitectureDoc() {
                 </div>
 
                 <Callout type="info" title="Gas & coprocessor">
-                    FHE ops run in the Fhenix CoFHE coprocessor — gas is dominated by comparison + CMUX calls. MedVault
+                    FHE ops run in the Zama FHE coprocessor — gas is dominated by comparison + CMUX calls. MedVault
                     batches scoring per application and stores handles in mappings rather than emitting ciphertexts in
                     events.
                 </Callout>

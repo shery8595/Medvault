@@ -24,6 +24,7 @@ import { useSponsorProfile } from "../hooks/useSponsorProfile";
 import { useSponsorVerification } from "../hooks/useSponsorVerification";
 import { sponsorCardHeader, sponsorCardShell } from "../lib/sponsorUi";
 import { cn } from "../lib/utils";
+import { chainDisplayName, ETH_SEPOLIA_EXPLORER } from "../lib/network";
 
 const sponsorIcon = "bg-[#1D2634]/10 text-[#1D2634] ring-[#1D2634]/15";
 
@@ -46,8 +47,7 @@ export function SponsorSettingsPage() {
     }
   }, [currentName]);
 
-  const networkLabel =
-    chainId === 421614 ? "Arbitrum Sepolia" : chainId != null ? `Chain ${chainId}` : "Not connected";
+  const networkLabel = chainDisplayName(chainId);
 
   const handleSave = async () => {
     await updateSponsorName(name);
@@ -193,7 +193,7 @@ export function SponsorSettingsPage() {
 
             <div className="flex items-start gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-500">
               <Shield className="mt-0.5 h-4 w-4 shrink-0" />
-              Stored on-chain via <code className="rounded bg-white px-1">setSponsorName</code>. Gas applies on Arbitrum
+              Stored on-chain via <code className="rounded bg-white px-1">setSponsorName</code>. Gas applies on Ethereum
               Sepolia.
             </div>
           </div>
@@ -259,9 +259,9 @@ export function SponsorSettingsPage() {
               iconClassName={sponsorIcon}
             />
             <SettingsRow
-              to="https://sepolia.arbiscan.io/"
+              to={account ? `${ETH_SEPOLIA_EXPLORER}/address/${account}` : ETH_SEPOLIA_EXPLORER}
               icon={ExternalLink}
-              label="Arbiscan (Sepolia)"
+              label="Etherscan (Sepolia)"
               description="Inspect transactions and contract calls."
               external
               iconClassName={sponsorIcon}

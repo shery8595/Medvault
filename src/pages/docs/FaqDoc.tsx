@@ -8,6 +8,20 @@ import { PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const faqs: { q: string; a: ReactNode }[] = [
     {
+        q: "Is there an Android app?",
+        a: (
+            <>
+                Yes — an internal <strong>demo APK</strong> built with Capacitor (same web dapp in a WebView). Build
+                instructions:{" "}
+                <Link to="/docs/mobile/android-apk" className="text-[#00685f] font-semibold">
+                    Android APK docs
+                </Link>
+                . You need Privy to allow <code>https://localhost</code> and Sepolia testnet ETH. Browser wallet
+                extensions do not work inside the APK — use Privy embedded wallets.
+            </>
+        ),
+    },
+    {
         q: "Where is the public MedVault app?",
         a: (
             <>
@@ -25,7 +39,7 @@ const faqs: { q: string; a: ReactNode }[] = [
         q: "Which network does MedVault use?",
         a: (
             <>
-                The app is configured for <strong>Arbitrum Sepolia</strong> (chain ID <code>421614</code>) with Privy
+                The app is configured for <strong>Ethereum Sepolia</strong> (chain ID <code>11155111</code>) with Privy
                 embedded wallets. Use a faucet for test ETH before sending FHE-heavy transactions.
             </>
         ),
@@ -70,11 +84,12 @@ const faqs: { q: string; a: ReactNode }[] = [
         ),
     },
     {
-        q: "How do I get test ETH on Arbitrum Sepolia?",
+        q: "How do I get test ETH on Ethereum Sepolia?",
         a: (
             <>
-                Use a public Sepolia ETH faucet, or run / configure the <code>arb-sepolia-faucet</code> service and set{" "}
-                <code>VITE_TESTNET_FAUCET_URL</code> for in-app drips. See <code>src/lib/testnetFaucet.ts</code> and the{" "}
+                Use a public Ethereum Sepolia ETH faucet (QuickNode, Alchemy, Chainlink), or run the optional drip
+                microservice and set <code>VITE_TESTNET_FAUCET_URL</code> for in-app drips. See{" "}
+                <code>src/lib/testnetFaucet.ts</code> and the{" "}
                 <Link to="/docs/identity-privacy" className="text-blue-600 font-semibold">
                     identity &amp; tooling
                 </Link>{" "}
@@ -83,13 +98,31 @@ const faqs: { q: string; a: ReactNode }[] = [
         ),
     },
     {
+        q: "Are withdrawals private?",
+        a: (
+            <>
+                <strong>Amounts are encrypted</strong> when you stage a withdraw or claim: the contract stores{" "}
+                <code>euint64</code> pending values and only exposes a sufficiency bit for KMS proof. Completing a
+                native ETH exit still reveals the final wei sent on-chain. For better recipient unlinkability, choose{" "}
+                <strong>Fast exit</strong> or <strong>Private exit</strong> (batched) in the Financial Enclave — the
+                relayer submits to a one-time stealth address. Private staking unstake returns value to encrypted cETH
+                without exiting Aave. Details:{" "}
+                <Link to="/docs/private-withdrawals" className="text-[#00685f] font-semibold hover:underline">
+                    Private withdrawals
+                </Link>
+                .
+            </>
+        ),
+    },
+    {
         q: "What does the MedVault relayer do?",
         a: (
             <>
-                The <strong>HTTP relayer</strong> pays gas for the anonymous apply flow. The browser calls{" "}
-                <code>submitViaRelayer</code> in <code>src/lib/relayer.ts</code>, which hits{" "}
-                <code>POST /relay/apply-stage</code> then (after CoFHE decrypt in-wallet){" "}
-                <code>POST /relay/apply-finalize</code>. Host it yourself in production; set{" "}
+                The <strong>HTTP relayer</strong> pays gas for the anonymous apply flow and optional withdrawal
+                completion. Apply: <code>submitViaRelayer</code> in <code>src/lib/relayer.ts</code> →{" "}
+                <code>POST /relay/apply-stage</code> then (after Zama FHE decrypt in-wallet){" "}
+                <code>POST /relay/apply-finalize</code>. Withdrawals: <code>POST /relay/completion-proof</code> and{" "}
+                <code>POST /relay/public-exit</code> for EIP-712 stealth exits. Host it yourself in production; set{" "}
                 <code>FRONTEND_URL</code> to{" "}
                 <a href={PRODUCTION_APP_URL} className="text-[#00685f] font-semibold hover:underline">
                     https://med-vault.xyz
@@ -116,7 +149,7 @@ const faqs: { q: string; a: ReactNode }[] = [
         q: "What is the ephemeral wallet?",
         a: (
             <>
-                It is a deterministic address derived from your Semaphore identity secret — used as the CoFHE{" "}
+                It is a deterministic address derived from your Semaphore identity secret — used as the Zama FHE{" "}
                 <strong>permit recipient</strong> so decrypt-for-tx runs without tying ciphertext ACL to your main Privy EOA.
                 See{" "}
                 <Link to="/docs/identity-privacy" className="text-blue-600 font-semibold">
@@ -130,9 +163,9 @@ const faqs: { q: string; a: ReactNode }[] = [
         q: "Where are Noir / Semaphore documented?",
         a: (
             <>
-                Semaphore flows live in <code>src/lib/semaphore.ts</code>; Noir eligibility circuits live under{" "}
-                <code>circuits/eligibility_proof</code> with frontend hooks in <code>useEligibilityProof.ts</code> /{" "}
-                <code>src/lib/noir.ts</code>. Overview:{" "}
+                Semaphore flows live in <code>src/lib/semaphore.ts</code>; Noir attestation circuits live under{" "}
+                <code>circuits/eligibility_proof</code> with frontend <code>sealResult()</code> in{" "}
+                <code>useEligibilityProof.ts</code> / <code>src/lib/noir.ts</code>. Zama FHE computes; Noir seals. Overview:{" "}
                 <Link to="/docs/identity-privacy" className="text-blue-600 font-semibold">
                     Identity &amp; privacy
                 </Link>

@@ -56,11 +56,10 @@ const GET_TRIALS_WITH_USER_STATE = `
       incentivePool {
         id
         distributed
-        totalFundedWei
-        shareWei
         participantCount
+        lastFundedAt
         participants {
-          patient
+          nullifier
         }
       }
     }
@@ -107,10 +106,9 @@ const GET_TRIALS_BY_SPONSOR = `
       }
       incentivePool {
         id
-        totalFundedWei
         distributed
         participantCount
-        shareWei
+        lastFundedAt
       }
       milestones {
         index
@@ -152,7 +150,7 @@ function enrichSponsorTrialRow(t: any, now: number): Trial {
     if (ts > updatedAtSec) updatedAtSec = ts;
   }
 
-  const poolFundedWei = t.incentivePool?.totalFundedWei ?? "0";
+  const poolFunded = Boolean(t.incentivePool?.lastFundedAt && BigInt(t.incentivePool.lastFundedAt) > 0n);
   const createdAtSec = Number(t.createdAt ?? 0);
   const applicants = apps.length;
   const enrollmentPct = applicants > 0 ? Math.round((accepted / applicants) * 100) : 0;
@@ -167,14 +165,14 @@ function enrichSponsorTrialRow(t: any, now: number): Trial {
     acceptedCount: accepted,
     pendingApplicationCount,
     updatedAtSec,
-    poolFundedWei,
+    poolFundedWei: poolFunded ? "1" : "0",
     milestoneProgressPct,
     milestones,
     enrollmentPct,
     isNew: createdAtSec > 0 && now - createdAtSec < 14 * 24 * 3600,
     isExpired: t.endTime ? parseInt(String(t.endTime), 10) <= now : false,
     isFinalized: Boolean(t.incentivePool?.distributed),
-    rewardPoolFunded: BigInt(poolFundedWei || "0") > 0n,
+    rewardPoolFunded: poolFunded,
     rewardParticipantRegistered: false,
   };
 }
@@ -287,10 +285,10 @@ export function useTrials(account?: string, sponsorAddress?: string) {
             }
 
             const effectiveStatus = app ? app.status : anonymousStatus;
-            const participants = (t.incentivePool?.participants || []) as { patient: string }[];
+            const participants = (t.incentivePool?.participants || []) as { nullifier: string }[];
             const rewardParticipantRegistered = participants.some((p) => {
-              const patient = String(p.patient).toLowerCase();
-              return patient === accountAddress || patient === ephemeralAddress;
+              const stored = getAnonymousNullifier(t.id);
+              return stored != null && String(p.nullifier) === stored.toString();
             });
 
             // Anonymous applies don't create wallet-keyed subgraph eligibility rows — use chain status.
@@ -311,7 +309,9 @@ export function useTrials(account?: string, sponsorAddress?: string) {
               matchCount: t.eligibilityResults ? t.eligibilityResults.length : 0,
               isExpired,
               isFinalized: Boolean(t.incentivePool?.distributed),
-              rewardPoolFunded: BigInt(t.incentivePool?.totalFundedWei || "0") > 0n,
+              rewardPoolFunded: Boolean(
+                t.incentivePool?.lastFundedAt && BigInt(t.incentivePool.lastFundedAt) > 0n
+              ),
               rewardParticipantRegistered
             };
           })

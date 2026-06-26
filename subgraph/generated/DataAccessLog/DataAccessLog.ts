@@ -210,6 +210,29 @@ export class DataAccessLog extends ethereum.SmartContract {
     return new DataAccessLog("DataAccessLog", address);
   }
 
+  LOGGER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "LOGGER_CHANGE_DELAY",
+      "LOGGER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_LOGGER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "LOGGER_CHANGE_DELAY",
+      "LOGGER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   MAX_LOG_ENTRIES(): BigInt {
     let result = super.call(
       "MAX_LOG_ENTRIES",
@@ -300,6 +323,29 @@ export class DataAccessLog extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  loggerChangeEta(param0: Address): BigInt {
+    let result = super.call(
+      "loggerChangeEta",
+      "loggerChangeEta(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_loggerChangeEta(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "loggerChangeEta",
+      "loggerChangeEta(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   logs(param0: BigInt): DataAccessLog__logsResult {
     let result = super.call(
       "logs",
@@ -350,6 +396,29 @@ export class DataAccessLog extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingLoggerChanges(param0: Address): boolean {
+    let result = super.call(
+      "pendingLoggerChanges",
+      "pendingLoggerChanges(address):(bool)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_pendingLoggerChanges(param0: Address): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "pendingLoggerChanges",
+      "pendingLoggerChanges(address):(bool)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   pendingOwner(): Address {
@@ -416,6 +485,36 @@ export class AcceptOwnershipCall__Outputs {
   _call: AcceptOwnershipCall;
 
   constructor(call: AcceptOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyAuthorizedLoggerCall extends ethereum.Call {
+  get inputs(): ApplyAuthorizedLoggerCall__Inputs {
+    return new ApplyAuthorizedLoggerCall__Inputs(this);
+  }
+
+  get outputs(): ApplyAuthorizedLoggerCall__Outputs {
+    return new ApplyAuthorizedLoggerCall__Outputs(this);
+  }
+}
+
+export class ApplyAuthorizedLoggerCall__Inputs {
+  _call: ApplyAuthorizedLoggerCall;
+
+  constructor(call: ApplyAuthorizedLoggerCall) {
+    this._call = call;
+  }
+
+  get _logger(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ApplyAuthorizedLoggerCall__Outputs {
+  _call: ApplyAuthorizedLoggerCall;
+
+  constructor(call: ApplyAuthorizedLoggerCall) {
     this._call = call;
   }
 }
@@ -488,20 +587,20 @@ export class ProposeOwnershipCall__Outputs {
   }
 }
 
-export class SetAuthorizedLoggerCall extends ethereum.Call {
-  get inputs(): SetAuthorizedLoggerCall__Inputs {
-    return new SetAuthorizedLoggerCall__Inputs(this);
+export class ScheduleAuthorizedLoggerCall extends ethereum.Call {
+  get inputs(): ScheduleAuthorizedLoggerCall__Inputs {
+    return new ScheduleAuthorizedLoggerCall__Inputs(this);
   }
 
-  get outputs(): SetAuthorizedLoggerCall__Outputs {
-    return new SetAuthorizedLoggerCall__Outputs(this);
+  get outputs(): ScheduleAuthorizedLoggerCall__Outputs {
+    return new ScheduleAuthorizedLoggerCall__Outputs(this);
   }
 }
 
-export class SetAuthorizedLoggerCall__Inputs {
-  _call: SetAuthorizedLoggerCall;
+export class ScheduleAuthorizedLoggerCall__Inputs {
+  _call: ScheduleAuthorizedLoggerCall;
 
-  constructor(call: SetAuthorizedLoggerCall) {
+  constructor(call: ScheduleAuthorizedLoggerCall) {
     this._call = call;
   }
 
@@ -514,10 +613,10 @@ export class SetAuthorizedLoggerCall__Inputs {
   }
 }
 
-export class SetAuthorizedLoggerCall__Outputs {
-  _call: SetAuthorizedLoggerCall;
+export class ScheduleAuthorizedLoggerCall__Outputs {
+  _call: ScheduleAuthorizedLoggerCall;
 
-  constructor(call: SetAuthorizedLoggerCall) {
+  constructor(call: ScheduleAuthorizedLoggerCall) {
     this._call = call;
   }
 }

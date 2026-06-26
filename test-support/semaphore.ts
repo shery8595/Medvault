@@ -1,7 +1,14 @@
 import { Identity } from "@semaphore-protocol/identity";
-import { keccak256, solidityPacked } from "ethers";
+import { keccak256, solidityPacked, getAddress } from "ethers";
 import { toBeHex } from "ethers/utils";
 import { poseidon2 } from "poseidon-lite";
+
+export function anonymousApplySignal(commitment: bigint, permitRecipient: string): bigint {
+    const signal = keccak256(
+        solidityPacked(["uint256", "address"], [commitment, getAddress(permitRecipient)])
+    );
+    return BigInt(signal);
+}
 
 export function semaphoreScopeField(scope: bigint): bigint {
     return BigInt(keccak256(toBeHex(scope, 32))) >> 8n;
@@ -27,7 +34,7 @@ export function buildMockSemaphoreProof(
     commitment: bigint,
     permitRecipient: string
 ) {
-    const message = consentMessage(commitment, trialId, permitRecipient);
+    const message = anonymousApplySignal(commitment, permitRecipient);
     const zero = 0n;
     return {
         merkleTreeDepth: 20n,

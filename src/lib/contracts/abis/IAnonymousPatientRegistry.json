@@ -16,220 +16,54 @@
           "type": "address"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEuint8",
+          "internalType": "bytes32",
+          "name": "_profileCommitment",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "externalEuint8",
           "name": "_age",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEbool",
+          "internalType": "externalEbool",
           "name": "_gender",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEuint16",
+          "internalType": "externalEuint16",
           "name": "_weight",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEuint8",
+          "internalType": "externalEuint8",
           "name": "_height",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEbool",
+          "internalType": "externalEbool",
           "name": "_hasDiabetes",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEuint16",
+          "internalType": "externalEuint16",
           "name": "_hbLevel",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEbool",
+          "internalType": "externalEbool",
           "name": "_isSmoker",
-          "type": "tuple"
+          "type": "bytes32"
         },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "ctHash",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "securityZone",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "utype",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct InEbool",
+          "internalType": "externalEbool",
           "name": "_hasHypertension",
-          "type": "tuple"
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "inputProof",
+          "type": "bytes"
         }
       ],
       "name": "registerPatient",

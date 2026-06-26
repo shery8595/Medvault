@@ -1,6 +1,5 @@
-import { IncentiveFunded, ParticipantRegistered, RewardsDistributed, MilestoneRewardsDistributed } from "../../generated/SponsorIncentiveVault/SponsorIncentiveVault"
-import { IncentivePool, IncentiveParticipant, TrialMilestone } from "../../generated/schema"
-import { BigInt } from "@graphprotocol/graph-ts"
+import { IncentiveFunded, AnonymousParticipantRegistered, RewardsDistributed, MilestoneRewardsDistributed, ClaimInitiated } from "../../generated/SponsorIncentiveVault/SponsorIncentiveVault"
+import { IncentivePool, IncentiveParticipant, TrialMilestone, ClaimLifecycle } from "../../generated/schema"
 
 export function handleIncentiveFunded(event: IncentiveFunded): void {
     let poolId = event.params.trialId.toString()
@@ -9,26 +8,24 @@ export function handleIncentiveFunded(event: IncentiveFunded): void {
     if (!pool) {
         pool = new IncentivePool(poolId)
         pool.trial = poolId
-        pool.totalFundedWei = BigInt.fromI32(0)
         pool.participantCount = 0
         pool.distributed = false
     }
 
-    pool.totalFundedWei = pool.totalFundedWei.plus(event.params.amount)
+    pool.lastFundedAt = event.block.timestamp
     pool.save()
 }
 
-export function handleParticipantRegistered(event: ParticipantRegistered): void {
+export function handleAnonymousParticipantRegistered(event: AnonymousParticipantRegistered): void {
     let poolId = event.params.trialId.toString()
-    let participantId = poolId + "-" + event.params.participant.toHexString()
+    let participantId = poolId + "-" + event.params.nullifier.toString()
 
     let participant = new IncentiveParticipant(participantId)
     participant.pool = poolId
-    participant.patient = event.params.participant
+    participant.nullifier = event.params.nullifier
     participant.registeredAt = event.block.timestamp
     participant.save()
 
-    // Update pool participant count
     let pool = IncentivePool.load(poolId)
     if (pool) {
         pool.participantCount = pool.participantCount + 1
@@ -42,13 +39,10 @@ export function handleRewardsDistributed(event: RewardsDistributed): void {
 
     if (pool) {
         pool.distributed = true
-        pool.shareWei = event.params.shareWei
         pool.distributedAt = event.block.timestamp
         pool.save()
     }
 
-    // Trial-end screening (distribute()) emits RewardsDistributed, not MilestoneRewardsDistributed.
-    // Mark milestone 0 paid when phased payouts exist so the UI/subgraph match on-chain screening.
     let screeningMilestoneId = poolId + "-0"
     let screeningMilestone = TrialMilestone.load(screeningMilestoneId)
     if (screeningMilestone) {
@@ -67,4 +61,19 @@ export function handleMilestoneRewardsDistributed(event: MilestoneRewardsDistrib
         milestone.distributed = true
         milestone.save()
     }
+}
+
+export function handleClaimInitiated(event: ClaimInitiated): void {
+    let id = event.params.trialId.toString() + "-" + event.params.permitHolder.toHexString()
+    let claim = ClaimLifecycle.load(id)
+    if (!claim) {
+        claim = new ClaimLifecycle(id)
+        claim.trialId = event.params.trialId
+        claim.permitHolder = event.params.permitHolder
+        claim.completed = false
+    }
+    claim.sufficientHandle = event.params.sufficientHandle
+    claim.initiatedAt = event.block.timestamp
+    claim.initiatedTxHash = event.transaction.hash
+    claim.save()
 }

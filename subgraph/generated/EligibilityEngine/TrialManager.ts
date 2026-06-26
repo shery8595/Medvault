@@ -10,6 +10,28 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AutomationHookFailed extends ethereum.Event {
+  get params(): AutomationHookFailed__Params {
+    return new AutomationHookFailed__Params(this);
+  }
+}
+
+export class AutomationHookFailed__Params {
+  _event: AutomationHookFailed;
+
+  constructor(event: AutomationHookFailed) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get reason(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+}
+
 export class OwnershipAccepted extends ethereum.Event {
   get params(): OwnershipAccepted__Params {
     return new OwnershipAccepted__Params(this);
@@ -114,6 +136,10 @@ export class TrialCreated__Params {
   get endTime(): BigInt {
     return this._event.parameters[3].value.toBigInt();
   }
+
+  get encryptedCriteria(): boolean {
+    return this._event.parameters[4].value.toBoolean();
+  }
 }
 
 export class TrialDeactivated extends ethereum.Event {
@@ -131,6 +157,44 @@ export class TrialDeactivated__Params {
 
   get trialId(): BigInt {
     return this._event.parameters[0].value.toBigInt();
+  }
+}
+
+export class TrialManager__getEncryptedCriteriaResultValue0Struct extends ethereum.Tuple {
+  get minAge(): Bytes {
+    return this[0].toBytes();
+  }
+
+  get maxAge(): Bytes {
+    return this[1].toBytes();
+  }
+
+  get requiresDiabetes(): Bytes {
+    return this[2].toBytes();
+  }
+
+  get minHb(): Bytes {
+    return this[3].toBytes();
+  }
+
+  get genderRequirement(): Bytes {
+    return this[4].toBytes();
+  }
+
+  get minHeight(): Bytes {
+    return this[5].toBytes();
+  }
+
+  get maxWeight(): Bytes {
+    return this[6].toBytes();
+  }
+
+  get requiresNonSmoker(): Bytes {
+    return this[7].toBytes();
+  }
+
+  get requiresNormalBP(): Bytes {
+    return this[8].toBytes();
   }
 }
 
@@ -198,6 +262,10 @@ export class TrialManager__getTrialResultValue0Struct extends ethereum.Tuple {
   get endTime(): BigInt {
     return this[15].toBigInt();
   }
+
+  get encryptedCriteria(): boolean {
+    return this[16].toBoolean();
+  }
 }
 
 export class TrialManager__trialsResult {
@@ -217,6 +285,7 @@ export class TrialManager__trialsResult {
   value13: boolean;
   value14: boolean;
   value15: BigInt;
+  value16: boolean;
 
   constructor(
     value0: string,
@@ -235,6 +304,7 @@ export class TrialManager__trialsResult {
     value13: boolean,
     value14: boolean,
     value15: BigInt,
+    value16: boolean,
   ) {
     this.value0 = value0;
     this.value1 = value1;
@@ -252,6 +322,7 @@ export class TrialManager__trialsResult {
     this.value13 = value13;
     this.value14 = value14;
     this.value15 = value15;
+    this.value16 = value16;
   }
 
   toMap(): TypedMap<string, ethereum.Value> {
@@ -290,6 +361,7 @@ export class TrialManager__trialsResult {
     map.set("value13", ethereum.Value.fromBoolean(this.value13));
     map.set("value14", ethereum.Value.fromBoolean(this.value14));
     map.set("value15", ethereum.Value.fromUnsignedBigInt(this.value15));
+    map.set("value16", ethereum.Value.fromBoolean(this.value16));
     return map;
   }
 
@@ -356,11 +428,61 @@ export class TrialManager__trialsResult {
   getEndTime(): BigInt {
     return this.value15;
   }
+
+  getEncryptedCriteria(): boolean {
+    return this.value16;
+  }
 }
 
 export class TrialManager extends ethereum.SmartContract {
   static bind(address: Address): TrialManager {
     return new TrialManager("TrialManager", address);
+  }
+
+  CRITERIA_SCHEMA_V2(): Bytes {
+    let result = super.call(
+      "CRITERIA_SCHEMA_V2",
+      "CRITERIA_SCHEMA_V2():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_CRITERIA_SCHEMA_V2(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "CRITERIA_SCHEMA_V2",
+      "CRITERIA_SCHEMA_V2():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  MAX_STRING_LENGTH(): BigInt {
+    let result = super.call(
+      "MAX_STRING_LENGTH",
+      "MAX_STRING_LENGTH():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_MAX_STRING_LENGTH(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "MAX_STRING_LENGTH",
+      "MAX_STRING_LENGTH():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   MAX_TRIAL_DURATION(): BigInt {
@@ -407,6 +529,29 @@ export class TrialManager extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   createTrial(
@@ -492,10 +637,153 @@ export class TrialManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  createTrialWithEncryptedCriteria(
+    _name: string,
+    _phase: string,
+    _location: string,
+    _compensation: string,
+    _minAge: Bytes,
+    _maxAge: Bytes,
+    _requiresDiabetes: Bytes,
+    _minHb: Bytes,
+    _genderRequirement: Bytes,
+    _minHeight: Bytes,
+    _maxWeight: Bytes,
+    _requiresNonSmoker: Bytes,
+    _requiresNormalBP: Bytes,
+    inputProof: Bytes,
+    _duration: BigInt,
+  ): BigInt {
+    let result = super.call(
+      "createTrialWithEncryptedCriteria",
+      "createTrialWithEncryptedCriteria(string,string,string,string,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes,uint256):(uint256)",
+      [
+        ethereum.Value.fromString(_name),
+        ethereum.Value.fromString(_phase),
+        ethereum.Value.fromString(_location),
+        ethereum.Value.fromString(_compensation),
+        ethereum.Value.fromFixedBytes(_minAge),
+        ethereum.Value.fromFixedBytes(_maxAge),
+        ethereum.Value.fromFixedBytes(_requiresDiabetes),
+        ethereum.Value.fromFixedBytes(_minHb),
+        ethereum.Value.fromFixedBytes(_genderRequirement),
+        ethereum.Value.fromFixedBytes(_minHeight),
+        ethereum.Value.fromFixedBytes(_maxWeight),
+        ethereum.Value.fromFixedBytes(_requiresNonSmoker),
+        ethereum.Value.fromFixedBytes(_requiresNormalBP),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromUnsignedBigInt(_duration),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_createTrialWithEncryptedCriteria(
+    _name: string,
+    _phase: string,
+    _location: string,
+    _compensation: string,
+    _minAge: Bytes,
+    _maxAge: Bytes,
+    _requiresDiabetes: Bytes,
+    _minHb: Bytes,
+    _genderRequirement: Bytes,
+    _minHeight: Bytes,
+    _maxWeight: Bytes,
+    _requiresNonSmoker: Bytes,
+    _requiresNormalBP: Bytes,
+    inputProof: Bytes,
+    _duration: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "createTrialWithEncryptedCriteria",
+      "createTrialWithEncryptedCriteria(string,string,string,string,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes,uint256):(uint256)",
+      [
+        ethereum.Value.fromString(_name),
+        ethereum.Value.fromString(_phase),
+        ethereum.Value.fromString(_location),
+        ethereum.Value.fromString(_compensation),
+        ethereum.Value.fromFixedBytes(_minAge),
+        ethereum.Value.fromFixedBytes(_maxAge),
+        ethereum.Value.fromFixedBytes(_requiresDiabetes),
+        ethereum.Value.fromFixedBytes(_minHb),
+        ethereum.Value.fromFixedBytes(_genderRequirement),
+        ethereum.Value.fromFixedBytes(_minHeight),
+        ethereum.Value.fromFixedBytes(_maxWeight),
+        ethereum.Value.fromFixedBytes(_requiresNonSmoker),
+        ethereum.Value.fromFixedBytes(_requiresNormalBP),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromUnsignedBigInt(_duration),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  eligibilityEngine(): Address {
+    let result = super.call(
+      "eligibilityEngine",
+      "eligibilityEngine():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_eligibilityEngine(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "eligibilityEngine",
+      "eligibilityEngine():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  getEncryptedCriteria(
+    _trialId: BigInt,
+  ): TrialManager__getEncryptedCriteriaResultValue0Struct {
+    let result = super.call(
+      "getEncryptedCriteria",
+      "getEncryptedCriteria(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32))",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+
+    return changetype<TrialManager__getEncryptedCriteriaResultValue0Struct>(
+      result[0].toTuple(),
+    );
+  }
+
+  try_getEncryptedCriteria(
+    _trialId: BigInt,
+  ): ethereum.CallResult<TrialManager__getEncryptedCriteriaResultValue0Struct> {
+    let result = super.tryCall(
+      "getEncryptedCriteria",
+      "getEncryptedCriteria(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32))",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      changetype<TrialManager__getEncryptedCriteriaResultValue0Struct>(
+        value[0].toTuple(),
+      ),
+    );
+  }
+
   getTrial(_trialId: BigInt): TrialManager__getTrialResultValue0Struct {
     let result = super.call(
       "getTrial",
-      "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256))",
+      "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256,bool))",
       [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
 
@@ -509,7 +797,7 @@ export class TrialManager extends ethereum.SmartContract {
   ): ethereum.CallResult<TrialManager__getTrialResultValue0Struct> {
     let result = super.tryCall(
       "getTrial",
-      "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256))",
+      "getTrial(uint256):((string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256,bool))",
       [ethereum.Value.fromUnsignedBigInt(_trialId)],
     );
     if (result.reverted) {
@@ -519,6 +807,44 @@ export class TrialManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(
       changetype<TrialManager__getTrialResultValue0Struct>(value[0].toTuple()),
     );
+  }
+
+  isTestnet(): boolean {
+    let result = super.call("isTestnet", "isTestnet():(bool)", []);
+
+    return result[0].toBoolean();
+  }
+
+  try_isTestnet(): ethereum.CallResult<boolean> {
+    let result = super.tryCall("isTestnet", "isTestnet():(bool)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  isTrialSponsorVerified(_trialId: BigInt): boolean {
+    let result = super.call(
+      "isTrialSponsorVerified",
+      "isTrialSponsorVerified(uint256):(bool)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_isTrialSponsorVerified(_trialId: BigInt): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "isTrialSponsorVerified",
+      "isTrialSponsorVerified(uint256):(bool)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   owner(): Address {
@@ -613,7 +939,7 @@ export class TrialManager extends ethereum.SmartContract {
   trials(param0: BigInt): TrialManager__trialsResult {
     let result = super.call(
       "trials",
-      "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256)",
+      "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256,bool)",
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
 
@@ -634,13 +960,14 @@ export class TrialManager extends ethereum.SmartContract {
       result[13].toBoolean(),
       result[14].toBoolean(),
       result[15].toBigInt(),
+      result[16].toBoolean(),
     );
   }
 
   try_trials(param0: BigInt): ethereum.CallResult<TrialManager__trialsResult> {
     let result = super.tryCall(
       "trials",
-      "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256)",
+      "trials(uint256):(string,string,string,string,address,bool,uint8,uint8,bool,uint16,uint8,uint8,uint16,bool,bool,uint256,bool)",
       [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
@@ -665,6 +992,7 @@ export class TrialManager extends ethereum.SmartContract {
         value[13].toBoolean(),
         value[14].toBoolean(),
         value[15].toBigInt(),
+        value[16].toBoolean(),
       ),
     );
   }
@@ -689,6 +1017,10 @@ export class ConstructorCall__Inputs {
 
   get _sponsorRegistry(): Address {
     return this._call.inputValues[0].value.toAddress();
+  }
+
+  get _isTestnet(): boolean {
+    return this._call.inputValues[1].value.toBoolean();
   }
 }
 
@@ -812,6 +1144,96 @@ export class CreateTrialCall__Outputs {
   }
 }
 
+export class CreateTrialWithEncryptedCriteriaCall extends ethereum.Call {
+  get inputs(): CreateTrialWithEncryptedCriteriaCall__Inputs {
+    return new CreateTrialWithEncryptedCriteriaCall__Inputs(this);
+  }
+
+  get outputs(): CreateTrialWithEncryptedCriteriaCall__Outputs {
+    return new CreateTrialWithEncryptedCriteriaCall__Outputs(this);
+  }
+}
+
+export class CreateTrialWithEncryptedCriteriaCall__Inputs {
+  _call: CreateTrialWithEncryptedCriteriaCall;
+
+  constructor(call: CreateTrialWithEncryptedCriteriaCall) {
+    this._call = call;
+  }
+
+  get _name(): string {
+    return this._call.inputValues[0].value.toString();
+  }
+
+  get _phase(): string {
+    return this._call.inputValues[1].value.toString();
+  }
+
+  get _location(): string {
+    return this._call.inputValues[2].value.toString();
+  }
+
+  get _compensation(): string {
+    return this._call.inputValues[3].value.toString();
+  }
+
+  get _minAge(): Bytes {
+    return this._call.inputValues[4].value.toBytes();
+  }
+
+  get _maxAge(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
+  }
+
+  get _requiresDiabetes(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
+  }
+
+  get _minHb(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
+  }
+
+  get _genderRequirement(): Bytes {
+    return this._call.inputValues[8].value.toBytes();
+  }
+
+  get _minHeight(): Bytes {
+    return this._call.inputValues[9].value.toBytes();
+  }
+
+  get _maxWeight(): Bytes {
+    return this._call.inputValues[10].value.toBytes();
+  }
+
+  get _requiresNonSmoker(): Bytes {
+    return this._call.inputValues[11].value.toBytes();
+  }
+
+  get _requiresNormalBP(): Bytes {
+    return this._call.inputValues[12].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[13].value.toBytes();
+  }
+
+  get _duration(): BigInt {
+    return this._call.inputValues[14].value.toBigInt();
+  }
+}
+
+export class CreateTrialWithEncryptedCriteriaCall__Outputs {
+  _call: CreateTrialWithEncryptedCriteriaCall;
+
+  constructor(call: CreateTrialWithEncryptedCriteriaCall) {
+    this._call = call;
+  }
+
+  get value0(): BigInt {
+    return this._call.outputValues[0].value.toBigInt();
+  }
+}
+
 export class DeactivateTrialCall extends ethereum.Call {
   get inputs(): DeactivateTrialCall__Inputs {
     return new DeactivateTrialCall__Inputs(this);
@@ -898,6 +1320,36 @@ export class SetAutomationContractCall__Outputs {
   _call: SetAutomationContractCall;
 
   constructor(call: SetAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class SetEligibilityEngineCall extends ethereum.Call {
+  get inputs(): SetEligibilityEngineCall__Inputs {
+    return new SetEligibilityEngineCall__Inputs(this);
+  }
+
+  get outputs(): SetEligibilityEngineCall__Outputs {
+    return new SetEligibilityEngineCall__Outputs(this);
+  }
+}
+
+export class SetEligibilityEngineCall__Inputs {
+  _call: SetEligibilityEngineCall;
+
+  constructor(call: SetEligibilityEngineCall) {
+    this._call = call;
+  }
+
+  get _engine(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class SetEligibilityEngineCall__Outputs {
+  _call: SetEligibilityEngineCall;
+
+  constructor(call: SetEligibilityEngineCall) {
     this._call = call;
   }
 }

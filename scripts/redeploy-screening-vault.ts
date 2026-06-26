@@ -1,10 +1,10 @@
 /**
- * Redeploy SponsorIncentiveVault (screening / milestone-0 indexing fix) on Arbitrum Sepolia.
+ * Redeploy SponsorIncentiveVault (screening / milestone-0 indexing fix) on Ethereum Sepolia.
  *
  * Usage:
- *   npx hardhat run scripts/redeploy-screening-vault.ts --network arbitrumSepolia
+ *   npx hardhat run scripts/redeploy-screening-vault.ts --network sepolia
  *
- * Requires: PRIVATE_KEY + ARBITRUM_SEPOLIA_RPC_URL in .env (deployer must be vault/TMM/automation owner).
+ * Requires: PRIVATE_KEY + SEPOLIA_RPC_URL in .env (deployer must be vault/TMM/automation owner).
  */
 import hre from "hardhat";
 import { ethers } from "hardhat";
@@ -12,7 +12,7 @@ import fs from "fs";
 import path from "path";
 
 function networkKey(): string {
-  return hre.network.name === "arbitrumSepolia" ? "arbSepolia" : hre.network.name;
+  return hre.network.name === "sepolia" ? "sepolia" : hre.network.name;
 }
 
 async function main() {
@@ -93,11 +93,11 @@ async function main() {
   fs.writeFileSync(addressesPath, `${JSON.stringify(allAddresses, null, 4)}\n`);
   console.log(`\n✓ addresses.json updated (${key}.SponsorIncentiveVault)`);
 
-  const startBlocksPath = path.join(__dirname, "../subgraph/arbSepolia-start-blocks.json");
+  const startBlocksPath = path.join(__dirname, "../subgraph/sepolia-start-blocks.json");
   const startBlocks = JSON.parse(fs.readFileSync(startBlocksPath, "utf8")) as Record<string, number>;
   startBlocks.SponsorIncentiveVault = Number(deployBlock);
   fs.writeFileSync(startBlocksPath, `${JSON.stringify(startBlocks, null, 4)}\n`);
-  console.log(`✓ arbSepolia-start-blocks.json SponsorIncentiveVault → ${deployBlock}`);
+  console.log(`✓ sepolia-start-blocks.json SponsorIncentiveVault → ${deployBlock}`);
   console.log("\nNext steps:");
   console.log("  1. npm run sync-abis");
   console.log("  2. npm run subgraph:deploy -- 0.1.24  (reindexes RewardsDistributed → milestone 0)");

@@ -20,6 +20,8 @@ fhevmTemp/
 .windsurf/
 .zencoder/
 .cursor/
+.mcp.json
+.mcp-audit.log
 skills-lock.json
 
 # Legacy reference copies
@@ -44,3 +46,15 @@ metadata.json
 
 .vercel
 .env*.local
+
+# Capacitor Android local build artifacts (android/ project is committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/.idea/
+android/local.properties
+
+# Local Android SDK (CLI install via npm run mobile:sdk:setup)
+.android-sdk/
+*.keystore
+!android/app/debug.keystore

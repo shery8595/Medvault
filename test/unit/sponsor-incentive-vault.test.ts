@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Identity } from "@semaphore-protocol/identity";
 import {
@@ -10,28 +11,26 @@ import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
 import { deriveNullifier } from "../../test-support/semaphore";
 import { expectRevert } from "../../test-support/assertions";
 import { DEFAULT_TRIAL_PARAMS } from "../../test-support/constants";
+import {
+    freshTrialWithPatient,
+    walletApplyWithConsent,
+    sponsorAcceptApplication,
+    fundRegisterAndDistribute,
+    claimAndCompleteRewards,
+    weiToCethUnits,
+    registerPatient,
+} from "../../test-support/journey";
+import { createEncryptedUint64 } from "../../test-support/fhe";
 
 describe("Unit: SponsorIncentiveVault", function () {
     async function setupAcceptedApplicant(stack: Awaited<ReturnType<typeof deployMedVaultStack>>) {
-        const id = new Identity();
-        await registerPatientOnRegistry(
-            stack,
-            stack.patient,
-            id.commitment,
-            stack.patient.address,
-            ELIGIBLE_PROFILE
-        );
+        const patient = await registerPatient(stack, stack.patient, ELIGIBLE_PROFILE);
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const { grantConsentLegacy } = await import("../../test-support/consent");
-        await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient);
         await stack.eligibilityEngine
             .connect(stack.sponsor)
             .updateAnonymousApplicationStatus(trialId, nullifier, 2); // Accepted
-        return { trialId, nullifier, id };
+        return { trialId, nullifier, id: patient.identity };
     }
 
     it("SIV-01: fundTrial locks deposit", async function () {
@@ -52,7 +51,9 @@ describe("Unit: SponsorIncentiveVault", function () {
         await stack.sponsorIncentiveVault
             .connect(stack.sponsor)
             .fundTrial(trialId, { value: 10n ** 17n });
-        const deposited = await stack.sponsorIncentiveVault.getTotalDeposited(trialId);
+        const deposited = await stack.sponsorIncentiveVault
+            .connect(stack.sponsor)
+            .getTotalDeposited(trialId);
         expect(deposited).to.equal(2n * 10n ** 17n);
     });
 
@@ -173,10 +174,21 @@ describe("Unit: SponsorIncentiveVault", function () {
     it("SIV-13: claim without registration reverts", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
+        const enc = await createEncryptedUint64(
+            await stack.confidentialETH.getAddress(),
+            await stack.sponsorIncentiveVault.getAddress(),
+            1
+        );
         await expectRevert(
             stack.sponsorIncentiveVault
                 .connect(stack.patient)
-                .claimParticipantRewards(trialId, 1n, stack.patient.address, 1, "0x", 1),
+                .claimParticipantRewards(
+                    trialId,
+                    1n,
+                    stack.patient.address,
+                    enc.handle,
+                    enc.inputProof
+                ),
             /Patient not registered|reverted/
         );
     });
@@ -195,7 +207,9 @@ describe("Unit: SponsorIncentiveVault", function () {
         const trialId = await createTrialForSponsor(stack);
         const amt = 5n * 10n ** 17n;
         await stack.sponsorIncentiveVault.connect(stack.sponsor).fundTrial(trialId, { value: amt });
-        expect(await stack.sponsorIncentiveVault.getTotalDeposited(trialId)).to.equal(amt);
+        expect(
+            await stack.sponsorIncentiveVault.connect(stack.sponsor).getTotalDeposited(trialId)
+        ).to.equal(amt);
     });
 
     it("SIV-16: register without pool reverts", async function () {
@@ -206,6 +220,45 @@ describe("Unit: SponsorIncentiveVault", function () {
                 .connect(stack.patient)
                 .registerAnonymousParticipant(trialId, nullifier),
             "No incentive pool"
+        );
+    });
+
+    it("SIV-17: claimParticipantRewards happy path with v0.9 complete", async function () {
+        const { stack, patient, trialId } = await freshTrialWithPatient();
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient);
+        await sponsorAcceptApplication(stack, trialId, nullifier);
+        await fundRegisterAndDistribute(stack, trialId, nullifier);
+        const units = weiToCethUnits(10n ** 18n);
+        await claimAndCompleteRewards(stack, trialId, nullifier, stack.patient.address, units);
+    });
+
+    it("SIV-18: claim reverts for zero destination", async function () {
+        const stack = await deployMedVaultStack();
+        const { trialId, nullifier } = await setupAcceptedApplicant(stack);
+        await stack.sponsorIncentiveVault
+            .connect(stack.sponsor)
+            .fundTrial(trialId, { value: 10n ** 18n });
+        await stack.sponsorIncentiveVault
+            .connect(stack.patient)
+            .registerAnonymousParticipant(trialId, nullifier);
+        await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
+        await stack.sponsorIncentiveVault.connect(stack.sponsor).distribute(trialId);
+        const enc = await createEncryptedUint64(
+            await stack.confidentialETH.getAddress(),
+            await stack.sponsorIncentiveVault.getAddress(),
+            1
+        );
+        await expectRevert(
+            stack.sponsorIncentiveVault
+                .connect(stack.patient)
+                .claimParticipantRewards(
+                    trialId,
+                    nullifier,
+                    ethers.ZeroAddress,
+                    enc.handle,
+                    enc.inputProof
+                ),
+            /Zero destination/
         );
     });
 });

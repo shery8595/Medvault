@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
+import { WithdrawModeSelector } from "./WithdrawModeSelector";
 
 type Props = {
   variant?: "default" | "enclave";
@@ -34,9 +35,9 @@ export function ConfidentialWallet({ variant = "default" }: Props) {
     hideBalance,
     deposit,
     withdraw,
-    getWithdrawNonce,
-    generateWithdrawSignature,
   } = useConfidentialBalance();
+
+  const [withdrawMode, setWithdrawMode] = useState<"wallet" | "fast" | "private_batch">("wallet");
 
   const [amount, setAmount] = useState("");
   const [action, setAction] = useState<"deposit" | "withdraw" | null>(null);
@@ -51,11 +52,11 @@ export function ConfidentialWallet({ variant = "default" }: Props) {
         setSuccessMessage(`Successfully shielded ${amount} ETH entering the Confidential Vault.`);
       } else if (action === "withdraw") {
         setSuccessMessage(null);
-        await getWithdrawNonce();
-        throw new Error(
-          "Please reveal your balance first to generate the required Threshold Network signature. " +
-            "Click 'Reveal Balance' before attempting withdrawal."
-        );
+        if (!isRevealed) {
+          throw new Error("Reveal your balance before withdrawing.");
+        }
+        await withdraw(amount, withdrawMode);
+        setSuccessMessage(`Withdrawal initiated (${withdrawMode.replace("_", " ")}).`);
       }
       setAmount("");
       setAction(null);
@@ -328,6 +329,13 @@ export function ConfidentialWallet({ variant = "default" }: Props) {
                 {action === "deposit" ? "ETH" : "cETH"}
               </div>
             </div>
+            {action === "withdraw" ? (
+              <WithdrawModeSelector
+                value={withdrawMode}
+                onChange={setWithdrawMode}
+                variant={isEnclave ? "enclave" : "default"}
+              />
+            ) : null}
             <Button
               className={cn(
                 "h-12 w-full rounded-xl text-sm font-bold tracking-wide shadow-xl",

@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: AnonymousPatientRegistry
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0xDB7ec7853D08cC73a6E8FcC368Ce2912C037ebAe"
+      address: "0x1095b5d6078d88102Ff8c6Dc4358C735C8769E3F"
       abi: AnonymousPatientRegistry
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -21,17 +21,15 @@ dataSources:
       eventHandlers:
         - event: PatientRegistered(indexed uint256,uint256)
           handler: handleAnonymousPatientRegistered
-        - event: DataAccessed(indexed uint256,indexed address,uint256)
-          handler: handleDataAccessed
       file: ./src/mappings/anonymous-patient-registry.ts
 
   - kind: ethereum
     name: TrialManager
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x8874c4D2e1D2F048e5fb579648b62DC53d75837E"
+      address: "0x9bdC7F24e8B33f35eF96103CefdB70001663F867"
       abi: TrialManager
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -43,7 +41,7 @@ dataSources:
         - name: TrialManager
           file: ./abis/TrialManager.json
       eventHandlers:
-        - event: TrialCreated(indexed uint256,indexed address,string,uint256)
+        - event: TrialCreated(indexed uint256,indexed address,string,uint256,bool)
           handler: handleTrialCreated
         - event: TrialDeactivated(indexed uint256)
           handler: handleTrialDeactivated
@@ -53,11 +51,11 @@ dataSources:
 
   - kind: ethereum
     name: ConsentManager
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0xdD5A1d0875D77B250842476d4fD96d115AaE0B2f"
+      address: "0x4cA11764F302279cE7bC25B440Ef3347bB287E97"
       abi: ConsentManager
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -68,21 +66,19 @@ dataSources:
         - name: ConsentManager
           file: ./abis/ConsentManager.json
       eventHandlers:
-        - event: ConsentGranted(indexed address,indexed uint256)
-          handler: handleConsentGranted
-        - event: EncryptedConsentGranted(indexed address,indexed uint256,bytes32)
-          handler: handleEncryptedConsentGranted
-        - event: ConsentRevoked(indexed address,indexed uint256,bytes32)
-          handler: handleConsentRevoked
+        - event: ConsentChanged()
+          handler: handleConsentChanged
+        - event: ConsentEpochRevoked(uint256)
+          handler: handleConsentEpochRevoked
       file: ./src/mappings/consent-manager.ts
 
   - kind: ethereum
     name: EligibilityEngine
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x064f227265cd22203D038F84AAf38Bc0F0B3eAb3"
+      address: "0xc16d73ba9B5e101a22973840781947f19eD4c8e3"
       abi: EligibilityEngine
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -110,17 +106,17 @@ dataSources:
           handler: handleAnonymousApplicationStatusUpdated
         - event: AnonymousEncryptedPropensityCommitted(indexed uint256,indexed uint256)
           handler: handleAnonymousEncryptedPropensityCommitted
-        - event: EligibilityProofVerified(indexed uint256,indexed uint256,bytes32,bool)
+        - event: EligibilityProofVerified(indexed uint256,indexed uint256,bytes32,bytes32,bytes32,bool)
           handler: handleEligibilityProofVerified
       file: ./src/mappings/eligibility-engine.ts
 
   - kind: ethereum
     name: SponsorIncentiveVault
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x6b2074CDA53f2AF338e37b903A0E7ce4BB6E1921"
+      address: "0xF065CccFc967B012a05c972FEdF82fC2F8D712a2"
       abi: SponsorIncentiveVault
-      startBlock: 272205848
+      startBlock: 11141550
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -128,27 +124,30 @@ dataSources:
       entities:
         - IncentivePool
         - IncentiveParticipant
+        - ClaimLifecycle
       abis:
         - name: SponsorIncentiveVault
           file: ./abis/SponsorIncentiveVault.json
       eventHandlers:
-        - event: IncentiveFunded(indexed uint256,indexed address,uint256)
+        - event: IncentiveFunded(indexed uint256,indexed address)
           handler: handleIncentiveFunded
-        - event: ParticipantRegistered(indexed uint256,indexed address)
-          handler: handleParticipantRegistered
-        - event: RewardsDistributed(indexed uint256,uint256,uint256)
+        - event: AnonymousParticipantRegistered(indexed uint256,indexed uint256)
+          handler: handleAnonymousParticipantRegistered
+        - event: RewardsDistributed(indexed uint256)
           handler: handleRewardsDistributed
-        - event: MilestoneRewardsDistributed(indexed uint256,uint256,uint256)
+        - event: MilestoneRewardsDistributed(indexed uint256,uint256)
           handler: handleMilestoneRewardsDistributed
+        - event: ClaimInitiated(indexed uint256,indexed address,bytes32)
+          handler: handleClaimInitiated
       file: ./src/mappings/sponsor-incentive-vault.ts
 
   - kind: ethereum
     name: TrialMilestoneManager
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x59DedD8Dc02d2B797F1A5A3417919B75736278ED"
+      address: "0x4Adb23aC8427A5F341b04ca35fC2B69c344d5Ad1"
       abi: TrialMilestoneManager
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -168,11 +167,11 @@ dataSources:
 
   - kind: ethereum
     name: DataAccessLog
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x34649EAbba62B176d995892439FFC81726287b26"
+      address: "0xBE5FdFb89603F3A6a80b01bf4eE9A12Fa16107DC"
       abi: DataAccessLog
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -189,11 +188,11 @@ dataSources:
 
   - kind: ethereum
     name: SponsorRegistry
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0x4052efC4070adD9E67eD7Ec779cAcE4f4cDf4f09"
+      address: "0xd80CFff5ee35D7a1d0204044915C3F9327AD4446"
       abi: SponsorRegistry
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -216,11 +215,11 @@ dataSources:
 
   - kind: ethereum
     name: MedVaultRegistry
-    network: arbitrum-sepolia
+    network: sepolia
     source:
-      address: "0xd0B2aBe1734B3b44564D0e970C33a321bc1af6ee"
+      address: "0x77991f2E5146CB9c3B0506D74Ad2188b8ceC5194"
       abi: MedVaultRegistry
-      startBlock: 272205848
+      startBlock: 11141076
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.8
@@ -228,7 +227,6 @@ dataSources:
       entities:
         - AnonymousPatient
         - AnonymousSubmission
-        - Patient
       abis:
         - name: MedVaultRegistry
           file: ./abis/MedVaultRegistry.json
@@ -242,3 +240,121 @@ dataSources:
         - event: AnonymousApplication(indexed uint256,indexed uint256,indexed bytes32)
           handler: handleAnonymousApplication
       file: ./src/mappings/medvault-registry.ts
+
+  - kind: ethereum
+    name: StakingManager
+    network: sepolia
+    source:
+      address: "0x83408e964436Eddd646776096Dc4AFB7e42761C9"
+      abi: StakingManager
+      startBlock: 11141076
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.8
+      language: wasm/assemblyscript
+      entities:
+        - StakingUser
+        - UnstakeRequest
+      abis:
+        - name: StakingManager
+          file: ./abis/StakingManager.json
+      eventHandlers:
+        - event: Staked(indexed address)
+          handler: handleStaked
+        - event: Unstaked(indexed address)
+          handler: handleUnstaked
+        - event: PrivateUnstakeRequested(indexed address,bytes32)
+          handler: handlePrivateUnstakeRequested
+        - event: PublicUnstakeRequested(indexed address,bytes32)
+          handler: handlePublicUnstakeRequested
+      file: ./src/mappings/staking-manager.ts
+
+  - kind: ethereum
+    name: ConfidentialETH
+    network: sepolia
+    source:
+      address: "0x21485468CA0D91a9Ae82D33619bbE4B1e5FAe948"
+      abi: ConfidentialETH
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.8
+      language: wasm/assemblyscript
+      entities:
+        - WithdrawRequest
+      abis:
+        - name: ConfidentialETH
+          file: ./abis/ConfidentialETH.json
+      eventHandlers:
+        - event: WithdrawRequested(indexed address,bytes32)
+          handler: handleWithdrawRequested
+        - event: WithdrawToRequested(indexed address,bytes32)
+          handler: handleWithdrawToRequested
+        - event: Withdrawal(indexed address)
+          handler: handleWithdrawal
+      file: ./src/mappings/confidential-eth.ts
+
+  - kind: ethereum
+    name: MedVaultAutomation
+    network: sepolia
+    source:
+      address: "0xA3b5C14Ac1C6eebE10eeb0a67ee91eE49A682835"
+      abi: MedVaultAutomation
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.8
+      language: wasm/assemblyscript
+      entities:
+        - AutomationFinalization
+      abis:
+        - name: MedVaultAutomation
+          file: ./abis/MedVaultAutomation.json
+      eventHandlers:
+        - event: TrialFinalized(indexed uint256,bool,bool)
+          handler: handleTrialFinalized
+      file: ./src/mappings/medvault-automation.ts
+
+  - kind: ethereum
+    name: EncryptedConsentGate
+    network: sepolia
+    source:
+      address: "0x33371BC2655826713Ba2783154D12c8bDc99a2ae"
+      abi: EncryptedConsentGate
+      startBlock: 11141076
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.8
+      language: wasm/assemblyscript
+      entities:
+        - ConsentGateCheck
+      abis:
+        - name: EncryptedConsentGate
+          file: ./abis/EncryptedConsentGate.json
+      eventHandlers:
+        - event: GateComputed(indexed uint256,indexed bytes32,bytes32)
+          handler: handleGateComputed
+      file: ./src/mappings/encrypted-consent-gate.ts
+
+  - kind: ethereum
+    name: EncryptedScoreLeaderboard
+    network: sepolia
+    source:
+      address: "0x5a3B37FD105Be7f0dFF92616344F8B838C02369c"
+      abi: EncryptedScoreLeaderboard
+      startBlock: 11141076
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.8
+      language: wasm/assemblyscript
+      entities:
+        - BlindRankingEvent
+      abis:
+        - name: EncryptedScoreLeaderboard
+          file: ./abis/EncryptedScoreLeaderboard.json
+      eventHandlers:
+        - event: ApplicantAdded(indexed uint256,indexed uint256)
+          handler: handleApplicantAdded
+        - event: ComparisonComputed(indexed uint256,indexed uint256,indexed uint256,bytes32)
+          handler: handleComparisonComputed
+      file: ./src/mappings/encrypted-score-leaderboard.ts

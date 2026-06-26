@@ -48,11 +48,10 @@ export interface Trial {
   incentivePool?: {
     id: string;
     distributed: boolean;
-    totalFundedWei: string;
-    shareWei?: string;
     distributedAt?: string;
     participantCount?: number;
-    participants?: { patient: string }[];
+    lastFundedAt?: string;
+    participants?: { nullifier: string }[];
   };
   rewardPoolFunded?: boolean;
   rewardParticipantRegistered?: boolean;
@@ -109,6 +108,10 @@ export interface Match {
   fhePropensityCommittedAt?: string | null;
   noirCertified?: boolean;
   noirEligible?: boolean | null;
+  /** Zama-bound attestation metadata (no PHI) */
+  attestationResultHash?: string | null;
+  attestationFheStageHash?: string | null;
+  attestationCriteriaSchemaHash?: string | null;
 }
 
 export interface AnalyticsData {

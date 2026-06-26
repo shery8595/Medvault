@@ -1,66 +1,79 @@
 const fs = require('fs');
 const path = require('path');
 
+const networkKey = 'sepolia';
+const graphNetwork = 'sepolia';
+const startBlocksFile = 'sepolia-start-blocks.json';
+
 const addressesPath = path.join(__dirname, '../src/lib/contracts/addresses.json');
 const subgraphYamlPath = path.join(__dirname, '../subgraph/subgraph.yaml');
-const startBlocksPath = path.join(__dirname, '../subgraph/arbSepolia-start-blocks.json');
+const startBlocksPath = path.join(__dirname, '../subgraph', startBlocksFile);
 
-const addresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'))['arbSepolia'];
+/** Every `name:` entry at the dataSource level in subgraph.yaml. */
+const SUBGRAPH_DATASOURCES = [
+    'AnonymousPatientRegistry',
+    'TrialManager',
+    'ConsentManager',
+    'EligibilityEngine',
+    'SponsorIncentiveVault',
+    'TrialMilestoneManager',
+    'DataAccessLog',
+    'SponsorRegistry',
+    'MedVaultRegistry',
+    'StakingManager',
+    'ConfidentialETH',
+    'MedVaultAutomation',
+    'EncryptedConsentGate',
+    'EncryptedScoreLeaderboard',
+];
+
+const addresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'))[networkKey];
+if (!addresses) {
+    console.error(`No addresses for "${networkKey}" in addresses.json`);
+    process.exit(1);
+}
+
 let subgraphYaml = fs.readFileSync(subgraphYamlPath, 'utf8');
-
-/** Indexed in subgraph.yaml. Audit logs + staking use RPC in the app (see useAuditLogs, useStaking). */
-const mapping = {
-  AnonymousPatientRegistry: addresses.AnonymousPatientRegistry,
-  TrialManager: addresses.TrialManager,
-  ConsentManager: addresses.ConsentManager,
-  EligibilityEngine: addresses.EligibilityEngine,
-  SponsorIncentiveVault: addresses.SponsorIncentiveVault,
-  TrialMilestoneManager: addresses.TrialMilestoneManager,
-  SponsorRegistry: addresses.SponsorRegistry,
-  MedVaultRegistry: addresses.MedVaultRegistry,
-};
-
-// Written by `npx hardhat run scripts/deploy.ts --network arbitrumSepolia`. Fallback: previous deploy.
-const fallbackStartBlocks = {
-  AnonymousPatientRegistry: 262817339,
-  TrialManager: 262817343,
-  ConsentManager: 262816811,
-  EligibilityEngine: 262817390,
-  SponsorIncentiveVault: 262817384,
-  DataAccessLog: 262817440,
-  TrialMilestoneManager: 262817246,
-  SponsorRegistry: 262817163,
-  StakingManager: 262817464,
-  MedVaultRegistry: 262817280
-};
+subgraphYaml = subgraphYaml.replace(/network: (arbitrum-sepolia|sepolia)/g, `network: ${graphNetwork}`);
 
 let fileStartBlocks = null;
 if (fs.existsSync(startBlocksPath)) {
-  try {
-    fileStartBlocks = JSON.parse(fs.readFileSync(startBlocksPath, 'utf8'));
-  } catch (e) {
-    console.warn('Could not read arbSepolia-start-blocks.json:', e.message);
-  }
-}
-const startBlocks = {};
-for (const name of Object.keys(mapping)) {
-  const fromFile = fileStartBlocks && fileStartBlocks[name] != null ? Number(fileStartBlocks[name]) : null;
-  startBlocks[name] = fromFile != null && !Number.isNaN(fromFile) ? fromFile : fallbackStartBlocks[name];
+    try {
+        fileStartBlocks = JSON.parse(fs.readFileSync(startBlocksPath, 'utf8'));
+    } catch (e) {
+        console.warn(`Could not read ${startBlocksFile}:`, e.message);
+    }
 }
 
-for (const [name, address] of Object.entries(mapping)) {
-  if (!address || address === '0x0000000000000000000000000000000000000000') {
-    console.warn(`Warning: no address in addresses.json for ${name}, skip YAML replace`);
-    continue;
-  }
-  const regex = new RegExp(`name: ${name}[\\s\\S]*?address: ".*?"[\\s\\S]*?startBlock: \\d+`, "g");
-  subgraphYaml = subgraphYaml.replace(regex, (match) => {
-    return match
-      .replace(/address: ".*?"/, `address: "${address}"`)
-      .replace(/startBlock: \d+/, `startBlock: ${startBlocks[name]}`);
-  });
+function resolveStartBlock(name) {
+    const fromFile = fileStartBlocks && fileStartBlocks[name] != null ? Number(fileStartBlocks[name]) : null;
+    return fromFile != null && !Number.isNaN(fromFile) ? fromFile : 0;
+}
+
+function updateDataSource(yaml, name, address, startBlock) {
+    const re = new RegExp(
+        `(  - kind: ethereum\\n    name: ${name}\\n    network: [^\\n]+\\n    source:\\n      address: ")[^"]+("[^\\n]*\\n      abi: [^\\n]+\\n      startBlock: )\\d+`,
+        'g'
+    );
+    return yaml.replace(re, `$1${address}$2${startBlock}`);
+}
+
+let updated = 0;
+for (const name of SUBGRAPH_DATASOURCES) {
+    const address = addresses[name];
+    if (!address || address === '0x0000000000000000000000000000000000000000') {
+        console.warn(`Warning: no address in addresses.json for ${name}, skip YAML replace`);
+        continue;
+    }
+    const startBlock = resolveStartBlock(name);
+    const next = updateDataSource(subgraphYaml, name, address, startBlock);
+    if (next !== subgraphYaml) {
+        updated += 1;
+        console.log(`  ${name} → ${address} (startBlock ${startBlock})`);
+    }
+    subgraphYaml = next;
 }
 
 fs.writeFileSync(subgraphYamlPath, subgraphYaml);
-const src = fileStartBlocks ? 'arbSepolia-start-blocks.json + addresses.json' : 'addresses.json (fallback start blocks)';
-console.log('Updated subgraph.yaml (' + src + ').');
+const src = fileStartBlocks ? `${startBlocksFile} + addresses.json` : 'addresses.json (fallback start blocks)';
+console.log(`Updated subgraph.yaml (${graphNetwork}, ${updated} data sources, ${src}).`);

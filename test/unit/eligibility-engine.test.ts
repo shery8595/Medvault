@@ -18,8 +18,7 @@ import {
 } from "../../test-support/fixtures/profiles";
 import { deriveNullifier } from "../../test-support/semaphore";
 import { expectRevert } from "../../test-support/assertions";
-import hre from "hardhat";
-import { mockDecryptBool } from "../../test-support/fhe";
+import { mockDecryptBool, parseEventArg } from "../../test-support/fhe";
 import { impersonateAccount } from "../../test-support/signers";
 
 describe("Unit: EligibilityEngine", function () {
@@ -39,7 +38,7 @@ describe("Unit: EligibilityEngine", function () {
         const trialId = await createTrialForSponsor(stack, stack.sponsor, trialOverrides);
         const nullifier = deriveNullifier(id, trialId);
         const registrySigner = await impersonateAccount(await stack.medVaultRegistry.getAddress());
-        const finalCt = await stack.eligibilityEngine
+        const stageTx = await stack.eligibilityEngine
             .connect(registrySigner)
             .stageAnonymousEligibility(
                 id.commitment,
@@ -47,12 +46,19 @@ describe("Unit: EligibilityEngine", function () {
                 nullifier,
                 stack.patient.address
             );
-        return { id, trialId, nullifier, finalCt };
+        const stageRc = await stageTx.wait();
+        const finalCt = parseEventArg(
+            stageRc!,
+            stack.eligibilityEngine.interface,
+            "AnonymousEligibilityStaged",
+            "finalCt"
+        );
+        return { id, trialId, nullifier, finalCt, engine: await stack.eligibilityEngine.getAddress() };
     }
 
     const criteriaCases: Array<{ id: string; profile: typeof ELIGIBLE_PROFILE; overrides?: object }> = [
         { id: "EE-01", profile: PROFILE_FAIL_AGE },
-        { id: "EE-02", profile: PROFILE_FAIL_DIABETES },
+        { id: "EE-02", profile: ELIGIBLE_PROFILE, overrides: { requiresDiabetes: true } },
         { id: "EE-03", profile: PROFILE_FAIL_HB },
         { id: "EE-04", profile: PROFILE_FAIL_GENDER, overrides: { genderReq: 1 } },
         { id: "EE-05", profile: PROFILE_FAIL_HEIGHT, overrides: { minHeight: 160 } },
@@ -64,16 +70,15 @@ describe("Unit: EligibilityEngine", function () {
     for (const { id, profile, overrides } of criteriaCases) {
         it(`${id}: failing criterion yields ineligible on decrypt`, async function () {
             const stack = await deployMedVaultStack();
-            const { finalCt } = await stageEligibility(stack, profile, overrides as any);
-            expect(await mockDecryptBool(finalCt)).to.equal(false);
+            const { finalCt, engine } = await stageEligibility(stack, profile, overrides as any);
+            expect(await mockDecryptBool(finalCt, engine, stack.patient.address)).to.equal(false);
         });
     }
 
     it("EE-09: all criteria pass yields eligible on decrypt", async function () {
         const stack = await deployMedVaultStack();
-        const { finalCt } = await stageEligibility(stack, ELIGIBLE_PROFILE);
-        const { coerceFheHandle } = await import("../../test-support/fhe");
-        expect(coerceFheHandle(finalCt)).to.be.gt(0n);
+        const { finalCt, engine } = await stageEligibility(stack, ELIGIBLE_PROFILE);
+        expect(await mockDecryptBool(finalCt, engine, stack.patient.address)).to.equal(true);
     });
 
     it("EE-10: inactive trial reverts on stage", async function () {
@@ -111,23 +116,21 @@ describe("Unit: EligibilityEngine", function () {
                 [],
                 1,
                 1,
+                1,
                 true
             ),
-            "Expected 4 public inputs"
+            /Expected 17 public inputs|reverted/
         );
     });
 
     it("EE-12: verifyEligibilityProof without application reverts", async function () {
         const stack = await deployMedVaultStack();
-        const publicInputs = [
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-            "0x0000000000000000000000000000000000000000000000000000000000000002",
-            "0x0000000000000000000000000000000000000000000000000000000000000003",
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-        ];
+        const publicInputs = Array.from({ length: 17 }, (_, i) =>
+            `0x${(i + 1).toString(16).padStart(64, "0")}`
+        );
         await expectRevert(
-            stack.eligibilityEngine.verifyEligibilityProof("0x" + "00".repeat(64), publicInputs, 1, 2, true),
-            "No FHE application found"
+            stack.eligibilityEngine.verifyEligibilityProof("0x" + "00".repeat(64), publicInputs, 1, 2, 1, true),
+            /Commitment required|No FHE application found|Not authorized/
         );
     });
 

@@ -1,0 +1,15 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "RewardReverter",
+  "sourceName": "contracts/test/RewardReverter.sol",
+  "abi": [
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "bytecode": "0x60808060405234601357604a908160188239f35b5f80fdfe6080806040523615600e575f80fd5b62461bcd60e51b815260206004820152600a6024820152690a4cad4cac6e8408aa8960b31b6044820152606490fdfea164736f6c634300081b000a",
+  "deployedBytecode": "0x6080806040523615600e575f80fd5b62461bcd60e51b815260206004820152600a6024820152690a4cad4cac6e8408aa8960b31b6044820152606490fdfea164736f6c634300081b000a",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

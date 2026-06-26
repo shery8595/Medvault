@@ -9,9 +9,9 @@ const CURSOR_SNIPPET = `{
   "mcpServers": {
     "medvault": {
       "command": "node",
-      "args": ["mcp-server/dist/index.js"],
+      "args": ["\${workspaceFolder}/mcp-server/dist/index.js"],
       "env": {
-        "ARBITRUM_SEPOLIA_RPC_URL": "\${env:ARBITRUM_SEPOLIA_RPC_URL}",
+        "SEPOLIA_RPC_URL": "\${env:SEPOLIA_RPC_URL}",
         "MEDVAULT_SUBGRAPH_URL": "\${env:MEDVAULT_SUBGRAPH_URL}",
         "MCP_PRIVATE_KEY": "\${env:MCP_PRIVATE_KEY}"
       }
@@ -25,7 +25,7 @@ args = ["<repo>/mcp-server/dist/index.js"]
 enabled = true
 
 [mcp_servers.medvault.env]
-ARBITRUM_SEPOLIA_RPC_URL = "..."
+SEPOLIA_RPC_URL = "..."
 MEDVAULT_SUBGRAPH_URL = "..."
 MCP_PRIVATE_KEY = "..."`;
 
@@ -45,8 +45,10 @@ export function McpSetupDoc() {
                 <CodeBlock
                     language="bash"
                     code={`npm install
-npm run mcp:build           # builds @medvault/core, @medvault/sdk, and mcp-server
-npm run mcp:export-config   # regenerates config/mcp/* with absolute paths`}
+npm run mcp:build
+npm run mcp:export-config   # portable config/mcp/* + local .cursor/mcp.json, .mcp.json
+npm run mcp:validate-config
+npm run mcp:doctor          # optional`}
                 />
                 <p>
                     For integrator scripts without MCP, see{" "}
@@ -68,9 +70,9 @@ npm run mcp:export-config   # regenerates config/mcp/* with absolute paths`}
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-slate-700">
                             <tr>
-                                <td className="p-3 font-mono text-xs">ARBITRUM_SEPOLIA_RPC_URL</td>
+                                <td className="p-3 font-mono text-xs">SEPOLIA_RPC_URL</td>
                                 <td className="p-3">Always</td>
-                                <td className="p-3">Arbitrum Sepolia JSON-RPC</td>
+                                <td className="p-3">Ethereum Sepolia JSON-RPC</td>
                             </tr>
                             <tr>
                                 <td className="p-3 font-mono text-xs">MEDVAULT_SUBGRAPH_URL</td>
@@ -94,6 +96,18 @@ npm run mcp:export-config   # regenerates config/mcp/* with absolute paths`}
                                 <td className="p-3">Optional</td>
                                 <td className="p-3">Caps <code>medvault_fund_trial_pool</code></td>
                             </tr>
+                            <tr>
+                                <td className="p-3 font-mono text-xs">MEDVAULT_RELAYER_URL</td>
+                                <td className="p-3">Optional</td>
+                                <td className="p-3">Relayer health checks</td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 font-mono text-xs">MCP_READ_ONLY</td>
+                                <td className="p-3">Optional</td>
+                                <td className="p-3">
+                                    <code>true</code> disables write tools
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -109,9 +123,9 @@ npm run mcp:export-config   # regenerates config/mcp/* with absolute paths`}
 
                 <h3>Claude Code</h3>
                 <p>
-                    Use the committed <code>.mcp.json</code> at repo root, or run{" "}
-                    <code>claude mcp add medvault -- node mcp-server/dist/index.js</code> from the repository root after{" "}
-                    <code>mcp:build</code>.
+                    Run <code>npm run mcp:export-config</code> to generate <code>.mcp.json</code> at repo root
+                    (gitignored), or merge <code>config/mcp/claude.mcp.json</code>. Alternatively:{" "}
+                    <code>claude mcp add medvault -- node mcp-server/dist/index.js</code> after <code>mcp:build</code>.
                 </p>
 
                 <h3>OpenAI Codex</h3>

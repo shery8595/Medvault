@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint8, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint8, euint32, euint64, ebool} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./EligibilityEngine.sol";
 
 /**
@@ -17,7 +18,7 @@ import "./EligibilityEngine.sol";
  *      sponsors can prioritize applicants without learning their medical data.
  *      The comparisons happen entirely on-chain with encrypted values.
  */
-contract EncryptedScoreLeaderboard {
+contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
     EligibilityEngine public eligibilityEngine;
 
     address public owner;
@@ -27,14 +28,18 @@ contract EncryptedScoreLeaderboard {
     mapping(uint256 => uint256[]) public trialApplicants;
 
     // Trial ID => nullifier => has been added
-    mapping(uint256 => mapping(uint256 => bool)) public isApplicantAdded;
+    uint256 public constant MAX_APPLICANTS_PER_TRIAL = 500;
 
-    // FHENIX: Encrypted pairwise comparison results
+    mapping(uint256 => mapping(uint256 => bool)) public isApplicantAdded;
+    mapping(uint256 => mapping(uint256 => bool)) public hasBeenAggregated;
+
+    // Zama FHE: Encrypted pairwise comparison results
     // trialId => nullifierA => nullifierB => A_gt_B (encrypted boolean)
     mapping(uint256 => mapping(uint256 => mapping(uint256 => ebool))) private comparisonResults;
 
-    // Authorized sponsors who can view comparison results
-    mapping(address => bool) public authorizedSponsors;
+    // Authorized sponsors who can view comparison results (per trial)
+    mapping(uint256 => mapping(address => bool)) public authorizedSponsorsForTrial;
+    mapping(address => bool) public globalAuthorizedSponsors;
 
     // M-5: Authorized callers who can add applicants (e.g., EligibilityEngine)
     mapping(address => bool) public authorizedCallers;
@@ -42,7 +47,14 @@ contract EncryptedScoreLeaderboard {
     // Trial ID => sponsor address
     mapping(uint256 => address) public trialSponsor;
 
+    /// @notice Homomorphic aggregate score sum per trial (sponsor decrypt only).
+    mapping(uint256 => euint64) private aggregateScoreSum;
+
+    /// @notice Homomorphic applicant count per trial.
+    mapping(uint256 => euint32) private aggregateApplicantCount;
+
     event ApplicantAdded(uint256 indexed trialId, uint256 indexed nullifier);
+    event AggregateUpdated(uint256 indexed trialId);
     event ComparisonComputed(
         uint256 indexed trialId,
         uint256 indexed nullifierA,
@@ -64,7 +76,8 @@ contract EncryptedScoreLeaderboard {
         require(
             msg.sender == owner ||
             msg.sender == trialSponsor[_trialId] ||
-            authorizedSponsors[msg.sender],
+            authorizedSponsorsForTrial[_trialId][msg.sender] ||
+            globalAuthorizedSponsors[msg.sender],
             "Not authorized for this trial"
         );
         _;
@@ -99,7 +112,13 @@ contract EncryptedScoreLeaderboard {
      */
     function authorizeSponsor(address _sponsor) external onlyOwner {
         require(_sponsor != address(0), "Zero address");
-        authorizedSponsors[_sponsor] = true;
+        globalAuthorizedSponsors[_sponsor] = true;
+        emit SponsorAuthorized(_sponsor);
+    }
+
+    function authorizeSponsorForTrial(uint256 _trialId, address _sponsor) external onlyOwner {
+        require(_sponsor != address(0), "Zero address");
+        authorizedSponsorsForTrial[_trialId][_sponsor] = true;
         emit SponsorAuthorized(_sponsor);
     }
 
@@ -107,7 +126,12 @@ contract EncryptedScoreLeaderboard {
      * @notice Deauthorize a sponsor
      */
     function deauthorizeSponsor(address _sponsor) external onlyOwner {
-        authorizedSponsors[_sponsor] = false;
+        globalAuthorizedSponsors[_sponsor] = false;
+        emit SponsorDeauthorized(_sponsor);
+    }
+
+    function deauthorizeSponsorForTrial(uint256 _trialId, address _sponsor) external onlyOwner {
+        authorizedSponsorsForTrial[_trialId][_sponsor] = false;
         emit SponsorDeauthorized(_sponsor);
     }
 
@@ -149,6 +173,10 @@ contract EncryptedScoreLeaderboard {
             "Not authorized"
         );
         require(!isApplicantAdded[_trialId][_nullifier], "Applicant already added");
+        require(
+            trialApplicants[_trialId].length < MAX_APPLICANTS_PER_TRIAL,
+            "Applicant cap reached"
+        );
 
         trialApplicants[_trialId].push(_nullifier);
         isApplicantAdded[_trialId][_nullifier] = true;
@@ -169,13 +197,15 @@ contract EncryptedScoreLeaderboard {
         euint8 scoreA = eligibilityEngine.getAnonymousScore(_nullifierA, _trialId);
         euint8 scoreB = eligibilityEngine.getAnonymousScore(_nullifierB, _trialId);
 
-        // FHENIX: Encrypted comparison - returns encrypted boolean
+        // Zama FHE: Encrypted comparison - returns encrypted boolean
         ebool aGreaterThanB = FHE.gt(scoreA, scoreB);
 
         // Store the encrypted comparison result
         FHE.allowThis(aGreaterThanB);
-        FHE.allow(aGreaterThanB, trialSponsor[_trialId]);
-        if (authorizedSponsors[msg.sender]) {
+        if (trialSponsor[_trialId] != address(0)) {
+            FHE.allow(aGreaterThanB, trialSponsor[_trialId]);
+        }
+        if (authorizedSponsorsForTrial[_trialId][msg.sender]) {
             FHE.allow(aGreaterThanB, msg.sender);
         }
 
@@ -187,7 +217,7 @@ contract EncryptedScoreLeaderboard {
     }
 
     /**
-     * @notice FHENIX: Compute encrypted comparison between two applicants
+     * @notice Zama FHE: Compute encrypted comparison between two applicants
      * @dev Uses FHE.gt() to compare encrypted scores without decrypting them.
      *
      * @param _trialId The trial ID
@@ -208,7 +238,7 @@ contract EncryptedScoreLeaderboard {
     }
 
     /**
-     * @notice FHENIX: Batch compare an applicant against all others
+     * @notice Zama FHE: Batch compare an applicant against all others
      * @param _trialId The trial ID
      * @param _nullifier The applicant's nullifier to compare
      * @return comparisons Array of encrypted boolean results (true if applicant > other)
@@ -261,7 +291,7 @@ contract EncryptedScoreLeaderboard {
      * @param _trialId The trial ID
      * @return Array of applicant nullifiers
      */
-    function getApplicants(uint256 _trialId) external view returns (uint256[] memory) {
+    function getApplicants(uint256 _trialId) external view onlyAuthorizedSponsor(_trialId) returns (uint256[] memory) {
         return trialApplicants[_trialId];
     }
 
@@ -277,5 +307,66 @@ contract EncryptedScoreLeaderboard {
      */
     function isApplicant(uint256 _trialId, uint256 _nullifier) external view returns (bool) {
         return isApplicantAdded[_trialId][_nullifier];
+    }
+
+    /**
+     * @notice Zama FHE: homomorphically add an applicant score to trial aggregates.
+     * @dev Called by EligibilityEngine after finalize; sponsors decrypt aggregates only.
+     */
+    function addToAggregate(uint256 _trialId, uint256 _nullifier, euint8 _score) external {
+        require(
+            msg.sender == owner || authorizedCallers[msg.sender],
+            "Not authorized"
+        );
+        require(isApplicantAdded[_trialId][_nullifier], "Applicant not on leaderboard");
+        require(!hasBeenAggregated[_trialId][_nullifier], "Already aggregated");
+        hasBeenAggregated[_trialId][_nullifier] = true;
+        FHE.allowThis(_score);
+
+        euint64 score64 = FHE.asEuint64(_score);
+        euint64 currentSum = aggregateScoreSum[_trialId];
+        if (!FHE.isInitialized(currentSum)) {
+            aggregateScoreSum[_trialId] = score64;
+            FHE.allowThis(score64);
+            if (trialSponsor[_trialId] != address(0)) {
+                FHE.allow(score64, trialSponsor[_trialId]);
+            }
+        } else {
+            FHE.allowThis(currentSum);
+            euint64 updated = FHE.add(currentSum, score64);
+            FHE.allowThis(updated);
+            if (trialSponsor[_trialId] != address(0)) {
+                FHE.allow(updated, trialSponsor[_trialId]);
+            }
+            aggregateScoreSum[_trialId] = updated;
+        }
+
+        euint32 currentCount = aggregateApplicantCount[_trialId];
+        euint32 one = FHE.asEuint32(1);
+        if (!FHE.isInitialized(currentCount)) {
+            aggregateApplicantCount[_trialId] = one;
+            FHE.allowThis(one);
+            if (trialSponsor[_trialId] != address(0)) {
+                FHE.allow(one, trialSponsor[_trialId]);
+            }
+        } else {
+            FHE.allowThis(currentCount);
+            euint32 updatedCount = FHE.add(currentCount, one);
+            FHE.allowThis(updatedCount);
+            if (trialSponsor[_trialId] != address(0)) {
+                FHE.allow(updatedCount, trialSponsor[_trialId]);
+            }
+            aggregateApplicantCount[_trialId] = updatedCount;
+        }
+
+        emit AggregateUpdated(_trialId);
+    }
+
+    function getAggregateScoreSum(uint256 _trialId) external view onlyAuthorizedSponsor(_trialId) returns (euint64) {
+        return aggregateScoreSum[_trialId];
+    }
+
+    function getAggregateApplicantCount(uint256 _trialId) external view onlyAuthorizedSponsor(_trialId) returns (euint32) {
+        return aggregateApplicantCount[_trialId];
     }
 }

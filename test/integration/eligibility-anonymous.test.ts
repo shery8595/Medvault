@@ -6,11 +6,17 @@ import {
     registerPatientOnRegistry,
 } from "../../test-support/deployments";
 import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
+import {
+    buildAnonymousApplyArgs,
+    cancelAnonymousApplyStage,
+    stageAnonymousApply,
+} from "../../test-support/anonymousApply";
 import { buildMockSemaphoreProof, deriveNullifier } from "../../test-support/semaphore";
 import { expectRevert } from "../../test-support/assertions";
-import { mockDecryptBool } from "../../test-support/fhe";
+import { mockDecryptBool, mockPublicDecryptProof, mockUserDecryptBool, parseEventArg } from "../../test-support/fhe";
 import { grantConsentLegacy } from "../../test-support/consent";
 import { impersonateAccount } from "../../test-support/signers";
+import { ethers } from "hardhat";
 
 describe("Integration: eligibility anonymous flow", function () {
     it("INT-EE-01: stage then cancel staged eligibility", async function () {
@@ -24,19 +30,20 @@ describe("Integration: eligibility anonymous flow", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .cancelAnonymousApplyStage(trialId, proof, id.commitment, stack.patient.address);
+        await cancelAnonymousApplyStage(
+            stack.medVaultRegistry,
+            stack.patient,
+            trialId,
+            id,
+            stack.patient.address
+        );
     });
 
     it("INT-EE-02: stage returns decryptable finalCt", async function () {
@@ -50,22 +57,19 @@ describe("Integration: eligibility anonymous flow", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const tx = await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
-        const tx = await stack.medVaultRegistry
-            .connect(stack.patient)
-            .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address);
         const receipt = await tx.wait();
         const ev = receipt?.logs.find(() => true);
         expect(ev).to.not.be.undefined;
     });
 
-    it("INT-EE-03: checkAnonymousEligibilityWithConsent via wallet apply", async function () {
+    it("INT-EE-03: stage anonymous apply leaves application status none until finalize", async function () {
         const stack = await deployMedVaultStack();
         const id = new Identity();
         await registerPatientOnRegistry(
@@ -76,42 +80,42 @@ describe("Integration: eligibility anonymous flow", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
+        await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
+            trialId,
+            id,
+            stack.patient.address
+        );
+        const nullifier = deriveNullifier(id, trialId);
         const status = await stack.eligibilityEngine.getAnonymousApplicationStatus(nullifier, trialId);
-        expect(status).to.equal(1n); // Pending
+        expect(status).to.equal(0n); // None until finalize
     });
 
-    it("INT-EE-04: revoke consent invalidates active consent decrypt", async function () {
+    it("INT-EE-04: revoke consent invalidates consent epoch", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
         await stack.consentManager.connect(stack.patient).revokeAllConsent();
-        const active = await stack.consentManager.getActiveConsent(stack.patient.address, trialId);
-        expect(await mockDecryptBool(active)).to.equal(false);
+        expect(
+            await stack.consentManager.connect(stack.patient).getPatientConsentEpoch(stack.patient.address)
+        ).to.equal(1n);
     });
 
-    it("INT-EE-05: decryptPermitHolder set after wallet apply", async function () {
+    it("INT-EE-05: decryptPermitHolder set after finalize apply", async function () {
         const stack = await deployMedVaultStack();
-        const id = new Identity();
-        await registerPatientOnRegistry(
-            stack,
-            stack.patient,
-            id.commitment,
-            stack.patient.address,
-            ELIGIBLE_PROFILE
+        const { registerPatient, stageSemaphoreApply, finalizeSemaphoreApply } = await import(
+            "../../test-support/journey"
         );
+        const patient = await registerPatient(stack);
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
-        expect(await stack.eligibilityEngine.decryptPermitHolder(nullifier)).to.equal(
-            stack.patient.address
-        );
+        const staged = await stageSemaphoreApply(stack, trialId, patient);
+        await finalizeSemaphoreApply(stack, staged, patient);
+        const nullifier = staged.nullifier;
+        expect(
+            await stack.eligibilityEngine.getDecryptPermitHolder(nullifier, trialId)
+        ).to.equal(stack.patient.address);
     });
 
     it("INT-EE-06: unauthorized registry cannot stage on engine", async function () {
@@ -151,26 +155,21 @@ describe("Integration: eligibility anonymous flow", function () {
         );
     });
 
-    it("INT-EE-08: getAnonymousScore returns handle after apply", async function () {
+    it("INT-EE-08: getAnonymousScore returns handle after finalize apply", async function () {
         const stack = await deployMedVaultStack();
-        const id = new Identity();
-        await registerPatientOnRegistry(
-            stack,
-            stack.patient,
-            id.commitment,
-            stack.patient.address,
-            ELIGIBLE_PROFILE
+        const { registerPatient, stageSemaphoreApply, finalizeSemaphoreApply } = await import(
+            "../../test-support/journey"
         );
+        const patient = await registerPatient(stack);
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
+        const staged = await stageSemaphoreApply(stack, trialId, patient);
+        await finalizeSemaphoreApply(stack, staged, patient);
+        const nullifier = staged.nullifier;
         const score = await stack.eligibilityEngine.getAnonymousScore(nullifier, trialId);
         expect(score).to.not.equal(0n);
     });
 
-    it("INT-EE-09: finalize with invalid sig reverts", async function () {
+    it("INT-EE-09: finalize with invalid noir proof reverts", async function () {
         const stack = await deployMedVaultStack();
         const id = new Identity();
         await registerPatientOnRegistry(
@@ -182,27 +181,37 @@ describe("Integration: eligibility anonymous flow", function () {
         );
         const trialId = await createTrialForSponsor(stack);
         const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address);
+        await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
+            trialId,
+            id,
+            stack.patient.address
+        );
+        const bogusInputs = Array.from({ length: 14 }, () => ethers.ZeroHash);
         await expectRevert(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .finalizeAnonymousApply(
+                .finalizeAnonymousApplyWithProof(
                     trialId,
-                    proof,
+                    args.proof,
                     id.commitment,
                     stack.patient.address,
-                    true,
-                    "0x"
+                    args.consentWallet,
+                    args.deadline,
+                    args.permitSignature,
+                    args.consentWalletSignature,
+                    "0x" + "00".repeat(128),
+                    bogusInputs,
+                    true
                 ),
-            /Invalid eligibility decryption|reverted/
+            /Invalid Noir proof|reverted/
         );
     });
 
@@ -217,21 +226,47 @@ describe("Integration: eligibility anonymous flow", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address);
+        await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
+            trialId,
+            id,
+            stack.patient.address
+        );
         await expectRevert(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address),
+                .stageAnonymousApply(
+                    trialId,
+                    args.proof,
+                    args.commitment,
+                    args.permitRecipient,
+                    args.deadline,
+                    args.permitSignature
+                ),
             "Already staged"
+        );
+    });
+
+    it("INT-EE-11: happy-path finalizeAnonymousApplyWithProof marks applied", async function () {
+        const {
+            registerPatient,
+            stageSemaphoreApply,
+            finalizeSemaphoreApply,
+        } = await import("../../test-support/journey");
+        const stack = await deployMedVaultStack();
+        const patient = await registerPatient(stack);
+        const trialId = await createTrialForSponsor(stack);
+        const staged = await stageSemaphoreApply(stack, trialId, patient);
+        await finalizeSemaphoreApply(stack, staged, patient);
+        expect(await stack.medVaultRegistry.hasAppliedToTrial(trialId, staged.nullifier)).to.equal(
+            true
         );
     });
 });

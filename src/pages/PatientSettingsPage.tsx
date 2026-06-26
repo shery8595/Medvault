@@ -14,6 +14,10 @@ import { SectionTopBar } from "../components/layout/SectionTopBar";
 import { SettingsRow } from "../components/settings/SettingsRow";
 import { useWeb3 } from "../lib/Web3Context";
 import { usePatientProfile } from "../hooks/usePatientProfile";
+import { getConsentManager } from "../lib/contracts";
+import { chainDisplayName, ETH_SEPOLIA_EXPLORER } from "../lib/network";
+import { ConsentRightsCenter } from "../components/privacy/ConsentRightsCenter";
+import { useConsent } from "../hooks/useConsent";
 
 const cardShell =
   "rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06),0_4px_12px_-2px_rgba(15,23,42,0.05)]";
@@ -26,11 +30,11 @@ const fadeUp = {
 
 export function PatientSettingsPage() {
   const navigate = useNavigate();
-  const { account, connect, isConnecting, error: connectError, logout, chainId } = useWeb3();
+  const { account, connect, isConnecting, error: connectError, logout, chainId, signer } = useWeb3();
   const { hasProfile, loading: profileLoading } = usePatientProfile(account || undefined);
+  const { consents, refetch: refetchConsent } = useConsent(account || undefined);
 
-  const networkLabel =
-    chainId === 421614 ? "Arbitrum Sepolia" : chainId != null ? `Chain ${chainId}` : "Not connected";
+  const networkLabel = chainDisplayName(chainId);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 pb-12">
@@ -124,6 +128,31 @@ export function PatientSettingsPage() {
         </div>
       </motion.div>
 
+      <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
+        <ConsentRightsCenter
+          account={account}
+          onRevokeAll={
+            signer
+              ? async () => {
+                  const cm = getConsentManager(signer);
+                  const tx = await cm.revokeAllConsent();
+                  await tx.wait();
+                  await refetchConsent();
+                }
+              : undefined
+          }
+          onExportLog={() => {
+            const blob = new Blob([JSON.stringify(consents, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "medvault-consent-log.json";
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        />
+      </motion.div>
+
       <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
         <div className={`${cardShell} overflow-hidden`}>
           <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
@@ -137,9 +166,9 @@ export function PatientSettingsPage() {
               description="How MedVault handles encryption, consent, and zero-knowledge proofs."
             />
             <SettingsRow
-              to="https://sepolia.arbiscan.io/"
+              to={`${ETH_SEPOLIA_EXPLORER}/address/${account}`}
               icon={ExternalLink}
-              label="Arbiscan (Sepolia)"
+              label="Etherscan (Sepolia)"
               description="Inspect transactions and contract interactions on testnet."
               external
             />

@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { useWeb3 } from "../../lib/Web3Context";
 import { getConfidentialETH, getContractAddressForChain } from "../../lib/contracts";
-import { reencryptUint64 } from "../../lib/fhe";
+import { requestEncryptedWithdraw, completeEncryptedWithdraw } from "../../lib/withdrawFlow";
+import { ensureZamaConnected } from "../../lib/fhe";
 import { ethers } from "ethers";
 import { useStaking } from "../../hooks/useStaking";
 
@@ -76,7 +77,9 @@ export function RewardsCard() {
         setIsDecrypting(true);
         setStatus("Waiting for secure signature... Check your wallet.");
         try {
-            const clearValue = await reencryptUint64(cETHAddress, account, normalizedHandle);
+            const cETH = getConfidentialETH(signer);
+            const contractAddress = await cETH.getAddress();
+            const clearValue = await reencryptUint64(contractAddress, account, normalizedHandle);
             setDecryptedBalance(Number(clearValue));
             setStatus("Balance successfully revealed.");
         } catch (err: any) {
@@ -92,9 +95,9 @@ export function RewardsCard() {
         setIsWithdrawing(true);
         setStatus("Processing withdrawal...");
         try {
-            const cETH = getConfidentialETH(signer);
-            const tx = await cETH.withdraw(decryptedBalance);
-            await tx.wait();
+            await ensureZamaConnected(signer.provider!, signer);
+            const { sufficientHandle } = await requestEncryptedWithdraw(signer, decryptedBalance);
+            await completeEncryptedWithdraw(signer, sufficientHandle);
             setStatus("Withdrawal successful!");
             setDecryptedBalance(0);
             fetchEncryptedBalance();

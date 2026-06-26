@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
-import {FHE, euint64, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /**
  * @title SponsorRegistry
  * @notice Maintains an allowlist of verified clinical trial sponsors with encrypted institutional data
- * @dev FHENIX UPGRADE: Institutional identifiers are now stored as euint64 on-chain.
- *      The encryptedData field (raw bytes) is replaced with proper Fhenix encrypted types
+ * @dev Zama FHE UPGRADE: Institutional identifiers are now stored as euint64 on-chain.
+ *      The encryptedData field (raw bytes) is replaced with proper Zama FHE encrypted types
  *      so verification can happen on-chain via FHE operations.
  */
-contract SponsorRegistry {
+contract SponsorRegistry is ZamaEthereumConfig {
     enum RequestStatus { None, Pending, Approved, Rejected }
 
     struct SponsorshipRequest {
-        euint64 encryptedInstitutionId; // FHENIX: Encrypted institutional identifier (e.g., hospital ID, license number)
+        euint64 encryptedInstitutionId; // Zama FHE: Encrypted institutional identifier (e.g., hospital ID, license number)
         RequestStatus status;
         uint256 requestedAt;
         bool hasEncryptedData;
@@ -24,17 +25,18 @@ contract SponsorRegistry {
         string name;
         bool verified;
         uint256 addedAt;
-        euint64 encryptedInstitutionId; // FHENIX: Link to encrypted institutional data
+        euint64 encryptedInstitutionId; // Zama FHE: Link to encrypted institutional data
     }
 
     mapping(address => Sponsor) public sponsors;
     mapping(address => SponsorshipRequest) public requests;
 
-    // FHENIX: Encrypted institutional identifiers by sponsor address
+    // Zama FHE: Encrypted institutional identifiers by sponsor address
     mapping(address => euint64) private encryptedSponsorIds;
 
     address public owner;
     address public pendingOwner; // MED-2: Two-step ownership transfer
+    address public auditor;
 
     event SponsorAdded(address indexed sponsor, string name);
     event SponsorRemoved(address indexed sponsor);
@@ -72,10 +74,10 @@ contract SponsorRegistry {
     }
 
     /**
-     * @notice Submit an encrypted sponsorship request with Fhenix encrypted institutional ID
+     * @notice Submit an encrypted sponsorship request with Zama FHE encrypted institutional ID
      * @param _encryptedInstitutionId Encrypted institutional identifier (e.g., hospital ID, license number)
      */
-    function requestSponsorship(InEuint64 calldata _encryptedInstitutionId) external {
+    function requestSponsorship(externalEuint64 _encryptedInstitutionId, bytes calldata inputProof) external {
         // AUDIT-HIGH: previously rejected applicants were permanently locked out.
         // Allow re-application if prior request was Rejected (or never made).
         // Still block if Pending or Approved.
@@ -87,10 +89,10 @@ contract SponsorRegistry {
         // Also block if already a verified sponsor.
         require(!sponsors[msg.sender].verified, "Already verified sponsor");
 
-        euint64 encId = FHE.asEuint64(_encryptedInstitutionId);
+        euint64 encId = FHE.fromExternal(_encryptedInstitutionId, inputProof);
         FHE.allowThis(encId);
         FHE.allow(encId, msg.sender);
-        FHE.allow(encId, owner);
+        // Institution IDs are not granted to owner by default — use a separate auditor role off-chain.
 
         requests[msg.sender] = SponsorshipRequest({
             encryptedInstitutionId: encId,
@@ -106,19 +108,23 @@ contract SponsorRegistry {
      * @notice Add a verified sponsor to the registry and resolve any pending request
      * @param _sponsor The sponsor address
      * @param _name The sponsor name
-     * @dev FHENIX: Preserves encrypted institution ID from request if available
+     * @dev Zama FHE: Preserves encrypted institution ID from request if available
      */
     function addSponsor(address _sponsor, string calldata _name) external onlyOwner {
         require(bytes(_name).length > 0, "Name required");
+        require(!sponsors[_sponsor].verified, "Already verified");
+        require(
+            requests[_sponsor].status == RequestStatus.Pending ||
+                requests[_sponsor].status == RequestStatus.Approved,
+            "No pending sponsorship request"
+        );
 
         euint64 encId;
         if (requests[_sponsor].hasEncryptedData) {
             encId = requests[_sponsor].encryptedInstitutionId;
         } else {
             encId = FHE.asEuint64(0); // Default if no encrypted data
-            // L-4: Grant FHE permissions for default encrypted ID
             FHE.allowThis(encId);
-            FHE.allow(encId, _sponsor);
         }
 
         sponsors[_sponsor] = Sponsor({
@@ -143,6 +149,9 @@ contract SponsorRegistry {
      */
     function removeSponsor(address _sponsor) external onlyOwner {
         sponsors[_sponsor].verified = false;
+        sponsors[_sponsor].name = "";
+        encryptedSponsorIds[_sponsor] = FHE.asEuint64(0);
+        delete requests[_sponsor];
         emit SponsorRemoved(_sponsor);
     }
 
@@ -155,20 +164,25 @@ contract SponsorRegistry {
     }
 
     /**
-     * @notice FHENIX: Get encrypted institutional identifier for a sponsor
+     * @notice Zama FHE: Get encrypted institutional identifier for a sponsor
      * @param _sponsor The sponsor address
      * @return The encrypted institution ID (euint64)
      */
     function getEncryptedInstitutionId(address _sponsor) external view returns (euint64) {
+        require(msg.sender == _sponsor || msg.sender == owner || msg.sender == auditor, "Not authorized");
         return encryptedSponsorIds[_sponsor];
     }
 
     /**
-     * @notice FHENIX: Get encrypted institutional ID from a sponsor request
+     * @notice Zama FHE: Get encrypted institutional ID from a sponsor request
      * @param _applicant The applicant address
      * @return The encrypted institution ID from their request
      */
     function getRequestEncryptedId(address _applicant) external view returns (euint64) {
+        require(
+            msg.sender == _applicant || msg.sender == owner || msg.sender == auditor,
+            "Not authorized"
+        );
         return requests[_applicant].encryptedInstitutionId;
     }
 

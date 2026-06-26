@@ -81,7 +81,7 @@ export function StakingVaultCard() {
             } else if (err.message?.includes("C-2") || err.message?.includes("Threshold Network")) {
                 setStatus(err.message);
             } else if (err.message?.includes("balance proof") || err.reason?.includes("balance")) {
-                setStatus("Error: Balance proof required. Please integrate Fhenix CoFHE SDK.");
+                setStatus("Error: Balance proof required. Please ensure the Zama FHE SDK is connected.");
             } else {
                 setStatus(`Failed: ${err.message}`);
             }
@@ -132,7 +132,7 @@ export function StakingVaultCard() {
                                     {apySource === "protocol"
                                         ? "From Aave reserve liquidity rate (linear approx.)"
                                         : apySource === "wrong_chain"
-                                          ? "Showing reference — switch to Arbitrum Sepolia for live read"
+                                          ? "Showing reference — switch to Ethereum Sepolia for live read"
                                           : "Using conservative fallback when pool read fails"}
                                 </p>
                             </div>

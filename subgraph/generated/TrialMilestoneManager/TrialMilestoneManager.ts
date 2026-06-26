@@ -135,6 +135,25 @@ export class TrialMilestoneManager extends ethereum.SmartContract {
     return new TrialMilestoneManager("TrialMilestoneManager", address);
   }
 
+  dataAccessLog(): Address {
+    let result = super.call("dataAccessLog", "dataAccessLog():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_dataAccessLog(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "dataAccessLog",
+      "dataAccessLog():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   getMilestones(
     _trialId: BigInt,
   ): Array<TrialMilestoneManager__getMilestonesResultValue0Struct> {
@@ -411,6 +430,36 @@ export class ProposeOwnershipCall__Outputs {
   _call: ProposeOwnershipCall;
 
   constructor(call: ProposeOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class SetDataAccessLogCall extends ethereum.Call {
+  get inputs(): SetDataAccessLogCall__Inputs {
+    return new SetDataAccessLogCall__Inputs(this);
+  }
+
+  get outputs(): SetDataAccessLogCall__Outputs {
+    return new SetDataAccessLogCall__Outputs(this);
+  }
+}
+
+export class SetDataAccessLogCall__Inputs {
+  _call: SetDataAccessLogCall;
+
+  constructor(call: SetDataAccessLogCall) {
+    this._call = call;
+  }
+
+  get _log(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class SetDataAccessLogCall__Outputs {
+  _call: SetDataAccessLogCall;
+
+  constructor(call: SetDataAccessLogCall) {
     this._call = call;
   }
 }

@@ -33,14 +33,16 @@ export type ContractName =
 
 export { addresses };
 
-export const getContractAddresses = (network = "arbSepolia") => {
+export const getContractAddresses = (network = "sepolia") => {
   return (addresses as Record<string, Record<string, string>>)[network];
 };
 
-export const resolveNetworkKey = (chainId?: bigint | number): "arbSepolia" | "sepolia" => {
-  if (chainId === undefined) return "arbSepolia";
+export const resolveNetworkKey = (chainId?: bigint | number): "sepolia" | "hardhat" => {
+  if (chainId === undefined) return "sepolia";
   const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
-  return normalized === 421614n ? "arbSepolia" : "sepolia";
+  if (normalized === 11155111n) return "sepolia";
+  if (normalized === 31337n) return "hardhat";
+  return "sepolia";
 };
 
 const getAbi = (abiData: unknown) => {
@@ -71,7 +73,7 @@ export const getContract = (
 ) => {
   const network =
     networkOrChainId === undefined
-      ? "arbSepolia"
+      ? "sepolia"
       : typeof networkOrChainId === "string"
         ? networkOrChainId
         : resolveNetworkKey(networkOrChainId);

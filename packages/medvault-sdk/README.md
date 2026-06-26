@@ -1,6 +1,6 @@
 # @medvault/sdk
 
-TypeScript SDK for **MedVault** — private, FHE-powered clinical trials on **Arbitrum Sepolia**.
+TypeScript SDK for **MedVault** — private, FHE-powered clinical trials on **Ethereum Sepolia**.
 
 No hosting required: install the package and call subgraph, RPC, or your deployed **relayer** from Node, scripts, or MCP.
 
@@ -25,7 +25,7 @@ npm install @medvault/sdk ethers
 import { MedVaultSDK } from "@medvault/sdk";
 
 const sdk = MedVaultSDK.create({
-  rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+  rpcUrl: process.env.SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com",
   subgraphUrl: process.env.MEDVAULT_SUBGRAPH_URL!,
   relayerUrl: "https://medvault-relayer-production.up.railway.app",
 });
@@ -37,14 +37,14 @@ const health = await sdk.relayer.health();
 console.log(health);
 ```
 
-Environment variables (optional): `ARBITRUM_SEPOLIA_RPC_URL`, `MEDVAULT_SUBGRAPH_URL`, `MEDVAULT_RELAYER_URL`, `MEDVAULT_SPONSOR_OPEN_ACCESS`.
+Environment variables (optional): `SEPOLIA_RPC_URL`, `MEDVAULT_SUBGRAPH_URL`, `MEDVAULT_RELAYER_URL`, `MEDVAULT_SPONSOR_OPEN_ACCESS`.
 
 ## Modules
 
 | Module | Purpose |
 |--------|---------|
 | `sdk.trials` | List active trials, trials by sponsor (subgraph) |
-| `sdk.sponsor` | Verification, stats, audit logs, pool status; writes need `signer` |
+| `sdk.sponsor` | Verification, stats, audit logs, pool status (amounts sponsor-only on-chain); writes need `signer` |
 | `sdk.protocol` | Contract addresses, catalog, wiring check |
 | `sdk.relayer` | Gasless anonymous apply (`/health`, `/relay/apply-stage`, `/relay/apply-finalize`) |
 

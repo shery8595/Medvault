@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Prose } from "../../../components/docs/Prose";
 import { Callout } from "../../../components/docs/Callout";
 import { CodeBlock } from "../../../components/docs/CodeBlock";
@@ -43,17 +44,17 @@ export function TestingInfrastructureDoc() {
                     </li>
                 </ul>
 
-                <h2>CoFHE 0.5 encryption (test-support/fhe.ts)</h2>
+                <h2>Zama FHE encryption (test-support/fhe.ts)</h2>
                 <p>
                     Replaces the removed <code>fhevm</code> export from Hardhat. Uses{" "}
-                    <code>hre.cofhe.createClientWithBatteries(signer)</code> and{" "}
+                    <code>hre.fhevm.createClientWithBatteries(signer)</code> and{" "}
                     <code>client.encryptInputs([Encryptable.uint8(...)])</code>
                     <code>.setAccount(proofAccount)</code>
                     <code>.execute()</code>.
                 </p>
 
                 <Callout type="warning" title="proofAccount must match msg.sender at verify">
-                    CoFHE verifies encrypted inputs against the account that will appear as{" "}
+                    Zama FHE verifies encrypted inputs against the account that will appear as{" "}
                     <code>msg.sender</code> when <code>FHE.asEuint*</code> runs. Examples:
                     <ul className="mt-2 mb-0">
                         <li>
@@ -65,8 +66,13 @@ export function TestingInfrastructureDoc() {
                             <strong>sponsor address</strong>
                         </li>
                         <li>
-                            <code>ConsentManager.grantConsent(InEbool)</code> → patient calls directly → use{" "}
-                            <strong>patient address</strong>
+                            <code>claimParticipantRewards</code> → <code>requestWithdrawTo</code> → use{" "}
+                            <strong>SponsorIncentiveVault address</strong> as <code>proofAccount</code> (contract =
+                            ConfidentialETH)
+                        </li>
+                        <li>
+                            <code>requestWithdraw</code> → patient EOA; <code>stakeFromConfidential</code> → patient EOA
+                            with StakingManager as contract
                         </li>
                     </ul>
                 </Callout>
@@ -80,11 +86,29 @@ createEncryptedUint64(...)
 createEncryptedBool(...)
 buildPatientProfileInputs(proofAccount, signerAddress, profile)
 
-mockGetPlaintext(ctHash)      // hre.cofhe.mocks.getPlaintext
+mockGetPlaintext(ctHash)      // hre.fhevm.mocks.getPlaintext
 mockDecryptBool(ctHash)       // for ebool handles
 coerceFheHandle(value)        // normalize ethers / ebool return types
+assertFhevmMock()             // require hre.fhevm.isMock in unit tests
+mockPublicDecrypt(handle)     // v0.9 completion proofs`}
+                />
 
-getCofheClient(signerAddress)`}
+                <h2>Withdraw helpers (test-support/withdraw.ts)</h2>
+                <p>
+                    Encrypted staging and completion for v0.9 withdraw flows. See also{" "}
+                    <Link to="/docs/private-withdrawals" className="font-semibold text-[#00685f] hover:underline">
+                        Private withdrawals
+                    </Link>{" "}
+                    doc.
+                </p>
+                <CodeBlock
+                    language="typescript"
+                    code={`requestEncryptedWithdraw(cEth, patient, units)
+completeEncryptedWithdraw(cEth, patient, stageReceipt)
+requestEncryptedWithdrawTo(cEth, vaultSigner, user, destination, units)
+completePublicExit(cEth, relayer, owner, stageReceipt, stealth, exitMode)
+createEncryptedClaimUnits(cEthAddress, vaultAddress, units)
+signPublicExitAuthorization(owner, { contractAddress, chainId, ... })`}
                 />
 
                 <h2>Consent overloads (test-support/consent.ts)</h2>

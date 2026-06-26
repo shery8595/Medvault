@@ -17,17 +17,17 @@ import {
     TrendingUp,
     Sparkles,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAaveYield } from "../hooks/useAaveYield";
 import { useStaking } from "../hooks/useStaking";
 import { useWeb3 } from "../lib/Web3Context";
 import { getStakingManager } from "../lib/contracts";
 import { cn } from "../lib/utils";
-
-import { decryptForTxWithPermit, forceConnectFHE, reencryptUint64, restoreMainFheSession } from "../lib/fhe";
+import { reencryptUint64WithEphemeral } from "../lib/fhe";
 import { getConfidentialETH } from "../lib/contracts";
 import { resolveAnonymousNullifier, getStoredIdentity, getEphemeralSigner, generateEphemeralAddress } from "../lib/semaphore";
-import { claimRewardsWithSignature } from "../lib/contracts/sponsorAdapters";
+import { claimRewardsWithCompletion, type ClaimWizardStep } from "../lib/claimFlow";
+import { ClaimWizard } from "./claim/ClaimWizard";
 
 const formatMicroEth = (units: number) => (units / 1_000_000).toFixed(6);
 
@@ -42,11 +42,14 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
     const { apy, loading: apyLoading, source: apySource } = useAaveYield();
     const { loading: stakeLoading } = useStaking();
     const { signer, account } = useWeb3();
+    const [wizardStep, setWizardStep] = useState<ClaimWizardStep>("preview");
     const [status, setStatus] = useState<string | null>(null);
     const [claiming, setClaiming] = useState(false);
     const [staking, setStaking] = useState(false);
     const [previewEth, setPreviewEth] = useState<string | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
+    const [completeTxHash, setCompleteTxHash] = useState<string | null>(null);
 
     const loadEphemeralRewardPreview = useCallback(async () => {
         if (!signer) return;
@@ -71,13 +74,12 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             }
 
             const ephemeralSigner = getEphemeralSigner(identity, provider);
-            await forceConnectFHE(provider, ephemeralSigner);
-            try {
-                const decrypted = await reencryptUint64(contractAddress, ephemeralAddress, handleStr);
-                setPreviewEth(formatMicroEth(Number(decrypted)));
-            } finally {
-                await restoreMainFheSession(provider, signer);
-            }
+            const decrypted = await reencryptUint64WithEphemeral(
+                ephemeralSigner,
+                contractAddress,
+                handleStr
+            );
+            setPreviewEth(formatMicroEth(Number(decrypted)));
         } catch {
             setPreviewEth(null);
         } finally {
@@ -90,10 +92,14 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             setPreviewEth(null);
             setPreviewLoading(false);
             setStatus(null);
+            setWizardStep("preview");
+            setClaimTxHash(null);
+            setCompleteTxHash(null);
             return;
         }
         void loadEphemeralRewardPreview();
-    }, [isOpen, loadEphemeralRewardPreview]);
+        if (account) setWizardStep("destination");
+    }, [isOpen, loadEphemeralRewardPreview, account]);
 
     const claimEphemeralRewardToWallet = async () => {
         if (!signer || !account) throw new Error("Wallet not connected.");
@@ -114,52 +120,59 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
         const ephemeralSigner = getEphemeralSigner(identity, provider);
         const ephemeralAddress = await generateEphemeralAddress(identity);
 
-        try {
-            const cETH = getConfidentialETH(signer);
-            const handle = await cETH.getBalance(ephemeralAddress);
-            const handleStr = handle.toString();
+        const cETH = getConfidentialETH(signer);
+        const handle = await cETH.getBalance(ephemeralAddress);
+        const handleStr = handle.toString();
 
-            if (!handleStr || BigInt(handleStr) === 0n) {
-                throw new Error("Ephemeral rewards balance is empty.");
-            }
-
-            const balanceHandle = BigInt(handleStr);
-
-            setStatus("Signing Threshold Network decryption signature using ephemeral key...");
-            const result = await decryptForTxWithPermit(balanceHandle, provider, ephemeralSigner);
-
-            const units = Number(result.decryptedValue);
-            if (units <= 0) throw new Error("Ephemeral rewards balance is empty.");
-
-            setStatus("Submitting secure payout claim transaction...");
-            await claimRewardsWithSignature(
-                signer,
-                trialId,
-                resolvedNullifier,
-                account,
-                units,
-                result.signature,
-                result.decryptedValue
-            );
-
-            return {
-                units,
-                claimedWei: BigInt(units) * 1_000_000_000_000n,
-            };
-        } finally {
-            await restoreMainFheSession(provider, signer);
+        if (!handleStr || BigInt(handleStr) === 0n) {
+            throw new Error("Ephemeral rewards balance is empty.");
         }
+
+        const decrypted = await reencryptUint64WithEphemeral(
+            ephemeralSigner,
+            await cETH.getAddress(),
+            handleStr
+        );
+        const units = Number(decrypted);
+
+        if (units <= 0) throw new Error("Ephemeral rewards balance is empty.");
+
+        setWizardStep("claiming");
+        const result = await claimRewardsWithCompletion(
+            signer,
+            trialId,
+            resolvedNullifier,
+            account,
+            units,
+            (p) => {
+                setWizardStep(p.step);
+                setStatus(p.message);
+                if (p.claimTxHash) setClaimTxHash(p.claimTxHash);
+                if (p.completeTxHash) setCompleteTxHash(p.completeTxHash);
+            },
+            identity
+        );
+
+        setClaimTxHash(result.claimTxHash);
+        if (result.completeTxHash) setCompleteTxHash(result.completeTxHash);
+
+        return {
+            units,
+            claimedWei: BigInt(units) * 1_000_000_000_000n,
+        };
     };
 
     const handleClaimDirect = async () => {
         try {
             setClaiming(true);
-            setStatus("Generating secure payout signature... Check your wallet.");
+            setStatus("Starting secure payout wizard…");
             await claimEphemeralRewardToWallet();
+            setWizardStep("receipt");
             setStatus("Claim successful! Funds moved to your main wallet.");
-            setTimeout(onClose, 2000);
+            setTimeout(onClose, 2500);
         } catch (err: any) {
             console.error("Direct claim failed:", err);
+            setWizardStep("error");
             setStatus(`Error: ${err.reason || err.message || "Failed to claim"}`);
         } finally {
             setClaiming(false);
@@ -178,9 +191,11 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             const tx = await stakingManager.stake({ value: claimedWei });
             await tx.wait();
 
+            setWizardStep("receipt");
             setStatus("Staking successful! Your claimed reward is now earning through Aave.");
-            setTimeout(onClose, 2000);
+            setTimeout(onClose, 2500);
         } catch (err: any) {
+            setWizardStep("error");
             setStatus(`Error: ${err.message || "Failed to stake"}`);
         } finally {
             setStaking(false);
@@ -193,7 +208,6 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[32px]">
                 <div className="relative p-8">
-                    {/* Header with Sparkles */}
                     <div className="absolute top-0 right-0 p-8">
                         <Sparkles className="h-12 w-12 text-accent/10 animate-pulse" />
                     </div>
@@ -206,12 +220,22 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                             Claim Compensation
                         </DialogTitle>
                         <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium mt-2">
-                            Move rewards from your ephemeral payout address to your wallet, or claim and stake them into Aave.
+                            Move rewards from your ephemeral payout address through claimParticipantRewards and relayer completeWithdrawTo.
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Amount Display */}
-                    <div className="mt-8 p-6 rounded-[24px] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+                    <ClaimWizard
+                        className="mt-6"
+                        step={wizardStep}
+                        destination={account ?? ""}
+                        previewEth={previewEth}
+                        previewLoading={previewLoading}
+                        claimTxHash={claimTxHash}
+                        completeTxHash={completeTxHash}
+                        statusMessage={status}
+                    />
+
+                    <div className="mt-6 p-6 rounded-[24px] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Available Payout</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-5xl font-black text-slate-900 dark:text-white">
@@ -219,14 +243,8 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                             </span>
                             <span className="text-xl font-bold text-slate-400 uppercase">ETH</span>
                         </div>
-                        <p className="mt-2 text-[10px] font-medium text-slate-400">
-                            {previewEth
-                                ? "Full encrypted ephemeral balance — claimed in one transaction."
-                                : "Connect your Semaphore identity to preview and claim your reward balance."}
-                        </p>
                     </div>
 
-                    {/* Staking Features */}
                     <div className="mt-6 space-y-4">
                         <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                             <TrendingUp className="h-5 w-5 shrink-0" />
@@ -237,13 +255,6 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                             <div className="text-right">
                                 <p className="text-lg font-black leading-none">{apyLoading ? "..." : `${apy}%`}</p>
                                 <p className="text-[9px] font-bold uppercase tracking-tighter opacity-60">Est. APR</p>
-                                <p className="text-[9px] opacity-60 mt-1">
-                                    {apySource === "protocol"
-                                        ? "Live Aave pool snapshot"
-                                        : apySource === "wrong_chain"
-                                          ? "Wrong network — reference"
-                                          : "Fallback / degraded read"}
-                                </p>
                             </div>
                         </div>
 
@@ -251,12 +262,11 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                             <ShieldCheck className="h-5 w-5 shrink-0" />
                             <div className="flex-1">
                                 <p className="text-xs font-bold leading-tight">Privacy Guard Enabled</p>
-                                <p className="text-[10px] font-medium opacity-80">Your intent is hidden using secure FHE.</p>
+                                <p className="text-[10px] font-medium opacity-80">Your intent is hidden using Zama FHE.</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="mt-8 grid grid-cols-2 gap-4">
                         <Button
                             variant="outline"
@@ -294,7 +304,7 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                     <div className="mt-6 flex items-start gap-2 text-slate-400">
                         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                         <p className="text-[10px] leading-relaxed italic">
-                            Main Wallet sends ETH to your connected wallet. Stake & Earn claims the reward first, then submits the claimed amount to Aave.
+                            Main Wallet runs claimParticipantRewards → completeWithdrawTo via the relayer KMS proof.
                         </p>
                     </div>
                 </div>

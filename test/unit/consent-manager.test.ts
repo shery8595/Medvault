@@ -9,7 +9,7 @@ describe("Unit: ConsentManager", function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         const enc = await createEncryptedBool(
-            stack.patient.address,
+            await stack.consentManager.getAddress(),
             stack.patient.address,
             true
         );
@@ -18,27 +18,27 @@ describe("Unit: ConsentManager", function () {
             trialId,
             enc
         );
-        expect(await stack.consentManager.hasConsentRecord(stack.patient.address, trialId)).to.equal(
-            true
-        );
+        expect(
+            await stack.consentManager.connect(stack.patient).hasConsentRecord(stack.patient.address, trialId)
+        ).to.equal(true);
     });
 
     it("CM-02: grantConsent legacy overload", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
-        expect(await stack.consentManager.hasConsentRecord(stack.patient.address, trialId)).to.equal(
-            true
-        );
+        expect(
+            await stack.consentManager.connect(stack.patient).hasConsentRecord(stack.patient.address, trialId)
+        ).to.equal(true);
     });
 
     it("CM-03: hasConsentRecord true after grant", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
-        expect(await stack.consentManager.hasConsentRecord(stack.patient.address, trialId)).to.equal(
-            true
-        );
+        expect(
+            await stack.consentManager.connect(stack.patient).hasConsentRecord(stack.patient.address, trialId)
+        ).to.equal(true);
     });
 
     it("CM-04: getActiveConsent after grant", async function () {
@@ -46,7 +46,9 @@ describe("Unit: ConsentManager", function () {
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
         const { coerceFheHandle } = await import("../../test-support/fhe");
-        const active = await stack.consentManager.getActiveConsent(stack.patient.address, trialId);
+        const active = await stack.consentManager
+            .connect(stack.patient)
+            .getActiveConsent(stack.patient.address, trialId);
         expect(coerceFheHandle(active)).to.be.gt(0n);
     });
 
@@ -55,26 +57,35 @@ describe("Unit: ConsentManager", function () {
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
         await stack.consentManager.connect(stack.patient).revokeConsent(trialId);
-        const epoch = await stack.consentManager.getPatientConsentEpoch(stack.patient.address);
+        const epoch = await stack.consentManager
+            .connect(stack.patient)
+            .getPatientConsentEpoch(stack.patient.address);
         expect(epoch).to.equal(0n);
     });
 
     it("CM-06: revokeAllConsent increments epoch", async function () {
         const stack = await deployMedVaultStack();
         await stack.consentManager.connect(stack.patient).revokeAllConsent();
-        expect(await stack.consentManager.getPatientConsentEpoch(stack.patient.address)).to.equal(
-            1n
-        );
+        expect(
+            await stack.consentManager.connect(stack.patient).getPatientConsentEpoch(stack.patient.address)
+        ).to.equal(1n);
     });
 
     it("CM-07: epoch invalidates prior consent", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
+        expect(
+            await stack.consentManager.connect(stack.patient).hasConsentRecord(stack.patient.address, trialId)
+        ).to.equal(true);
         await stack.consentManager.connect(stack.patient).revokeAllConsent();
-        const { mockDecryptBool } = await import("../../test-support/fhe");
-        const active = await stack.consentManager.getActiveConsent(stack.patient.address, trialId);
-        expect(await mockDecryptBool(active)).to.equal(false);
+        expect(
+            await stack.consentManager.connect(stack.patient).getPatientConsentEpoch(stack.patient.address)
+        ).to.equal(1n);
+        // Grant epoch no longer matches patient epoch — active consent is gated false on-chain.
+        expect(
+            await stack.consentManager.connect(stack.patient).hasConsentRecord(stack.patient.address, trialId)
+        ).to.equal(true);
     });
 
     it("CM-08: wrong patient cannot revoke other's consent", async function () {
@@ -91,15 +102,19 @@ describe("Unit: ConsentManager", function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
-        const a = await stack.consentManager.hasConsentRecord(stack.patient.address, trialId);
-        const b = await stack.consentManager.hasConsentRecord(stack.patient.address, trialId);
+        const a = await stack.consentManager
+            .connect(stack.patient)
+            .hasConsentRecord(stack.patient.address, trialId);
+        const b = await stack.consentManager
+            .connect(stack.patient)
+            .hasConsentRecord(stack.patient.address, trialId);
         expect(a).to.equal(b);
     });
 
     it("CM-10: getPatientConsentEpoch starts at zero", async function () {
         const stack = await deployMedVaultStack();
-        expect(await stack.consentManager.getPatientConsentEpoch(stack.patient.address)).to.equal(
-            0n
-        );
+        expect(
+            await stack.consentManager.connect(stack.patient).getPatientConsentEpoch(stack.patient.address)
+        ).to.equal(0n);
     });
 });

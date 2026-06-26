@@ -158,6 +158,80 @@ export class AppliedToTrial__Params {
   }
 }
 
+export class AuthorizedReaderChanged extends ethereum.Event {
+  get params(): AuthorizedReaderChanged__Params {
+    return new AuthorizedReaderChanged__Params(this);
+  }
+}
+
+export class AuthorizedReaderChanged__Params {
+  _event: AuthorizedReaderChanged;
+
+  constructor(event: AuthorizedReaderChanged) {
+    this._event = event;
+  }
+
+  get role(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get oldAddr(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get newAddr(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+}
+
+export class BatchEligibilityComputed extends ethereum.Event {
+  get params(): BatchEligibilityComputed__Params {
+    return new BatchEligibilityComputed__Params(this);
+  }
+}
+
+export class BatchEligibilityComputed__Params {
+  _event: BatchEligibilityComputed;
+
+  constructor(event: BatchEligibilityComputed) {
+    this._event = event;
+  }
+
+  get commitment(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get trialCount(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
+export class BatchEligibilityTrialChecked extends ethereum.Event {
+  get params(): BatchEligibilityTrialChecked__Params {
+    return new BatchEligibilityTrialChecked__Params(this);
+  }
+}
+
+export class BatchEligibilityTrialChecked__Params {
+  _event: BatchEligibilityTrialChecked;
+
+  constructor(event: BatchEligibilityTrialChecked) {
+    this._event = event;
+  }
+
+  get commitment(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get nullifier(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+}
+
 export class EligibilityComputed extends ethereum.Event {
   get params(): EligibilityComputed__Params {
     return new EligibilityComputed__Params(this);
@@ -205,8 +279,16 @@ export class EligibilityProofVerified__Params {
     return this._event.parameters[2].value.toBytes();
   }
 
+  get fheStageHash(): Bytes {
+    return this._event.parameters[3].value.toBytes();
+  }
+
+  get criteriaSchemaHash(): Bytes {
+    return this._event.parameters[4].value.toBytes();
+  }
+
   get eligible(): boolean {
-    return this._event.parameters[3].value.toBoolean();
+    return this._event.parameters[5].value.toBoolean();
   }
 }
 
@@ -268,9 +350,92 @@ export class OwnershipProposed__Params {
   }
 }
 
+export class EligibilityEngine__attestationReceiptResultValue0Struct extends ethereum.Tuple {
+  get verified(): boolean {
+    return this[0].toBoolean();
+  }
+
+  get resultHash(): Bytes {
+    return this[1].toBytes();
+  }
+
+  get profileCommitment(): Bytes {
+    return this[2].toBytes();
+  }
+
+  get criteriaSchemaHash(): Bytes {
+    return this[3].toBytes();
+  }
+
+  get fheStageHash(): Bytes {
+    return this[4].toBytes();
+  }
+}
+
 export class EligibilityEngine extends ethereum.SmartContract {
   static bind(address: Address): EligibilityEngine {
     return new EligibilityEngine("EligibilityEngine", address);
+  }
+
+  CRITERIA_SCHEMA_HASH(): Bytes {
+    let result = super.call(
+      "CRITERIA_SCHEMA_HASH",
+      "CRITERIA_SCHEMA_HASH():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_CRITERIA_SCHEMA_HASH(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "CRITERIA_SCHEMA_HASH",
+      "CRITERIA_SCHEMA_HASH():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  ELIGIBILITY_PUBLIC_INPUT_COUNT(): BigInt {
+    let result = super.call(
+      "ELIGIBILITY_PUBLIC_INPUT_COUNT",
+      "ELIGIBILITY_PUBLIC_INPUT_COUNT():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_ELIGIBILITY_PUBLIC_INPUT_COUNT(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "ELIGIBILITY_PUBLIC_INPUT_COUNT",
+      "ELIGIBILITY_PUBLIC_INPUT_COUNT():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  STAGING_TTL(): BigInt {
+    let result = super.call("STAGING_TTL", "STAGING_TTL():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_STAGING_TTL(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall("STAGING_TTL", "STAGING_TTL():(uint256)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   anonymousApplications(param0: BigInt, param1: BigInt): i32 {
@@ -303,6 +468,143 @@ export class EligibilityEngine extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toI32());
+  }
+
+  attestationCriteriaSchemaHashes(param0: BigInt, param1: BigInt): Bytes {
+    let result = super.call(
+      "attestationCriteriaSchemaHashes",
+      "attestationCriteriaSchemaHashes(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_attestationCriteriaSchemaHashes(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "attestationCriteriaSchemaHashes",
+      "attestationCriteriaSchemaHashes(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  attestationFheStageHashes(param0: BigInt, param1: BigInt): Bytes {
+    let result = super.call(
+      "attestationFheStageHashes",
+      "attestationFheStageHashes(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_attestationFheStageHashes(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "attestationFheStageHashes",
+      "attestationFheStageHashes(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  attestationProfileCommitments(param0: BigInt, param1: BigInt): Bytes {
+    let result = super.call(
+      "attestationProfileCommitments",
+      "attestationProfileCommitments(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_attestationProfileCommitments(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "attestationProfileCommitments",
+      "attestationProfileCommitments(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  attestationReceipt(
+    _nullifier: BigInt,
+    _trialId: BigInt,
+  ): EligibilityEngine__attestationReceiptResultValue0Struct {
+    let result = super.call(
+      "attestationReceipt",
+      "attestationReceipt(uint256,uint256):((bool,bytes32,bytes32,bytes32,bytes32))",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+
+    return changetype<EligibilityEngine__attestationReceiptResultValue0Struct>(
+      result[0].toTuple(),
+    );
+  }
+
+  try_attestationReceipt(
+    _nullifier: BigInt,
+    _trialId: BigInt,
+  ): ethereum.CallResult<EligibilityEngine__attestationReceiptResultValue0Struct> {
+    let result = super.tryCall(
+      "attestationReceipt",
+      "attestationReceipt(uint256,uint256):((bool,bytes32,bytes32,bytes32,bytes32))",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      changetype<EligibilityEngine__attestationReceiptResultValue0Struct>(
+        value[0].toTuple(),
+      ),
+    );
   }
 
   authorizedRegistry(): Address {
@@ -351,22 +653,54 @@ export class EligibilityEngine extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  batchEligibilityChecked(param0: BigInt, param1: BigInt): boolean {
+    let result = super.call(
+      "batchEligibilityChecked",
+      "batchEligibilityChecked(uint256,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_batchEligibilityChecked(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "batchEligibilityChecked",
+      "batchEligibilityChecked(uint256,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
   checkAnonymousEligibilityWithConsent(
-    _commitment: BigInt,
-    _trialId: BigInt,
-    _nullifier: BigInt,
-    _permitRecipient: Address,
-    _patientAddress: Address,
+    param0: BigInt,
+    param1: BigInt,
+    param2: BigInt,
+    param3: Address,
+    param4: Address,
   ): Bytes {
     let result = super.call(
       "checkAnonymousEligibilityWithConsent",
       "checkAnonymousEligibilityWithConsent(uint256,uint256,uint256,address,address):(bytes32)",
       [
-        ethereum.Value.fromUnsignedBigInt(_commitment),
-        ethereum.Value.fromUnsignedBigInt(_trialId),
-        ethereum.Value.fromUnsignedBigInt(_nullifier),
-        ethereum.Value.fromAddress(_permitRecipient),
-        ethereum.Value.fromAddress(_patientAddress),
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+        ethereum.Value.fromAddress(param3),
+        ethereum.Value.fromAddress(param4),
       ],
     );
 
@@ -374,21 +708,21 @@ export class EligibilityEngine extends ethereum.SmartContract {
   }
 
   try_checkAnonymousEligibilityWithConsent(
-    _commitment: BigInt,
-    _trialId: BigInt,
-    _nullifier: BigInt,
-    _permitRecipient: Address,
-    _patientAddress: Address,
+    param0: BigInt,
+    param1: BigInt,
+    param2: BigInt,
+    param3: Address,
+    param4: Address,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
       "checkAnonymousEligibilityWithConsent",
       "checkAnonymousEligibilityWithConsent(uint256,uint256,uint256,address,address):(bytes32)",
       [
-        ethereum.Value.fromUnsignedBigInt(_commitment),
-        ethereum.Value.fromUnsignedBigInt(_trialId),
-        ethereum.Value.fromUnsignedBigInt(_nullifier),
-        ethereum.Value.fromAddress(_permitRecipient),
-        ethereum.Value.fromAddress(_patientAddress),
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+        ethereum.Value.fromAddress(param3),
+        ethereum.Value.fromAddress(param4),
       ],
     );
     if (result.reverted) {
@@ -428,6 +762,72 @@ export class EligibilityEngine extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  checkEligibilityBatch(
+    _commitment: BigInt,
+    _trialIds: Array<BigInt>,
+    _nullifiers: Array<BigInt>,
+    _permitRecipient: Address,
+  ): Array<Bytes> {
+    let result = super.call(
+      "checkEligibilityBatch",
+      "checkEligibilityBatch(uint256,uint256[],uint256[],address):(bytes32[])",
+      [
+        ethereum.Value.fromUnsignedBigInt(_commitment),
+        ethereum.Value.fromUnsignedBigIntArray(_trialIds),
+        ethereum.Value.fromUnsignedBigIntArray(_nullifiers),
+        ethereum.Value.fromAddress(_permitRecipient),
+      ],
+    );
+
+    return result[0].toBytesArray();
+  }
+
+  try_checkEligibilityBatch(
+    _commitment: BigInt,
+    _trialIds: Array<BigInt>,
+    _nullifiers: Array<BigInt>,
+    _permitRecipient: Address,
+  ): ethereum.CallResult<Array<Bytes>> {
+    let result = super.tryCall(
+      "checkEligibilityBatch",
+      "checkEligibilityBatch(uint256,uint256[],uint256[],address):(bytes32[])",
+      [
+        ethereum.Value.fromUnsignedBigInt(_commitment),
+        ethereum.Value.fromUnsignedBigIntArray(_trialIds),
+        ethereum.Value.fromUnsignedBigIntArray(_nullifiers),
+        ethereum.Value.fromAddress(_permitRecipient),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytesArray());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   consentGate(): Address {
@@ -483,29 +883,6 @@ export class EligibilityEngine extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  decryptPermitHolder(param0: BigInt): Address {
-    let result = super.call(
-      "decryptPermitHolder",
-      "decryptPermitHolder(uint256):(address)",
-      [ethereum.Value.fromUnsignedBigInt(param0)],
-    );
-
-    return result[0].toAddress();
-  }
-
-  try_decryptPermitHolder(param0: BigInt): ethereum.CallResult<Address> {
-    let result = super.tryCall(
-      "decryptPermitHolder",
-      "decryptPermitHolder(uint256):(address)",
-      [ethereum.Value.fromUnsignedBigInt(param0)],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toAddress());
-  }
-
   eligibilityVerifier(): Address {
     let result = super.call(
       "eligibilityVerifier",
@@ -529,48 +906,81 @@ export class EligibilityEngine extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
-  finalizeAnonymousEligibility(
-    _commitment: BigInt,
+  encryptedCriteriaBindingHash(_trialId: BigInt): Bytes {
+    let result = super.call(
+      "encryptedCriteriaBindingHash",
+      "encryptedCriteriaBindingHash(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_encryptedCriteriaBindingHash(
     _trialId: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "encryptedCriteriaBindingHash",
+      "encryptedCriteriaBindingHash(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  finalizeAnonymousEligibilityWithProof(
+    _commitment: BigInt,
     _nullifier: BigInt,
+    _trialId: BigInt,
     _permitRecipient: Address,
-    _decryptedEligible: boolean,
-    _decryptSig: Bytes,
+    _consentWallet: Address,
+    _proof: Bytes,
+    _publicInputs: Array<Bytes>,
+    _eligible: boolean,
   ): Bytes {
     let result = super.call(
-      "finalizeAnonymousEligibility",
-      "finalizeAnonymousEligibility(uint256,uint256,uint256,address,bool,bytes):(bytes32)",
+      "finalizeAnonymousEligibilityWithProof",
+      "finalizeAnonymousEligibilityWithProof(uint256,uint256,uint256,address,address,bytes,bytes32[],bool):(bytes32)",
       [
         ethereum.Value.fromUnsignedBigInt(_commitment),
-        ethereum.Value.fromUnsignedBigInt(_trialId),
         ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
         ethereum.Value.fromAddress(_permitRecipient),
-        ethereum.Value.fromBoolean(_decryptedEligible),
-        ethereum.Value.fromBytes(_decryptSig),
+        ethereum.Value.fromAddress(_consentWallet),
+        ethereum.Value.fromBytes(_proof),
+        ethereum.Value.fromFixedBytesArray(_publicInputs),
+        ethereum.Value.fromBoolean(_eligible),
       ],
     );
 
     return result[0].toBytes();
   }
 
-  try_finalizeAnonymousEligibility(
+  try_finalizeAnonymousEligibilityWithProof(
     _commitment: BigInt,
-    _trialId: BigInt,
     _nullifier: BigInt,
+    _trialId: BigInt,
     _permitRecipient: Address,
-    _decryptedEligible: boolean,
-    _decryptSig: Bytes,
+    _consentWallet: Address,
+    _proof: Bytes,
+    _publicInputs: Array<Bytes>,
+    _eligible: boolean,
   ): ethereum.CallResult<Bytes> {
     let result = super.tryCall(
-      "finalizeAnonymousEligibility",
-      "finalizeAnonymousEligibility(uint256,uint256,uint256,address,bool,bytes):(bytes32)",
+      "finalizeAnonymousEligibilityWithProof",
+      "finalizeAnonymousEligibilityWithProof(uint256,uint256,uint256,address,address,bytes,bytes32[],bool):(bytes32)",
       [
         ethereum.Value.fromUnsignedBigInt(_commitment),
-        ethereum.Value.fromUnsignedBigInt(_trialId),
         ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
         ethereum.Value.fromAddress(_permitRecipient),
-        ethereum.Value.fromBoolean(_decryptedEligible),
-        ethereum.Value.fromBytes(_decryptSig),
+        ethereum.Value.fromAddress(_consentWallet),
+        ethereum.Value.fromBytes(_proof),
+        ethereum.Value.fromFixedBytesArray(_publicInputs),
+        ethereum.Value.fromBoolean(_eligible),
       ],
     );
     if (result.reverted) {
@@ -674,6 +1084,70 @@ export class EligibilityEngine extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  getConsentWalletForNullifier(_nullifier: BigInt, _trialId: BigInt): Address {
+    let result = super.call(
+      "getConsentWalletForNullifier",
+      "getConsentWalletForNullifier(uint256,uint256):(address)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_getConsentWalletForNullifier(
+    _nullifier: BigInt,
+    _trialId: BigInt,
+  ): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "getConsentWalletForNullifier",
+      "getConsentWalletForNullifier(uint256,uint256):(address)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  getDecryptPermitHolder(_nullifier: BigInt, _trialId: BigInt): Address {
+    let result = super.call(
+      "getDecryptPermitHolder",
+      "getDecryptPermitHolder(uint256,uint256):(address)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_getDecryptPermitHolder(
+    _nullifier: BigInt,
+    _trialId: BigInt,
+  ): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "getDecryptPermitHolder",
+      "getDecryptPermitHolder(uint256,uint256):(address)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_nullifier),
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
   getEncryptedResult(_patient: Address, _trialId: BigInt): Bytes {
@@ -903,6 +1377,29 @@ export class EligibilityEngine extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  sponsorIncentiveVault(): Address {
+    let result = super.call(
+      "sponsorIncentiveVault",
+      "sponsorIncentiveVault():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_sponsorIncentiveVault(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "sponsorIncentiveVault",
+      "sponsorIncentiveVault():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   stageAnonymousEligibility(
     _commitment: BigInt,
     _trialId: BigInt,
@@ -1050,6 +1547,10 @@ export class CancelStagedAnonymousEligibilityCall__Inputs {
   get _trialId(): BigInt {
     return this._call.inputValues[1].value.toBigInt();
   }
+
+  get _permitRecipient(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
 }
 
 export class CancelStagedAnonymousEligibilityCall__Outputs {
@@ -1060,20 +1561,20 @@ export class CancelStagedAnonymousEligibilityCall__Outputs {
   }
 }
 
-export class CheckAnonymousEligibilityWithConsentCall extends ethereum.Call {
-  get inputs(): CheckAnonymousEligibilityWithConsentCall__Inputs {
-    return new CheckAnonymousEligibilityWithConsentCall__Inputs(this);
+export class CheckEligibilityBatchCall extends ethereum.Call {
+  get inputs(): CheckEligibilityBatchCall__Inputs {
+    return new CheckEligibilityBatchCall__Inputs(this);
   }
 
-  get outputs(): CheckAnonymousEligibilityWithConsentCall__Outputs {
-    return new CheckAnonymousEligibilityWithConsentCall__Outputs(this);
+  get outputs(): CheckEligibilityBatchCall__Outputs {
+    return new CheckEligibilityBatchCall__Outputs(this);
   }
 }
 
-export class CheckAnonymousEligibilityWithConsentCall__Inputs {
-  _call: CheckAnonymousEligibilityWithConsentCall;
+export class CheckEligibilityBatchCall__Inputs {
+  _call: CheckEligibilityBatchCall;
 
-  constructor(call: CheckAnonymousEligibilityWithConsentCall) {
+  constructor(call: CheckEligibilityBatchCall) {
     this._call = call;
   }
 
@@ -1081,11 +1582,57 @@ export class CheckAnonymousEligibilityWithConsentCall__Inputs {
     return this._call.inputValues[0].value.toBigInt();
   }
 
-  get _trialId(): BigInt {
-    return this._call.inputValues[1].value.toBigInt();
+  get _trialIds(): Array<BigInt> {
+    return this._call.inputValues[1].value.toBigIntArray();
+  }
+
+  get _nullifiers(): Array<BigInt> {
+    return this._call.inputValues[2].value.toBigIntArray();
+  }
+
+  get _permitRecipient(): Address {
+    return this._call.inputValues[3].value.toAddress();
+  }
+}
+
+export class CheckEligibilityBatchCall__Outputs {
+  _call: CheckEligibilityBatchCall;
+
+  constructor(call: CheckEligibilityBatchCall) {
+    this._call = call;
+  }
+
+  get finalCts(): Array<Bytes> {
+    return this._call.outputValues[0].value.toBytesArray();
+  }
+}
+
+export class FinalizeAnonymousEligibilityWithProofCall extends ethereum.Call {
+  get inputs(): FinalizeAnonymousEligibilityWithProofCall__Inputs {
+    return new FinalizeAnonymousEligibilityWithProofCall__Inputs(this);
+  }
+
+  get outputs(): FinalizeAnonymousEligibilityWithProofCall__Outputs {
+    return new FinalizeAnonymousEligibilityWithProofCall__Outputs(this);
+  }
+}
+
+export class FinalizeAnonymousEligibilityWithProofCall__Inputs {
+  _call: FinalizeAnonymousEligibilityWithProofCall;
+
+  constructor(call: FinalizeAnonymousEligibilityWithProofCall) {
+    this._call = call;
+  }
+
+  get _commitment(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
   }
 
   get _nullifier(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _trialId(): BigInt {
     return this._call.inputValues[2].value.toBigInt();
   }
 
@@ -1093,69 +1640,27 @@ export class CheckAnonymousEligibilityWithConsentCall__Inputs {
     return this._call.inputValues[3].value.toAddress();
   }
 
-  get _patientAddress(): Address {
+  get _consentWallet(): Address {
     return this._call.inputValues[4].value.toAddress();
   }
-}
 
-export class CheckAnonymousEligibilityWithConsentCall__Outputs {
-  _call: CheckAnonymousEligibilityWithConsentCall;
-
-  constructor(call: CheckAnonymousEligibilityWithConsentCall) {
-    this._call = call;
-  }
-
-  get value0(): Bytes {
-    return this._call.outputValues[0].value.toBytes();
-  }
-}
-
-export class FinalizeAnonymousEligibilityCall extends ethereum.Call {
-  get inputs(): FinalizeAnonymousEligibilityCall__Inputs {
-    return new FinalizeAnonymousEligibilityCall__Inputs(this);
-  }
-
-  get outputs(): FinalizeAnonymousEligibilityCall__Outputs {
-    return new FinalizeAnonymousEligibilityCall__Outputs(this);
-  }
-}
-
-export class FinalizeAnonymousEligibilityCall__Inputs {
-  _call: FinalizeAnonymousEligibilityCall;
-
-  constructor(call: FinalizeAnonymousEligibilityCall) {
-    this._call = call;
-  }
-
-  get _commitment(): BigInt {
-    return this._call.inputValues[0].value.toBigInt();
-  }
-
-  get _trialId(): BigInt {
-    return this._call.inputValues[1].value.toBigInt();
-  }
-
-  get _nullifier(): BigInt {
-    return this._call.inputValues[2].value.toBigInt();
-  }
-
-  get _permitRecipient(): Address {
-    return this._call.inputValues[3].value.toAddress();
-  }
-
-  get _decryptedEligible(): boolean {
-    return this._call.inputValues[4].value.toBoolean();
-  }
-
-  get _decryptSig(): Bytes {
+  get _proof(): Bytes {
     return this._call.inputValues[5].value.toBytes();
   }
+
+  get _publicInputs(): Array<Bytes> {
+    return this._call.inputValues[6].value.toBytesArray();
+  }
+
+  get _eligible(): boolean {
+    return this._call.inputValues[7].value.toBoolean();
+  }
 }
 
-export class FinalizeAnonymousEligibilityCall__Outputs {
-  _call: FinalizeAnonymousEligibilityCall;
+export class FinalizeAnonymousEligibilityWithProofCall__Outputs {
+  _call: FinalizeAnonymousEligibilityWithProofCall;
 
-  constructor(call: FinalizeAnonymousEligibilityCall) {
+  constructor(call: FinalizeAnonymousEligibilityWithProofCall) {
     this._call = call;
   }
 
@@ -1190,6 +1695,40 @@ export class ProposeOwnershipCall__Outputs {
   _call: ProposeOwnershipCall;
 
   constructor(call: ProposeOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ResetBatchEligibilityCheckCall extends ethereum.Call {
+  get inputs(): ResetBatchEligibilityCheckCall__Inputs {
+    return new ResetBatchEligibilityCheckCall__Inputs(this);
+  }
+
+  get outputs(): ResetBatchEligibilityCheckCall__Outputs {
+    return new ResetBatchEligibilityCheckCall__Outputs(this);
+  }
+}
+
+export class ResetBatchEligibilityCheckCall__Inputs {
+  _call: ResetBatchEligibilityCheckCall;
+
+  constructor(call: ResetBatchEligibilityCheckCall) {
+    this._call = call;
+  }
+
+  get _commitment(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+}
+
+export class ResetBatchEligibilityCheckCall__Outputs {
+  _call: ResetBatchEligibilityCheckCall;
+
+  constructor(call: ResetBatchEligibilityCheckCall) {
     this._call = call;
   }
 }
@@ -1404,6 +1943,36 @@ export class SetScoreLeaderboardCall__Outputs {
   }
 }
 
+export class SetSponsorIncentiveVaultCall extends ethereum.Call {
+  get inputs(): SetSponsorIncentiveVaultCall__Inputs {
+    return new SetSponsorIncentiveVaultCall__Inputs(this);
+  }
+
+  get outputs(): SetSponsorIncentiveVaultCall__Outputs {
+    return new SetSponsorIncentiveVaultCall__Outputs(this);
+  }
+}
+
+export class SetSponsorIncentiveVaultCall__Inputs {
+  _call: SetSponsorIncentiveVaultCall;
+
+  constructor(call: SetSponsorIncentiveVaultCall) {
+    this._call = call;
+  }
+
+  get _vault(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class SetSponsorIncentiveVaultCall__Outputs {
+  _call: SetSponsorIncentiveVaultCall;
+
+  constructor(call: SetSponsorIncentiveVaultCall) {
+    this._call = call;
+  }
+}
+
 export class StageAnonymousEligibilityCall extends ethereum.Call {
   get inputs(): StageAnonymousEligibilityCall__Inputs {
     return new StageAnonymousEligibilityCall__Inputs(this);
@@ -1563,8 +2132,12 @@ export class VerifyEligibilityProofCall__Inputs {
     return this._call.inputValues[3].value.toBigInt();
   }
 
+  get _commitment(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
   get _eligible(): boolean {
-    return this._call.inputValues[4].value.toBoolean();
+    return this._call.inputValues[5].value.toBoolean();
   }
 }
 

@@ -55,7 +55,7 @@ const patientSteps = [
   {
     step: "01",
     title: "Connect wallet",
-    body: "Sign in with Privy on Arbitrum Sepolia. Your wallet controls consent — not your hospital login.",
+    body: "Sign in with Privy on Ethereum Sepolia. Your wallet controls consent — not your hospital login.",
     detail: "MedVault never stores a password for your chart. You get an embedded wallet for testnet flows and optional Semaphore identity in the browser.",
     icon: KeyRound,
     accent: "#00685f",
@@ -65,11 +65,11 @@ const patientSteps = [
   {
     step: "02",
     title: "Encrypt your vault",
-    body: "Enter vitals locally; @cofhe/sdk encrypts each field before anything hits the RPC.",
+    body: "Enter vitals locally; @zama-fhe/sdk encrypts each field before anything hits the RPC.",
     detail: "Age, labs, and flags become ciphertext handles. The network computes on sealed values — not plaintext exports.",
     icon: Lock,
     accent: "#00B4D8",
-    onDevice: "Plaintext vitals · CoFHE encryption",
+    onDevice: "Plaintext vitals · Zama FHE encryption",
     onChain: "Ciphertext handles stored in Medical Vault",
   },
   {
@@ -86,7 +86,7 @@ const patientSteps = [
     step: "04",
     title: "Apply anonymously",
     body: "Optional Semaphore path: prove membership and submit with a per-trial nullifier — unlinkable from your wallet.",
-    detail: "Relayer-assisted staging keeps your main address off the apply transaction while CoFHE still verifies eligibility.",
+    detail: "Relayer-assisted staging keeps your main address off the apply transaction while Zama FHE still verifies eligibility.",
     icon: Fingerprint,
     accent: "#00685f",
     onDevice: "Semaphore proof generation · nullifier",
@@ -94,19 +94,19 @@ const patientSteps = [
   },
   {
     step: "05",
-    title: "Decrypt & certify",
-    body: "Reveal your match score locally, then bind the result with a Noir proof verified by Honk on-chain.",
-    detail: "Sponsors can see that a proof was accepted — not your underlying vitals. ZK certification is optional but demo-ready on Results.",
+    title: "Decrypt & seal",
+    body: "Reveal your match score locally with Zama, then optionally seal a public compliance receipt with Noir + Honk.",
+    detail: "Zama FHE is authoritative; sponsors see attestation metadata (nullifier, stage hash) — not your vitals.",
     icon: BadgeCheck,
     accent: "#06d6a0",
-    onDevice: "Local decrypt · Noir witness",
-    onChain: "HonkVerifier attestation · audit event",
+    onDevice: "Local Zama decrypt · Noir witness",
+    onChain: "HonkVerifier attestation · EligibilityProofVerified",
   },
 ];
 
 const sponsorSteps = [
   { title: "Define protocol", body: "Create trials, criteria, and incentive pools on-chain." },
-  { title: "Review matches", body: "See applicant status, ZK badges, and blind-ranking pool size — not raw PHI." },
+  { title: "Review matches", body: "See applicant status, attestation seals, and blind-ranking pool size — not raw PHI." },
   { title: "Audit access", body: "Consent logs and DataAccessLog events document every read path." },
 ];
 
@@ -356,7 +356,7 @@ function DeviceVsChainPanel({ stepIndex }: { stepIndex: number }) {
         <p className="mt-2 text-sm leading-relaxed text-[#3d4947]">{step.onDevice}</p>
       </div>
       <div className="rounded-xl border border-[#6bd8cb]/40 bg-[#89f5e7]/10 p-4">
-        <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-[#00685f]">On Arbitrum Sepolia</p>
+        <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-[#00685f]">On Ethereum Sepolia</p>
         <p className="mt-2 text-sm leading-relaxed text-[#3d4947]">{step.onChain}</p>
       </div>
     </div>
@@ -365,8 +365,8 @@ function DeviceVsChainPanel({ stepIndex }: { stepIndex: number }) {
 
 function SwimlaneDiagram() {
   const lanes = [
-    { role: "Patient", color: TEAL, items: ["Connect wallet", "Encrypt vault", "Grant consent", "Apply / certify"] },
-    { role: "MedVault (FHE + ZK)", color: VIOLET, items: ["Eligibility engine", "CoFHE ops", "Semaphore / Noir", "Audit log"] },
+    { role: "Patient", color: TEAL, items: ["Connect wallet", "Encrypt vault", "Grant consent", "Apply / seal"] },
+    { role: "MedVault (FHE + attestation)", color: VIOLET, items: ["Eligibility engine", "Zama FHE ops", "Semaphore / Noir seal", "Audit log"] },
     { role: "Sponsor", color: NAVY, items: ["Publish trial", "Set criteria", "Review proofs", "Incentivize cohort"] },
   ];
   return (
@@ -485,7 +485,7 @@ export function HowItWorksPage() {
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#00685f]">Three-party flow</p>
               <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Who does what</h2>
               <p className="mt-3 mb-6 text-sm leading-relaxed text-[#3d4947]">
-                Patients own keys and consent. MedVault runs FHE and ZK. Sponsors define protocols and review proofs.
+                Patients own keys and consent. MedVault runs Zama FHE (compute) and optional Noir attestation. Sponsors define protocols and review seals.
               </p>
               <SwimlaneDiagram />
             </motion.div>
@@ -599,7 +599,7 @@ export function HowItWorksPage() {
                     to="/patient/results"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-[#00685f] hover:underline"
                   >
-                    Try decrypt &amp; certify on Results
+                    Try decrypt &amp; seal on Results
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
@@ -721,7 +721,7 @@ export function HowItWorksPage() {
           <FlaskConical className="mx-auto h-10 w-10 text-[#89f5e7]" strokeWidth={1.5} />
           <h2 className="mt-4 text-2xl font-bold text-white sm:text-3xl">Ready to try the full flow?</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/75">
-            Register your vault, browse trials on testnet, and see FHE + ZK certification on your own wallet.
+            Register your vault, browse trials on testnet, and see Zama FHE matching plus optional Noir attestation on your own wallet.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link

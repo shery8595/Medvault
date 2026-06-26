@@ -147,6 +147,9 @@ export function useAnonymousApplication(signer?: ethers.Signer, provider?: ether
         if (!provider) {
             throw new Error('Provider is required');
         }
+        if (!signer) {
+            throw new Error('Wallet signer is required for consent binding');
+        }
 
         setState(prev => ({ ...prev, isSubmitting: true, error: null }));
         try {
@@ -178,7 +181,7 @@ export function useAnonymousApplication(signer?: ethers.Signer, provider?: ether
                 serializedProof,
                 commitment.toString(),
                 permitRecipient,
-                { provider, identity }
+                { provider, identity, consentSigner: signer }
             );
 
             // Persist per-trial nullifier so patient-side views can resolve
@@ -194,7 +197,7 @@ export function useAnonymousApplication(signer?: ethers.Signer, provider?: ether
         } finally {
             setState(prev => ({ ...prev, isSubmitting: false }));
         }
-    }, [provider]);
+    }, [provider, signer]);
 
     /**
      * Reset the application state (e.g., for retrying).

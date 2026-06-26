@@ -20,7 +20,7 @@ export interface WiringCheckResult {
 
 export async function checkWiring(
   provider: Provider,
-  networkKey = "arbSepolia"
+  networkKey = "sepolia"
 ): Promise<WiringCheckResult> {
   const addresses = getContractAddresses(networkKey);
   if (!addresses) {

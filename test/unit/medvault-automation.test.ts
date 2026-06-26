@@ -31,13 +31,15 @@ describe("Unit: MedVaultAutomation", function () {
         );
     });
 
-    it("MVA-04: owner can performUpkeep", async function () {
+    it("MVA-04: owner performUpkeep deactivates trial without participants", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createTrialForSponsor(stack);
         await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
         const [, data] = await stack.medVaultAutomation.checkUpkeep("0x");
         await stack.medVaultAutomation.connect(stack.owner).performUpkeep(data);
-        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(true);
+        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(false);
+        const trial = await stack.trialManager.getTrial(trialId);
+        expect(trial.active).to.equal(false);
     });
 
     it("MVA-05: finalized prevents duplicate upkeep need", async function () {
@@ -50,7 +52,7 @@ describe("Unit: MedVaultAutomation", function () {
         expect(needed).to.equal(false);
     });
 
-    it("MVA-06: setChainlinkForwarder and forwarder performUpkeep", async function () {
+    it("MVA-06: setChainlinkForwarder and forwarder performUpkeep deactivates trial", async function () {
         const stack = await deployMedVaultStack();
         await stack.medVaultAutomation
             .connect(stack.owner)
@@ -59,6 +61,8 @@ describe("Unit: MedVaultAutomation", function () {
         await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
         const [, data] = await stack.medVaultAutomation.checkUpkeep("0x");
         await stack.medVaultAutomation.connect(stack.stranger).performUpkeep(data);
-        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(true);
+        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(false);
+        const trial = await stack.trialManager.getTrial(trialId);
+        expect(trial.active).to.equal(false);
     });
 });

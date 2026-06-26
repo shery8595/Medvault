@@ -25,24 +25,28 @@ describe("Unit: AnonymousPatientRegistry", function () {
         const stack = await deployMedVaultStack();
         const { buildPatientProfileInputs } = await import("../../test-support/fhe");
         const inputs = await buildPatientProfileInputs(
-            stack.stranger.address,
+            await stack.anonymousPatientRegistry.getAddress(),
             stack.stranger.address,
             ELIGIBLE_PROFILE
         );
+        const { computeProfileCommitment } = await import("../../test-support/profileCommitment");
+        const profileCommitment = `0x${computeProfileCommitment(1n, ELIGIBLE_PROFILE).toString(16).padStart(64, "0")}`;
         await expectRevert(
             stack.anonymousPatientRegistry
                 .connect(stack.stranger)
                 .registerPatient(
                     1n,
                     stack.stranger.address,
-                    inputs.age,
-                    inputs.gender,
-                    inputs.weight,
-                    inputs.height,
-                    inputs.hasDiabetes,
-                    inputs.hbLevel,
-                    inputs.isSmoker,
-                    inputs.hasHypertension
+                    profileCommitment,
+                    inputs.age.handle,
+                    inputs.gender.handle,
+                    inputs.weight.handle,
+                    inputs.height.handle,
+                    inputs.hasDiabetes.handle,
+                    inputs.hbLevel.handle,
+                    inputs.isSmoker.handle,
+                    inputs.hasHypertension.handle,
+                    inputs.inputProof
                 ),
             /Only authorized registry|reverted/
         );
@@ -59,7 +63,7 @@ describe("Unit: AnonymousPatientRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const engineSigner = await impersonateAccount(await stack.eligibilityEngine.getAddress());
-        const profile = await stack.anonymousPatientRegistry.getPatientProfile(id.commitment);
+        const profile = await stack.anonymousPatientRegistry.connect(engineSigner).getPatientProfile(id.commitment);
         expect(profile.exists).to.equal(true);
     });
 
@@ -123,7 +127,8 @@ describe("Unit: AnonymousPatientRegistry", function () {
             stack.patient.address,
             ELIGIBLE_PROFILE
         );
-        const profile = await stack.anonymousPatientRegistry.getPatientProfile(id.commitment);
+        const engineSigner = await impersonateAccount(await stack.eligibilityEngine.getAddress());
+        const profile = await stack.anonymousPatientRegistry.connect(engineSigner).getPatientProfile(id.commitment);
         expect(profile.exists).to.equal(true);
     });
 

@@ -1,5 +1,9 @@
 import { ethers } from "ethers";
-import { getEligibilityEngine, getSponsorIncentiveVault, getTrialMilestoneManager } from "./index";
+import { getEligibilityEngine, getConfidentialETH, getSponsorIncentiveVault, getTrialMilestoneManager, getTrialManager } from "./index";
+import { encryptUint64, ensureZamaConnected } from "../fhe";
+import { signClaimAuthorization, signRegisterAuthorization } from "../semaphore";
+import { resolveChainIdFrom } from "./index";
+import type { Identity } from "@semaphore-protocol/identity";
 
 export async function getPoolFundingAndRegistration(
   signer: ethers.Signer,
@@ -34,38 +38,131 @@ export async function getEncryptedScoreHandle(
 export async function registerAnonymousParticipantByNullifier(
   signer: ethers.Signer,
   trialId: string,
-  nullifier: bigint
+  nullifier: bigint,
+  identity?: Identity
 ) {
   const vault = getSponsorIncentiveVault(signer);
   const engine = getEligibilityEngine(signer);
-  const permitHolder = await engine.decryptPermitHolder(nullifier);
+  const permitHolder = await engine.getDecryptPermitHolder(nullifier, BigInt(trialId));
   if (permitHolder && permitHolder !== ethers.ZeroAddress) {
     const alreadyRegistered = await vault.isParticipantRegistered(BigInt(trialId), permitHolder);
     if (alreadyRegistered) return;
   }
+  const signerAddress = await signer.getAddress();
+  const provider = signer.provider;
+  if (!provider) throw new Error("Wallet provider not available");
+
+  if (permitHolder && permitHolder.toLowerCase() !== signerAddress.toLowerCase()) {
+    if (!identity) {
+      throw new Error("Semaphore identity required for gasless ephemeral registration.");
+    }
+    const vaultAddress = await vault.getAddress();
+    const chainId = await resolveChainIdFrom(signer);
+    const nonce = BigInt(Date.now());
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const signature = await signRegisterAuthorization(identity, provider, {
+      vaultAddress,
+      chainId,
+      trialId: BigInt(trialId),
+      nullifier,
+      permitHolder,
+      nonce,
+      deadline,
+    });
+    const tx = await vault.registerAnonymousParticipantFor(
+      BigInt(trialId),
+      nullifier,
+      permitHolder,
+      nonce,
+      deadline,
+      signature
+    );
+    await tx.wait();
+    return;
+  }
+
   const tx = await vault.registerAnonymousParticipant(BigInt(trialId), nullifier);
   await tx.wait();
 }
 
+export async function claimRewards(
+  signer: ethers.Signer,
+  trialId: string,
+  nullifier: bigint,
+  destination: string,
+  units: number,
+  identity?: Identity
+) {
+  const vault = getSponsorIncentiveVault(signer);
+  const cEth = getConfidentialETH(signer);
+  const cEthAddress = await cEth.getAddress();
+  const vaultAddress = await vault.getAddress();
+  const engine = getEligibilityEngine(signer);
+  const permitHolder = await engine.getDecryptPermitHolder(nullifier, BigInt(trialId));
+  if (!permitHolder || permitHolder === ethers.ZeroAddress) {
+    throw new Error("No reward permit holder found for this claim.");
+  }
+  const provider = signer.provider;
+  if (!provider) throw new Error("Wallet provider not available");
+  await ensureZamaConnected(provider, signer);
+  const encrypted = await encryptUint64(cEthAddress, vaultAddress, units);
+
+  const signerAddress = await signer.getAddress();
+  if (permitHolder.toLowerCase() !== signerAddress.toLowerCase()) {
+    if (!identity) {
+      throw new Error("Semaphore identity required for gasless ephemeral reward claim.");
+    }
+    const chainId = await resolveChainIdFrom(signer);
+    const nonce = BigInt(Date.now());
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const signature = await signClaimAuthorization(identity, provider, {
+      vaultAddress,
+      chainId,
+      trialId: BigInt(trialId),
+      nullifier,
+      permitHolder,
+      destination,
+      units: BigInt(units),
+      nonce,
+      deadline,
+    });
+    const tx = await vault.claimParticipantRewardsFor(
+      BigInt(trialId),
+      nullifier,
+      permitHolder,
+      destination,
+      BigInt(units),
+      encrypted.handle,
+      encrypted.inputProof,
+      nonce,
+      deadline,
+      signature
+    );
+    await tx.wait();
+    return;
+  }
+
+  const tx = await vault.claimParticipantRewards(
+    BigInt(trialId),
+    nullifier,
+    destination,
+    encrypted.handle,
+    encrypted.inputProof
+  );
+  await tx.wait();
+}
+
+/** @deprecated v0.9 kick-off only — relayer completes via completeWithdrawTo */
 export async function claimRewardsWithSignature(
   signer: ethers.Signer,
   trialId: string,
   nullifier: bigint,
   destination: string,
   units: number,
-  balanceSig: string,
-  balance: bigint
+  _balanceSig?: string,
+  _balance?: bigint
 ) {
-  const vault = getSponsorIncentiveVault(signer);
-  const tx = await vault.claimParticipantRewards(
-    BigInt(trialId),
-    nullifier,
-    destination,
-    units,
-    balanceSig,
-    balance
-  );
-  await tx.wait();
+  return claimRewards(signer, trialId, nullifier, destination, units);
 }
 
 export async function getMilestonesAndProgress(
@@ -80,16 +177,21 @@ export async function getMilestonesAndProgress(
 }
 
 export type TrialPoolReclaimStatus = {
-  totalDepositedWei: bigint;
-  totalFunded: string;
+  poolFunded: boolean;
   participantCount: number;
   screeningDistributed: boolean;
   reclaimFinalized: boolean;
   trialEnded: boolean;
-  canReclaim: boolean;
-  /** Exact when no participants; otherwise use on-chain reclaim for the true remainder. */
-  reclaimableWei: bigint;
-  reclaimableEth: string;
+  canReclaimHint: boolean;
+  sponsorAuthorized: boolean;
+  trialSponsor: string | null;
+  totalDepositedWei: string | null;
+  totalFunded: string | null;
+  canReclaim: boolean | null;
+  reclaimableWei: string | null;
+  reclaimableEth: string | null;
+  amountsRestrictedReason: string | null;
+  privacyNote: string;
 };
 
 export async function getTrialPoolReclaimStatus(
@@ -102,19 +204,65 @@ export async function getTrialPoolReclaimStatus(
   const endSec = trialEndTimeSec != null ? Number(trialEndTimeSec) : 0;
   const trialEnded = endSec > 0 && Math.floor(Date.now() / 1000) >= endSec;
 
-  const [totalDepositedWei, participantCountBn, screeningDistributed, reclaimFinalized] =
+  const [participantCountBn, screeningDistributed, reclaimFinalized, poolFunded] =
     await Promise.all([
-      vault.getTotalDeposited(tid),
       vault.getParticipantCount(tid),
       vault.isDistributed(tid),
       vault.reclaimFinalized(tid),
+      vault.isPoolFunded(tid),
     ]);
 
   const participantCount = Number(participantCountBn);
   const noParticipants = participantCount === 0;
+  const privacyNote =
+    "Pool amounts are sponsor-private on-chain. Public callers only see whether a pool is funded.";
+
+  let trialSponsor: string | null = null;
+  try {
+    const tm = getTrialManager(signer);
+    const trial = await tm.getTrial(tid);
+    trialSponsor = String(trial.sponsor).toLowerCase();
+  } catch {
+    /* trial may not exist */
+  }
+
+  let signerAddress: string | null = null;
+  try {
+    signerAddress = (await signer.getAddress()).toLowerCase();
+  } catch {
+    signerAddress = null;
+  }
+
+  const sponsorAuthorized = Boolean(
+    signerAddress && trialSponsor && signerAddress === trialSponsor
+  );
+
+  const canReclaimHint =
+    trialEnded && !reclaimFinalized && poolFunded && (screeningDistributed || noParticipants);
+
+  if (!sponsorAuthorized) {
+    return {
+      poolFunded,
+      participantCount,
+      screeningDistributed,
+      reclaimFinalized,
+      trialEnded,
+      canReclaimHint,
+      sponsorAuthorized: false,
+      trialSponsor,
+      totalDepositedWei: null,
+      totalFunded: null,
+      canReclaim: null,
+      reclaimableWei: null,
+      reclaimableEth: null,
+      amountsRestrictedReason: "Connected signer is not the trial sponsor",
+      privacyNote,
+    };
+  }
+
+  const totalDepositedWei = await vault.getTotalDeposited(tid);
   const reclaimableWei =
     totalDepositedWei > 0n && !reclaimFinalized && noParticipants ? totalDepositedWei : 0n;
-
   const canReclaim =
     trialEnded &&
     !reclaimFinalized &&
@@ -122,15 +270,21 @@ export async function getTrialPoolReclaimStatus(
     (screeningDistributed || noParticipants);
 
   return {
-    totalDepositedWei,
-    totalFunded: ethers.formatEther(totalDepositedWei),
+    poolFunded,
     participantCount,
     screeningDistributed,
     reclaimFinalized,
     trialEnded,
+    canReclaimHint,
+    sponsorAuthorized: true,
+    trialSponsor,
+    totalDepositedWei: totalDepositedWei.toString(),
+    totalFunded: ethers.formatEther(totalDepositedWei),
     canReclaim,
-    reclaimableWei,
+    reclaimableWei: reclaimableWei.toString(),
     reclaimableEth: ethers.formatEther(reclaimableWei),
+    amountsRestrictedReason: null,
+    privacyNote,
   };
 }
 
@@ -148,12 +302,21 @@ export async function getTrialPoolAndMilestones(
   const vault = getSponsorIncentiveVault(signer);
   const mm = getTrialMilestoneManager(signer);
 
-  const [funded, distributed, rawMilestones, reclaim] = await Promise.all([
-    vault.getTotalDeposited(trialId),
+  const [distributed, rawMilestones, reclaim] = await Promise.all([
     vault.isDistributed(trialId),
     mm.getMilestones(trialId),
     getTrialPoolReclaimStatus(signer, trialId, trialEndTimeSec),
   ]);
+
+  let totalFunded = reclaim.totalFunded ?? "0";
+  if (reclaim.sponsorAuthorized) {
+    try {
+      const fundedWei = await vault.getTotalDeposited(trialId);
+      totalFunded = ethers.formatEther(fundedWei);
+    } catch {
+      totalFunded = reclaim.totalFunded ?? "0";
+    }
+  }
 
   const screeningDistributed = distributed;
   const milestonesWithDistribution = await Promise.all(
@@ -169,7 +332,7 @@ export async function getTrialPoolAndMilestones(
   );
 
   return {
-    totalFunded: ethers.formatEther(funded),
+    totalFunded,
     distributed,
     milestones: milestonesWithDistribution,
     reclaim,
@@ -275,7 +438,7 @@ export async function promoteAnonymousParticipantAndDistribute(
   milestoneIndex: number
 ) {
   const engine = getEligibilityEngine(signer);
-  const patientAddress = await engine.decryptPermitHolder(BigInt(nullifier));
+  const patientAddress = await engine.getDecryptPermitHolder(BigInt(nullifier), BigInt(trialId));
   if (!patientAddress || patientAddress === ethers.ZeroAddress) {
     throw new Error("No reward participant found for this anonymous nullifier.");
   }
@@ -292,7 +455,7 @@ export async function getAnonymousParticipantMilestoneState(
   const engine = getEligibilityEngine(signer);
   const vault = getSponsorIncentiveVault(signer);
   const mm = getTrialMilestoneManager(signer);
-  const participant = await engine.decryptPermitHolder(BigInt(nullifier));
+  const participant = await engine.getDecryptPermitHolder(BigInt(nullifier), BigInt(trialId));
   if (!participant || participant === ethers.ZeroAddress) {
     return null;
   }

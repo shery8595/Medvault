@@ -1,5 +1,5 @@
 import type { Contract } from "ethers";
-import type { InEInput } from "./fhe";
+import type { ZamaEncryptedField } from "./fhe";
 
 /** Disambiguate ConsentManager overloads for ethers v6. */
 export function grantConsentLegacy(consentManager: Contract, trialId: bigint) {
@@ -9,10 +9,11 @@ export function grantConsentLegacy(consentManager: Contract, trialId: bigint) {
 export function grantConsentEncrypted(
     consentManager: Contract,
     trialId: bigint,
-    encrypted: InEInput
+    encrypted: ZamaEncryptedField
 ) {
-    return consentManager.getFunction("grantConsent(uint256,(uint256,uint8,uint8,bytes))")(
+    return consentManager.getFunction("grantConsent(uint256,bytes32,bytes)")(
         trialId,
-        encrypted
+        encrypted.handle,
+        encrypted.inputProof
     );
 }

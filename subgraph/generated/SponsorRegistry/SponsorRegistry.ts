@@ -216,6 +216,44 @@ export class SponsorRegistry extends ethereum.SmartContract {
     return new SponsorRegistry("SponsorRegistry", address);
   }
 
+  auditor(): Address {
+    let result = super.call("auditor", "auditor():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_auditor(): ethereum.CallResult<Address> {
+    let result = super.tryCall("auditor", "auditor():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   getEncryptedInstitutionId(_sponsor: Address): Bytes {
     let result = super.call(
       "getEncryptedInstitutionId",
@@ -583,10 +621,12 @@ export class RequestSponsorshipCall__Inputs {
     this._call = call;
   }
 
-  get _encryptedInstitutionId(): RequestSponsorshipCall_encryptedInstitutionIdStruct {
-    return changetype<RequestSponsorshipCall_encryptedInstitutionIdStruct>(
-      this._call.inputValues[0].value.toTuple(),
-    );
+  get _encryptedInstitutionId(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
   }
 }
 
@@ -595,23 +635,5 @@ export class RequestSponsorshipCall__Outputs {
 
   constructor(call: RequestSponsorshipCall) {
     this._call = call;
-  }
-}
-
-export class RequestSponsorshipCall_encryptedInstitutionIdStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
   }
 }

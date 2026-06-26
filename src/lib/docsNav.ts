@@ -8,7 +8,7 @@ export const PRODUCTION_APP_URL = "https://med-vault.xyz";
 export type DocsTabId =
     | "getting-started"
     | "protocol"
-    | "fhenix"
+    | "zama"
     | "semaphore"
     | "noir"
     | "clients"
@@ -35,9 +35,9 @@ export const DOCS_TABS: DocsTab[] = [
         subtitle: "Architecture, eligibility engine, contract reference, and automation.",
     },
     {
-        id: "fhenix",
-        label: "Fhenix / CoFHE",
-        subtitle: "How CoFHE is used on Arbitrum Sepolia: SDK, coprocessor, ACL, and proof accounts.",
+        id: "zama",
+        label: "Zama FHE",
+        subtitle: "How Zama FHE is used on Ethereum Sepolia: SDK, coprocessor, ACL, and proof accounts.",
     },
     {
         id: "semaphore",
@@ -47,7 +47,7 @@ export const DOCS_TABS: DocsTab[] = [
     {
         id: "noir",
         label: "Noir / Honk",
-        subtitle: "Eligibility ZK circuit, browser proving, and HonkVerifier on-chain.",
+        subtitle: "Public compliance attestation seal — binds Zama FHE stages to Semaphore identity (not the compute layer).",
     },
     {
         id: "clients",
@@ -67,7 +67,7 @@ export const DOCS_TABS: DocsTab[] = [
     {
         id: "testing",
         label: "Tests & verification",
-        subtitle: "Hardhat suite, CoFHE mocks, test matrix, fixtures, and CI.",
+        subtitle: "Hardhat suite, Zama FHE mocks, test matrix, fixtures, and CI.",
     },
     {
         id: "security",
@@ -113,7 +113,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/faq",
         tabId: "getting-started",
         section: "First steps",
-        keywords: ["questions", "wallet", "testnet", "latency", "help", "privy", "faucet", "relayer", "arbitrum sepolia", "noir", "semaphore", "chainlink", "ephemeral"],
+        keywords: ["questions", "wallet", "testnet", "latency", "help", "privy", "faucet", "relayer", "Ethereum Sepolia", "noir", "semaphore", "chainlink", "ephemeral"],
         pageDescription: "Short answers to common questions about wallets, testnet, FHE latency, and consent.",
     },
     {
@@ -122,36 +122,36 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         tabId: "protocol",
         section: "Core concepts",
         keywords: ["system", "layers", "diagram", "registry"],
-        pageTitle: "Architecture & CoFHE integration",
+        pageTitle: "Architecture & Zama FHE integration",
         pageDescription:
-            "How the client, contracts, CoFHE coprocessor, Semaphore identity, and indexing fit together on Arbitrum Sepolia.",
+            "How the client, contracts, Zama FHE coprocessor, Semaphore identity, and indexing fit together on Ethereum Sepolia.",
     },
     {
         title: "Overview",
-        href: "/docs/fhenix-cofhe",
-        tabId: "fhenix",
-        section: "CoFHE",
-        keywords: ["fhenix", "cofhe", "coprocessor", "sdk", "vrf", "encrypt", "decrypt", "arb sepolia"],
-        pageTitle: "How Fhenix & CoFHE are used",
+        href: "/docs/zama-fhe",
+        tabId: "zama",
+        section: "Zama FHE",
+        keywords: ["zama", "fhe", "coprocessor", "sdk", "relayer", "encrypt", "decrypt", "ethereum sepolia"],
+        pageTitle: "How Zama FHE is used",
         pageDescription:
-            "CoFHE on Arbitrum Sepolia: browser SDK, proof accounts, coprocessor, ACL, ephemeral decrypt, and Hardhat mocks.",
+            "Zama FHE on Ethereum Sepolia: browser SDK, proof accounts, coprocessor, ACL, ephemeral decrypt, and Hardhat mocks.",
     },
     {
         title: "FHE primitives",
         href: "/docs/fhe-primitives",
-        tabId: "fhenix",
-        section: "CoFHE",
-        keywords: ["euint", "cofhe", "encrypt", "coprocessor", "cmux", "acl"],
-        pageTitle: "CoFHE primitives & FHE operations",
+        tabId: "zama",
+        section: "Zama FHE",
+        keywords: ["euint", "fhe", "encrypt", "coprocessor", "cmux", "acl"],
+        pageTitle: "Zama FHE primitives & FHE operations",
         pageDescription: "Encrypted types (euint/ebool), ACL, proof accounts, and operations used in MedVault contracts.",
     },
     {
         title: "Client encryption",
         href: "/docs/client-encryption",
-        tabId: "fhenix",
-        section: "CoFHE",
+        tabId: "zama",
+        section: "Zama FHE",
         keywords: ["sdk", "browser", "encrypt", "decrypt"],
-        pageTitle: "Client-side encryption with @cofhe/sdk",
+        pageTitle: "Client-side encryption with @zama-fhe/sdk",
         pageDescription: "Encrypting inputs in the browser, viewing keys, and what never leaves the client in plaintext.",
     },
     {
@@ -170,9 +170,9 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         tabId: "noir",
         section: "Proofs",
         keywords: ["noir", "honk", "ultrahonk", "circuit", "verifier", "zk", "barretenberg"],
-        pageTitle: "Noir eligibility proofs & Honk verifier",
+        pageTitle: "Noir compliance attestation & Honk verifier",
         pageDescription:
-            "eligibility_proof circuit, browser proving, HonkVerifier.sol, and verifyEligibilityProof on-chain.",
+            "Zama FHE computes privately; Noir seals a public attestation bound to nullifier, profile commitment, FHE stage handle, and trial schema.",
     },
     {
         title: "Eligibility engine",
@@ -181,7 +181,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         section: "Proofs",
         keywords: ["verifyEligibilityProof", "score", "fhe"],
         pageTitle: "Eligibility engine mechanics",
-        pageDescription: "Scoring model and verifyEligibilityProof integration with HonkVerifier.",
+        pageDescription: "FHE scoring authority plus finalizeWithProof attestation binding and attestationReceipt.",
     },
     {
         title: "Contract reference",
@@ -256,8 +256,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
             "privy",
             "faucet",
             "private faucet",
-            "arb-sepolia-faucet",
-            "arbitrum",
+            "ethereum sepolia",
             "testnet",
             "gasless",
             "embedded wallet",
@@ -269,26 +268,48 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         ],
         pageTitle: "Identity, relayer & tooling hub",
         pageDescription:
-            "Privy, faucet, HTTP relayer — with deep dives in Semaphore, Noir, and Fhenix/CoFHE docs.",
+            "Privy, faucet, HTTP relayer — with deep dives in Semaphore, Noir, and Zama FHE docs.",
+    },
+    {
+        title: "Private withdrawals",
+        href: "/docs/private-withdrawals",
+        tabId: "operations",
+        section: "Runbooks",
+        keywords: [
+            "withdraw",
+            "unshield",
+            "ceth",
+            "encrypted",
+            "eip-712",
+            "stealth",
+            "relayer",
+            "public exit",
+            "batch",
+            "claim",
+        ],
+        pageTitle: "Private withdrawals & public exit modes",
+        pageDescription:
+            "Encrypted withdraw staging, KMS completion, EIP-712 stealth exits, fast vs batched relayer settlement, and claim encryption binding.",
     },
     {
         title: "Private staking",
         href: "/docs/staking",
         tabId: "operations",
         section: "Runbooks",
-        keywords: ["aave", "yield", "confidential", "ceth"],
-        pageTitle: "Private yield staking (Aave integration)",
-        pageDescription: "How ConfidentialETH interacts with staking routes and yield expectations on testnet.",
+        keywords: ["aave", "yield", "confidential", "ceth", "unstake", "stakeFromConfidential"],
+        pageTitle: "Private yield staking (dual paths)",
+        pageDescription:
+            "Confidential cETH staking vs public Aave path; private unstake returns to encrypted MedVault balance.",
     },
     {
         title: "Overview",
         href: "/docs/testing",
         tabId: "testing",
         section: "Suite",
-        keywords: ["hardhat", "tests", "ci", "verify", "191", "mocha"],
+        keywords: ["hardhat", "tests", "ci", "verify", "265", "mocha"],
         pageTitle: "Contract test suite overview",
         pageDescription:
-            "191+ Hardhat tests with CoFHE mocks: suite breakdown, pillars, and quick start commands.",
+            "258+ Hardhat tests with Zama FHE mocks: suite breakdown, pillars, and quick start commands.",
     },
     {
         title: "Test matrix",
@@ -304,10 +325,10 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/testing/infrastructure",
         tabId: "testing",
         section: "Suite",
-        keywords: ["deployMedVaultStack", "fhe", "cofhe", "semaphore", "impersonate"],
+        keywords: ["deployMedVaultStack", "fhe", "zama", "semaphore", "impersonate"],
         pageTitle: "Test infrastructure & fixtures",
         pageDescription:
-            "test-support helpers: deployments, CoFHE 0.5 encryption, consent overloads, and MockSemaphore.",
+            "test-support helpers: deployments, Zama FHE encryption, consent overloads, and MockSemaphore.",
     },
     {
         title: "CI & commands",
@@ -326,6 +347,27 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         keywords: ["deploy", "subgraph", "script", "network", "relayer", "faucet", "chainlink"],
         pageDescription:
             "Deploying contracts, subgraph, and production frontend at med-vault.xyz (Vercel + relayer CORS).",
+    },
+    {
+        title: "Android APK",
+        href: "/docs/mobile/android-apk",
+        tabId: "operations",
+        section: "Runbooks",
+        keywords: [
+            "android",
+            "apk",
+            "mobile",
+            "capacitor",
+            "play store",
+            "sideload",
+            "webview",
+            "install",
+            "gradle",
+            "studio",
+        ],
+        pageTitle: "Android APK (demo)",
+        pageDescription:
+            "Build and distribute an internal demo APK with Capacitor — Privy, Zama FHE, SDK setup, and troubleshooting.",
     },
     {
         title: "Overview",
@@ -449,8 +491,8 @@ export function getTabForPath(pathname: string): DocsTabId {
     if (pathname.startsWith("/docs/testing")) {
         return "testing";
     }
-    if (pathname.startsWith("/docs/fhenix-cofhe")) {
-        return "fhenix";
+    if (pathname.startsWith("/docs/zama-fhe") || pathname.startsWith("/docs/fhe-primitives") || pathname.startsWith("/docs/client-encryption")) {
+        return "zama";
     }
     if (pathname.startsWith("/docs/semaphore")) {
         return "semaphore";

@@ -9,9 +9,9 @@ import { Shield, Key, Cpu, Database, AlertTriangle, CheckCircle2 } from "lucide-
 const encryptionFlowChart = `
 sequenceDiagram
     participant U as User Interface
-    participant SDK as @cofhe/sdk SDK
+    participant SDK as @zama-fhe/sdk SDK
     participant MM as MetaMask
-    participant RPC as Fhenix RPC
+    participant RPC as Zama RPC
     participant C as Smart Contract
 
     U->>SDK: createInstance({ chainId })
@@ -37,7 +37,8 @@ const sdkMethods = [
     { method: "input.add8(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint8 (0–255) to the input batch." },
     { method: "input.add16(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint16 to the input batch." },
     { method: "input.add32(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint32 to the batch. Used for most MedVault health metrics." },
-    { method: "input.addBool(val)", returns: "EncryptedInput", desc: "Adds an encrypted boolean. Used for binary flags." },
+    { method: "input.add64(val)", returns: "EncryptedInput", desc: "Adds an encrypted uint64. Used for withdrawal amounts, claim units, and private stake/unstake." },
+    { method: "encryptUint64(contract, user, value)", returns: "{ handle, inputProof }", desc: "MedVault helper in src/lib/fhe.ts — wraps createEncryptedInput + add64 + encrypt for amount staging." },
     { method: "input.encrypt()", returns: "{ handles[], inputProof }", desc: "Finalizes the batch, generates all FHE ciphertexts, and computes the ZK validity proof." },
     { method: "instance.generateToken({ contract... })", returns: "{ token, publicKey }", desc: "Generates an EIP-712 viewing token by requesting a MetaMask signature. Used to decrypt on-chain values." },
     { method: "instance.decrypt(contract, token, ciphertext)", returns: "bigint", desc: "Decrypts a single ciphertext using the viewing token. Requires prior FHE.allow() on-chain." },
@@ -75,7 +76,7 @@ export function ClientEncryptionDoc() {
                     {[
                         { icon: <Shield className="w-5 h-5" />, title: "Zero-Knowledge Proofs", desc: "Every encryption call generates a ZK validity proof submitted alongside the ciphertext.", color: "teal" },
                         { icon: <Key className="w-5 h-5" />, title: "EIP-712 Consent", desc: "Decryption requires a MetaMask signature—sponsor cannot read results without patient approval.", color: "purple" },
-                        { icon: <Cpu className="w-5 h-5" />, title: "Coprocessor-Backed", desc: "The Fhenix network's FHE coprocessor performs all actual computation — the EVM never sees plaintext.", color: "amber" },
+                        { icon: <Cpu className="w-5 h-5" />, title: "Coprocessor-Backed", desc: "The Zama network's FHE coprocessor performs all actual computation — the EVM never sees plaintext.", color: "amber" },
                     ].map(g => {
                         const styles = colorStyles[g.color];
                         return (
@@ -90,9 +91,9 @@ export function ClientEncryptionDoc() {
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>I. Architecture of the <code>@cofhe/sdk</code> Client</h2>
+                <h2>I. Architecture of the <code>@zama-fhe/sdk</code> Client</h2>
                 <p>
-                    Standard Ethereum libraries like Ethers.js or viem are designed to format ABI-encoded payloads for RPC calls. <code>@cofhe/sdk</code> does something fundamentally different — it is a cryptographic library first, a blockchain connector second.
+                    Standard Ethereum libraries like Ethers.js or viem are designed to format ABI-encoded payloads for RPC calls. <code>@zama-fhe/sdk</code> does something fundamentally different — it is a cryptographic library first, a blockchain connector second.
                 </p>
                 <p>
                     The library has two distinct responsibilities at runtime:
@@ -110,9 +111,9 @@ export function ClientEncryptionDoc() {
                 </div>
 
                 <div className="not-prose bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 mt-6">
-                    <h3 className="text-xl font-semibold text-slate-900 mb-4 m-0">@cofhe/sdk encryption & decryption lifecycle</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-4 m-0">@zama-fhe/sdk encryption & decryption lifecycle</h3>
                     <div className="text-slate-600 text-sm space-y-4">
-                        <p>1. <strong>Frontend</strong> initializes @cofhe/sdk instance using the network's public key.</p>
+                        <p>1. <strong>Frontend</strong> initializes @zama-fhe/sdk instance using the network's public key.</p>
                         <p>2. <strong>Frontend</strong> encrypts raw numbers into ciphertexts locally in the browser.</p>
                         <p>3. <strong>Frontend</strong> packages ciphertexts into a transaction and sends to blockchain.</p>
                         <p>4. <strong>Smart Contract</strong> processes ciphertexts homomorphically without ever decrypting.</p>
@@ -124,24 +125,24 @@ export function ClientEncryptionDoc() {
 
                 <h2>II. Instance Initialization</h2>
                 <p>
-                    Before any FHE interaction can occur, the DApp must initialize a <code>FhevmInstance</code>. This instance performs an async network request to retrieve the Fhenix testnet's public cryptographic key. Without this key, it is impossible to generate valid FHE ciphertexts.
+                    Before any FHE interaction can occur, the DApp must initialize a <code>FhevmInstance</code>. This instance performs an async network request to retrieve the Ethereum Sepolia testnet's public cryptographic key. Without this key, it is impossible to generate valid FHE ciphertexts.
                 </p>
 
                 <CodeBlock
                     filename="src/context/Web3Context.tsx — Initialization"
                     language="typescript"
-                    code={`import { createInstance, FhevmInstance } from '@cofhe/sdk';
+                    code={`import { createInstance, FhevmInstance } from '@zama-fhe/sdk';
 import { BrowserProvider } from 'ethers';
 
 const initializeFHEVM = async (provider: BrowserProvider): Promise<FhevmInstance | null> => {
     try {
         const network = await provider.getNetwork();
 
-        // Fetches the Fhenix network's FHE public key via an eth_call to the
+        // Fetches the Zama network's FHE public key via an eth_call to the
         // precompile address. Returns a 2048-byte FHE bootstrapping key.
         const instance = await createInstance({
             chainId: Number(network.chainId),
-            // networkUrl is optional — @cofhe/sdk derives it from the provider
+            // networkUrl is optional — @zama-fhe/sdk derives it from the provider
         });
 
         console.log("[FHE] Instance initialized. FHE ready.");
@@ -165,14 +166,14 @@ useEffect(() => {
                 />
 
                 <Callout type="warning" title="Chain Compatibility Gate">
-                    If the user is connected to a chain that doesn't support the Fhenix FHE precompile (e.g., Ethereum mainnet, Polygon), <code>createInstance</code> will fail. MedVault enforces a strict <code>isFHEReady</code> flag in the global context. All sensitive dashboard views are wrapped in a check gate that blocks rendering until the FHE instance is valid.
+                    If the user is connected to a chain that doesn't support the Zama FHE precompile (e.g., Ethereum mainnet, Polygon), <code>createInstance</code> will fail. MedVault enforces a strict <code>isFHEReady</code> flag in the global context. All sensitive dashboard views are wrapped in a check gate that blocks rendering until the FHE instance is valid.
                 </Callout>
 
                 <hr className="my-12 border-slate-200" />
 
                 <h2>III. Encrypting Medical Payloads</h2>
                 <p>
-                    When the patient fills out their health profile form and clicks "Save to Vault", the form data is never passed directly to any contract function. Instead, the raw values are intercepted and routed through the <code>@cofhe/sdk</code> encryption pipeline.
+                    When the patient fills out their health profile form and clicks "Save to Vault", the form data is never passed directly to any contract function. Instead, the raw values are intercepted and routed through the <code>@zama-fhe/sdk</code> encryption pipeline.
                 </p>
 
                 <CodeBlock
@@ -223,8 +224,8 @@ useEffect(() => {
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>IV. <code>@cofhe/sdk</code> SDK Method Reference</h2>
-                <p>The key methods used inside MedVault from the <code>@cofhe/sdk</code> SDK:</p>
+                <h2>IV. <code>@zama-fhe/sdk</code> SDK Method Reference</h2>
+                <p>The key methods used inside MedVault from the <code>@zama-fhe/sdk</code> SDK:</p>
 
                 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
                     <div className="overflow-x-auto">
@@ -251,7 +252,46 @@ useEffect(() => {
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>V. The Hybrid State Model: Chain vs. LocalStorage</h2>
+                <h2>VI. Encrypted withdrawal &amp; claim amounts</h2>
+                <p>
+                    v0.9 routes withdraw and claim amounts through <code>externalEuint64</code> + <code>inputProof</code>.
+                    The proof account must match the on-chain caller at the FHE verification site:
+                </p>
+                <ul>
+                    <li><code>requestWithdraw</code> — proof account = patient EOA; contract = ConfidentialETH</li>
+                    <li><code>claimParticipantRewards</code> → <code>requestWithdrawTo</code> — proof account = SponsorIncentiveVault address</li>
+                    <li><code>stakeFromConfidential</code> / <code>requestPrivateUnstake</code> — proof account = patient; contract = StakingManager</li>
+                </ul>
+                <CodeBlock
+                    filename="src/lib/fhe.ts"
+                    language="typescript"
+                    code={`export async function encryptUint64(
+  contractAddress: string,
+  userAddress: string,
+  value: number | bigint
+): Promise<{ handle: string; inputProof: string }> {
+  const instance = await getFhevmInstance();
+  const input = instance.createEncryptedInput(contractAddress, userAddress);
+  input.add64(Number(value));
+  const encrypted = await input.encrypt();
+  return { handle: encrypted.handles[0], inputProof: encrypted.inputProof };
+}`}
+                />
+                <Callout type="warning" title="InvalidSigner">
+                    Using the patient wallet as proof account for vault-authorized <code>requestWithdrawTo</code> will
+                    revert with <code>InvalidSigner()</code>. Always encrypt claims with the vault address.
+                </Callout>
+                <p>
+                    Full withdrawal architecture:{" "}
+                    <a href="/docs/private-withdrawals" className="font-semibold text-[#00685f] hover:underline">
+                        Private withdrawals doc
+                    </a>
+                    .
+                </p>
+
+                <hr className="my-12 border-slate-200" />
+
+                <h2>VII. The Hybrid State Model: Chain vs. LocalStorage</h2>
                 <p>
                     Reading back encrypted values from the chain requires a MetaMask pop-up (EIP-712 signature) on every single page load. This would make MedVault completely unusable. To solve this, we implement a <strong>hybrid state strategy</strong>:
                 </p>

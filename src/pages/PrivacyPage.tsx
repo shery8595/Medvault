@@ -87,7 +87,7 @@ const exposureComparison = [
 ];
 
 const sponsorSignalMix = [
-  { name: "ZK / eligibility proof", value: 42, color: TEAL },
+  { name: "Compliance attestation seal", value: 42, color: TEAL },
   { name: "Match score (encrypted)", value: 28, color: MINT },
   { name: "Trial metadata", value: 18, color: VIOLET },
   { name: "Contact (post-consent)", value: 12, color: "#5a6a80" },
@@ -107,7 +107,7 @@ const stackLayers = [
   { label: "On-chain consent & audit", sub: "DataAccessLog · revoke anytime", color: NAVY },
   { label: "Zero-knowledge proofs", sub: "Semaphore · Noir certification", color: TEAL },
   { label: "FHE eligibility engine", sub: "Compute on ciphertext", color: VIOLET },
-  { label: "Client-side encryption", sub: "@cofhe/sdk before RPC", color: MINT },
+  { label: "Client-side encryption", sub: "@zama-fhe/sdk before RPC", color: MINT },
 ];
 
 const flowNodes = [
@@ -719,8 +719,7 @@ export function PrivacyPage() {
             Built for regulated health data
           </motion.h2>
           <motion.p {...fadeUp(0.1)} className="mx-auto mt-4 max-w-2xl text-center text-[#3d4947]">
-            We design flows with HIPAA-aligned safeguards and GDPR-style data sovereignty in mind. For technical depth,
-            see our compliance and security documentation.
+            We design flows with health-privacy principles in mind (encryption at the edge, consent logs, minimized on-chain PHI). This is not a claim of HIPAA or GDPR certification — see compliance and security documentation for details.
           </motion.p>
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {[

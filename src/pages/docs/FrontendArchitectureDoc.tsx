@@ -56,7 +56,7 @@ graph TD
 `;
 
 const contexts = [
-    { name: "Web3Context.tsx", responsibility: "Privy auth + embedded/link EVM wallet, Ethers.js provider, account/chain tracking, @cofhe/sdk initialization, isFHEReady flag.", exposes: "account, provider, signer, isFHEReady, connect(), logout()" },
+    { name: "Web3Context.tsx", responsibility: "Privy auth + embedded/link EVM wallet, Ethers.js provider, account/chain tracking, @zama-fhe/sdk initialization, isFHEReady flag.", exposes: "account, provider, signer, isFHEReady, connect(), logout()" },
     { name: "EncryptedDataContext.tsx", responsibility: "Business logic layer. Wraps all FHE-aware contract interactions (patient vault writes, trial creation, eligibility compute).", exposes: "updatePatientInfo(), createTrial(), computeEligibility(), decryptScore()" },
 ];
 
@@ -76,7 +76,7 @@ export function FrontendArchitectureDoc() {
 
                 {/* Tech Stack Row */}
                 <div className="flex flex-wrap gap-3 my-8 not-prose">
-                    {["Vite 6", "React 19", "TypeScript 5", "Tailwind CSS 4", "Privy", "Framer Motion", "Ethers.js 6", "@cofhe/sdk", "React Router 7", "The Graph"].map(t => (
+                    {["Vite 6", "React 19", "TypeScript 5", "Tailwind CSS 4", "Privy", "Capacitor", "Framer Motion", "Ethers.js 6", "@zama-fhe/sdk", "React Router 7", "The Graph"].map(t => (
                         <span key={t} className="px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-700 shadow-sm">
                             {t}
                         </span>
@@ -89,7 +89,7 @@ export function FrontendArchitectureDoc() {
                 <p>
                     The root <code>PrivyProvider</code> in <code>App.tsx</code> (with <code>VITE_PRIVY_APP_ID</code>)
                     must wrap the tree before <code>Web3Provider</code>. Users authenticate with Privy; the embedded
-                    wallet is then switched to <strong>Arbitrum Sepolia</strong> inside <code>Web3Context.tsx</code> for
+                    wallet is then switched to <strong>Ethereum Sepolia</strong> inside <code>Web3Context.tsx</code> for
                     For Semaphore, ephemeral decrypt wallet, HTTP relayer (<code>/relay/apply-stage</code> / finalize),
                     private faucet, Noir/Honk, and Chainlink Automation pointers, see the{" "}
                     <Link to="/docs/identity-privacy" className="text-blue-600 font-semibold no-underline hover:underline">
@@ -139,15 +139,15 @@ export function FrontendArchitectureDoc() {
 
                 <h2>III. FHE-Aware transaction lifecycle</h2>
                 <p>
-                    FHE transactions take significantly longer to confirm than standard EVM operations due to background polynomial computation in the Fhenix coprocessor. Every user-facing transaction must move through a well-defined stage machine to prevent UI freeze perception.
+                    FHE transactions take significantly longer to confirm than standard EVM operations due to background polynomial computation in the Zama FHE coprocessor. Every user-facing transaction must move through a well-defined stage machine to prevent UI freeze perception.
                 </p>
 
                 <div className="not-prose flex flex-col sm:flex-row items-stretch gap-3 my-10">
                     {[
                         { step: "1", label: "User Triggers", desc: "Button clicked, UI immediately locked via isLoading state.", color: "slate", icon: <Zap className="w-4 h-4" /> },
-                        { step: "2", label: "Local Encrypt", desc: "@cofhe/sdk generates ciphertexts + ZK proofs in the browser.", color: "teal", icon: <Shield className="w-4 h-4" /> },
+                        { step: "2", label: "Local Encrypt", desc: "@zama-fhe/sdk generates ciphertexts + ZK proofs in the browser.", color: "teal", icon: <Shield className="w-4 h-4" /> },
                         { step: "3", label: "Wallet Sign", desc: "MetaMask popup shown. Script execution halts awaiting approval.", color: "purple", icon: <Shield className="w-4 h-4" /> },
-                        { step: "4", label: "FHE Processing", desc: "Transaction submitted. Fhenix coprocessor runs FHE (15–60s).", color: "amber", icon: <Loader2 className="w-4 h-4" /> },
+                        { step: "4", label: "FHE Processing", desc: "Transaction submitted. Zama FHE coprocessor runs FHE (15–60s).", color: "amber", icon: <Loader2 className="w-4 h-4" /> },
                         { step: "5", label: "Confirmed", desc: "Receipt received. Toast shown. Subgraph refetch triggered.", color: "emerald", icon: <Layers className="w-4 h-4" /> },
                     ].map((s, i) => (
                         <div key={s.step} className="flex-1 relative">
@@ -197,7 +197,37 @@ export function FrontendArchitectureDoc() {
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>IV. Visual design rules</h2>
+                <h2>IV. Mobile shell (Capacitor Android)</h2>
+                <p>
+                    The same Vite bundle can ship as an Android APK. Capacitor wraps the SPA in a WebView; mobile-specific
+                    code lives in <code>src/lib/mobile.ts</code> and <code>src/components/mobile/</code>.
+                </p>
+                <ul>
+                    <li>
+                        <strong>Build:</strong> <code>CAPACITOR_BUILD=true</code> sets Vite <code>base: &apos;./&apos;</code>;
+                        assets sync to <code>android/app/src/main/assets/</code>
+                    </li>
+                    <li>
+                        <strong>Origin:</strong> <code>https://localhost</code> — Privy and relayer CORS must allow it
+                    </li>
+                    <li>
+                        <strong>APIs:</strong> Zama and MedVault relayers use direct HTTPS (no Vite/Vercel proxy)
+                    </li>
+                    <li>
+                        <strong>UX:</strong> native launch skips marketing landing; Android back button; offline banner
+                    </li>
+                </ul>
+                <p>
+                    Full build guide:{" "}
+                    <Link to="/docs/mobile/android-apk" className="text-[#00685f] font-semibold no-underline hover:underline">
+                        Android APK runbook
+                    </Link>
+                    ; repo <code>docs/MOBILE_ARCHITECTURE.md</code>.
+                </p>
+
+                <hr className="my-12 border-slate-200" />
+
+                <h2>V. Visual design rules</h2>
                 <p>
                     The MedVault frontend strictly adheres to a premium UI/UX ruleset (<code>ui-ux-pro-max</code> guidelines). These rules ensure the interface feels trustworthy, enterprise-grade, and consistent across all components.
                 </p>

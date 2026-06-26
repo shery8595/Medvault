@@ -1,144 +1,135 @@
-import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
-import { Encryptable, FheTypes } from "@cofhe/sdk";
-import { arbSepolia } from "@cofhe/sdk/chains";
-import { Ethers6Adapter } from "@cofhe/sdk/adapters";
+import type { Signer, Provider } from "ethers";
+import { ethers } from "ethers";
+import {
+    indexedDBStorage,
+    memoryStorage,
+    SigningRejectedError,
+    ZamaSDK,
+    type Address,
+    type ClearValue,
+    type EncryptedValue,
+    type ZamaConfig,
+} from "@zama-fhe/sdk";
+import { createConfig } from "@zama-fhe/sdk/ethers";
+import { web } from "@zama-fhe/sdk/web";
+import { buildZamaFheChain } from "./zamaChain";
 
-// ---------------------------------------------------------------------------
-// CoFHE ZK verifier URL:
-// - Dev: `/cofhe-vrf` → Vite proxy (vite.config.ts) → testnet-cofhe-vrf.fhenix.zone
-// - Prod: same-origin `/cofhe-vrf` → host must proxy (vercel.json + pack script
-//   `config.json` routes) so POST /verify is not served as SPA (405 / HTML).
-// - Optional override: VITE_COFHE_VRF_VERIFIER_URL (full base, no trailing slash)
-// ---------------------------------------------------------------------------
-function getCofheVerifierBaseUrl(): string {
-    const fromEnv = import.meta.env.VITE_COFHE_VRF_VERIFIER_URL as string | undefined;
-    const trimmed = fromEnv?.trim();
-    if (trimmed) return trimmed.replace(/\/$/, "");
-    return `${window.location.origin}/cofhe-vrf`;
+/** Back-compat alias for patient profile / eligibility decrypt helpers. */
+export const FheTypes = {
+    Bool: "ebool",
+    Uint8: "euint8",
+    Uint16: "euint16",
+    Uint32: "euint32",
+    Uint64: "euint64",
+} as const;
+
+export type FheTypeName = (typeof FheTypes)[keyof typeof FheTypes];
+
+export type ZamaEncryptField = {
+    handle: `0x${string}`;
+    inputProof: `0x${string}`;
+};
+
+let mainSdk: ZamaSDK | null = null;
+
+export function setMainZamaSDK(sdk: ZamaSDK | null): void {
+    mainSdk = sdk;
 }
 
-export { FheTypes };
-
-declare global {
-    interface Window {
-        ethereum: any;
+export function getZamaSDK(): ZamaSDK {
+    if (!mainSdk) {
+        throw new Error("Zama SDK not ready — connect wallet and wait for FHE initialization.");
     }
+    return mainSdk;
 }
 
-// Global client instance
-let client: any = null;
+/** @deprecated Use getZamaSDK() */
+export function getFHEClient(): ZamaSDK {
+    return getZamaSDK();
+}
 
-export async function getFHEClient() {
-    if (client) return client;
+/** @deprecated Use getZamaSDK() */
+export function getFHEInstance(): ZamaSDK {
+    return getZamaSDK();
+}
 
-    const chain = {
-        ...arbSepolia,
-        verifierUrl: getCofheVerifierBaseUrl(),
-    };
+export function resetZamaSDK(): void {
+    mainSdk = null;
+}
 
-    // CoFHE client does not require an injected wallet; connection happens in connectFHE via Ethers6Adapter.
-    const config = createCofheConfig({
-        supportedChains: [chain as any],
-        // Keep useWorkers: false — CoFHE workers run in a separate thread that cannot reach the
-        // Vite dev-server proxy (/cofhe-vrf → testnet-cofhe-vrf.fhenix.zone). When true, the
-        // worker bypasses the proxy, hits CORS/timeout, and produces a malformed VRF proof that
-        // causes the FHE precompile to revert with a custom error on estimateGas.
-        useWorkers: false,
+/** @deprecated Use resetZamaSDK() */
+export function resetFheClient(): void {
+    resetZamaSDK();
+}
+
+function createConfigForSigner(signer: Signer, storage = indexedDBStorage): ZamaConfig {
+    const chain = buildZamaFheChain();
+    return createConfig({
+        chains: [chain],
+        signer,
+        relayers: { [chain.id]: web() },
+        storage,
     });
-    client = createCofheClient(config);
-
-    return client;
 }
 
-export async function connectFHE(provider: any, signer: any) {
-    // Always reset the singleton before connecting so a stale or worker-broken client
-    // from a previous attempt can never persist and produce malformed VRF proofs.
-    client = null;
-    const c = await getFHEClient();
-    const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
-    await c.connect(publicClient, walletClient);
+function createEphemeralZamaSDK(signer: Signer): ZamaSDK {
+    return new ZamaSDK(createConfigForSigner(signer, memoryStorage));
 }
 
-/**
- * Force-reconnect the CoFHE client with a different signer, bypassing the
- * "already connected" guard. Used when switching between the main wallet and
- * the ephemeral wallet (for permit-based decryption of FHE patient data).
- */
-export async function forceConnectFHE(provider: any, signer: any) {
-    client = null;
-    const c = await getFHEClient();
-    const { publicClient, walletClient } = await Ethers6Adapter(provider, signer);
-    await c.connect(publicClient, walletClient);
+/** Isolated SDK bound to a Semaphore-derived ephemeral signer (memory storage, disposed after use). */
+export function createStandaloneZamaSDK(signer: Signer): ZamaSDK {
+    return createEphemeralZamaSDK(signer);
 }
 
-export async function getFHEInstance() {
-    return getFHEClient();
-}
-
-/** Clear CoFHE singleton (e.g. Privy logout). */
-export function resetFheClient() {
-    client = null;
-}
-
-/**
- * Reconnect the main wallet after ephemeral FHE work (claim, score reveal, etc.).
- * `resetFheClient()` alone leaves the next decrypt without a connected client.
- */
-export async function restoreMainFheSession(
-    provider: unknown,
-    signer: import("ethers").Signer
-) {
-    resetFheClient();
-    await connectFHE(provider, signer);
-}
-
-/** Reconnect the CoFHE client for the given wallet (safe after ephemeral FHE sessions). */
-export async function ensureFHEConnected(
-    provider: unknown,
-    signer: import("ethers").Signer
-) {
-    await connectFHE(provider, signer);
-}
-
-function isPermitLifecycleError(err: unknown): boolean {
-    const message = String(
-        (err as { shortMessage?: string; message?: string; reason?: string })?.shortMessage ??
-            (err as { message?: string })?.message ??
-            (err as { reason?: string })?.reason ??
-            err ??
-            ""
-    ).toLowerCase();
-    return (
-        message.includes("permit") &&
-        (message.includes("expired") ||
-            message.includes("invalid") ||
-            message.includes("not found") ||
-            message.includes("missing"))
-    );
-}
-
-async function runWithPermitRefresh<T>(
-    c: any,
-    operation: (permit: any) => Promise<T>
+/** Run a callback with a short-lived ephemeral SDK; always disposes on exit. */
+export async function withEphemeralZamaSDK<T>(
+    ephemeralSigner: Signer,
+    fn: (sdk: ZamaSDK) => Promise<T>
 ): Promise<T> {
-    let permit = await c.permits.getOrCreateSelfPermit();
+    const sdk = createEphemeralZamaSDK(ephemeralSigner);
     try {
-        return await operation(permit);
-    } catch (err) {
-        if (!isPermitLifecycleError(err)) {
-            throw err;
-        }
-        // Retry once with a freshly resolved permit for the current account+chain.
-        permit = await c.permits.getOrCreateSelfPermit();
-        return operation(permit);
+        return await fn(sdk);
+    } finally {
+        sdk.dispose();
     }
 }
 
-/**
- * Yields to the browser so React can commit state and paint a frame before the next
- * long synchronous stretch (CoFHE encrypt still does heavy work; pairing with `useWorkers`
- * keeps the UI from appearing frozen between steps).
- */
+/** Ensure the React-managed main SDK is available (no-op when ZamaSDKProvider is active). */
+export async function ensureZamaConnected(_provider: Provider, _signer: Signer): Promise<void> {
+    getZamaSDK();
+}
+
+/** @deprecated Use ensureZamaConnected */
+export async function ensureFHEConnected(provider: Provider, signer: Signer): Promise<void> {
+    await ensureZamaConnected(provider, signer);
+}
+
+function mainSdkOrThrow(): ZamaSDK {
+    return getZamaSDK();
+}
+
+function toHandleHex(value: bigint | string | unknown): `0x${string}` {
+    if (typeof value === "string") {
+        if (value.startsWith("0x")) return value as `0x${string}`;
+        return ethers.toBeHex(BigInt(value), 32) as `0x${string}`;
+    }
+    if (typeof value === "bigint") {
+        return ethers.toBeHex(value, 32) as `0x${string}`;
+    }
+    throw new Error(`Cannot coerce FHE handle: ${String(value)}`);
+}
+
+function fieldFromEncrypt(
+    encryptedValues: EncryptedValue[],
+    inputProof: `0x${string}`,
+    index: number
+): ZamaEncryptField {
+    return {
+        handle: encryptedValues[index]!,
+        inputProof,
+    };
+}
+
 export function yieldToMain(): Promise<void> {
     return new Promise((resolve) => {
         if (typeof requestAnimationFrame === "function") {
@@ -151,206 +142,238 @@ export function yieldToMain(): Promise<void> {
     });
 }
 
-// --- ENCRYPTION --- //
-
-export async function encryptUint8(contractAddress: string, userAddress: string, value: number) {
-    const c = await getFHEClient();
-    if (!c.connected) {
-        throw new Error("FHE client not connected. Call connectFHE first.");
+export async function buildSponsorCriteriaInputs(
+    contractAddress: string,
+    userAddress: string,
+    criteria: {
+        minAge: number;
+        maxAge: number;
+        requiresDiabetes: boolean;
+        minHb: number;
+        genderRequirement: number;
+        minHeight: number;
+        maxWeight: number;
+        requiresNonSmoker: boolean;
+        requiresNormalBP: boolean;
     }
-    const [encryptedAmount] = await c.encryptInputs([Encryptable.uint8(BigInt(value))])
-        .setAccount(contractAddress)
-        .execute();
-    return encryptedAmount;
-}
-
-export async function encryptUint16(contractAddress: string, userAddress: string, value: number) {
-    const c = await getFHEClient();
-    if (!c.connected) {
-        throw new Error("FHE client not connected. Call connectFHE first.");
-    }
-    const [encryptedAmount] = await c.encryptInputs([Encryptable.uint16(BigInt(value))])
-        .setAccount(contractAddress)
-        .execute();
-    return encryptedAmount;
-}
-
-export async function encryptBool(contractAddress: string, userAddress: string, value: boolean) {
-    const c = await getFHEClient();
-    if (!c.connected) {
-        throw new Error("FHE client not connected. Call connectFHE first.");
-    }
-    const [encryptedAmount] = await c.encryptInputs([Encryptable.bool(value)])
-        .setAccount(contractAddress)
-        .execute();
-    return encryptedAmount;
-}
-
-// --- DECRYPTION --- //
-
-/**
- * Decrypt a publicly-allowed ciphertext for use in a transaction.
- * Call this for values marked FHE.allowPublic() on-chain.
- * Returns { ctHash, decryptedValue (bigint), signature } — submit these
- * to your contract via FHE.publishDecryptResult / FHE.verifyDecryptResult.
- */
-export async function publicDecrypt(ctHash: bigint | string) {
-    const c = await getFHEClient();
-    const handle = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
-    const result = await c
-        .decryptForTx(handle)
-        .withoutPermit()
-        .execute();
-    return result; // { ctHash, decryptedValue: bigint, signature: string }
-}
-
-/**
- * Permit-scoped decrypt-for-tx for an encrypted bool (e.g. staged eligibility `finalResult`).
- * Caller must use the ephemeral wallet that matches `permitRecipient` from the apply flow.
- */
-export interface DecryptForTxWithPermitResult {
-    ctHash: bigint;
-    decryptedValue: bigint;
-    signature: string;
-}
-
-/**
- * Permit-scoped decrypt-for-tx (e.g. ConfidentialETH balance on an ephemeral payout address).
- * The connected signer must match the on-chain FHE.allow recipient for the ciphertext.
- */
-export async function decryptForTxWithPermit(
-    ctHash: bigint | string,
-    provider: unknown,
-    signer: import("ethers").Signer
-): Promise<DecryptForTxWithPermitResult> {
-    await forceConnectFHE(provider, signer);
-    const c = await getFHEClient();
-    const expectedCt = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
-
-    const run = async (): Promise<DecryptForTxWithPermitResult> => {
-        const permit = await c.permits.getOrCreateSelfPermit();
-        const result = await c.decryptForTx(expectedCt).withPermit(permit).execute();
-        const returnedCt =
-            typeof result.ctHash === "bigint" ? result.ctHash : BigInt(String(result.ctHash));
-        if (returnedCt !== expectedCt) {
-            throw new Error(
-                `CoFHE decrypt handle mismatch: expected ${expectedCt.toString()} but got ${returnedCt.toString()}.`
-            );
-        }
-        let sig = String(result.signature);
-        if (!sig.startsWith("0x")) sig = "0x" + sig;
-        return {
-            ctHash: returnedCt,
-            decryptedValue:
-                typeof result.decryptedValue === "bigint"
-                    ? result.decryptedValue
-                    : BigInt(String(result.decryptedValue)),
-            signature: sig,
-        };
-    };
-
-    try {
-        return await run();
-    } catch (err) {
-        if (!isPermitLifecycleError(err)) {
-            throw err;
-        }
-        await forceConnectFHE(provider, signer);
-        return run();
-    }
-}
-
-export async function decryptBoolForTxWithPermit(
-    ctHash: bigint | string,
-    provider: unknown,
-    signer: import("ethers").Signer
-): Promise<{ decryptedEligible: boolean; signature: string }> {
-    await forceConnectFHE(provider, signer);
-    const c = await getFHEClient();
-    const expectedCt = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
-    let result: any;
-    try {
-        const permit = await c.permits.getOrCreateSelfPermit();
-        result = await c.decryptForTx(expectedCt).withPermit(permit).execute();
-    } catch (err) {
-        if (!isPermitLifecycleError(err)) {
-            throw err;
-        }
-        // Hard refresh the connected CoFHE client and retry once.
-        await forceConnectFHE(provider, signer);
-        const cRetry = await getFHEClient();
-        const permitRetry = await cRetry.permits.getOrCreateSelfPermit();
-        result = await cRetry.decryptForTx(expectedCt).withPermit(permitRetry).execute();
-    }
-
-    const returnedCt =
-        typeof result.ctHash === "bigint" ? result.ctHash : BigInt(String(result.ctHash));
-    if (returnedCt !== expectedCt) {
-        throw new Error(
-            `CoFHE decrypt handle mismatch: staged ctHash ${expectedCt.toString()} but decrypt returned ${returnedCt.toString()}. ` +
-                `Often caused by parsing the wrong AnonymousApplyStaged log or chain/RPC mismatch.`
-        );
-    }
-
-    const decryptedEligible = result.decryptedValue === 1n;
-    let sig = String(result.signature);
-    if (!sig.startsWith("0x")) sig = "0x" + sig;
-
+) {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [
+            { value: BigInt(criteria.minAge), type: "euint8" },
+            { value: BigInt(criteria.maxAge), type: "euint8" },
+            { value: criteria.requiresDiabetes, type: "ebool" },
+            { value: BigInt(criteria.minHb), type: "euint16" },
+            { value: BigInt(criteria.genderRequirement), type: "euint8" },
+            { value: BigInt(criteria.minHeight), type: "euint8" },
+            { value: BigInt(criteria.maxWeight), type: "euint16" },
+            { value: criteria.requiresNonSmoker, type: "ebool" },
+            { value: criteria.requiresNormalBP, type: "ebool" },
+        ],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    const field = (i: number) => fieldFromEncrypt(encryptedValues, inputProof, i);
     return {
-        decryptedEligible,
-        signature: sig
+        minAge: field(0),
+        maxAge: field(1),
+        requiresDiabetes: field(2),
+        minHb: field(3),
+        genderRequirement: field(4),
+        minHeight: field(5),
+        maxWeight: field(6),
+        requiresNonSmoker: field(7),
+        requiresNormalBP: field(8),
+        inputProof,
     };
 }
 
-/**
- * Decrypt a permit-scoped ciphertext for UI display only.
- * Does NOT produce an on-chain-verifiable signature.
- * utype must match the Solidity FHE type (e.g. FheTypes.Bool, FheTypes.Uint8).
- */
-export async function decryptForView(ctHash: bigint | string, utype: FheTypes) {
-    const c = await getFHEClient();
-    const handle = typeof ctHash === "string" ? BigInt(ctHash) : ctHash;
-    const plaintext = await runWithPermitRefresh(c, (permit) =>
-        c.decryptForView(handle, utype).withPermit(permit).execute()
+export async function encryptUint8(
+    contractAddress: string,
+    userAddress: string,
+    value: number
+): Promise<ZamaEncryptField> {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: BigInt(value), type: "euint8" }],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    return fieldFromEncrypt(encryptedValues, inputProof, 0);
+}
+
+export async function encryptUint16(
+    contractAddress: string,
+    userAddress: string,
+    value: number
+): Promise<ZamaEncryptField> {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: BigInt(value), type: "euint16" }],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    return fieldFromEncrypt(encryptedValues, inputProof, 0);
+}
+
+export async function encryptUint64(
+    contractAddress: string,
+    userAddress: string,
+    value: number | bigint
+): Promise<ZamaEncryptField> {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value: BigInt(value), type: "euint64" }],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    return fieldFromEncrypt(encryptedValues, inputProof, 0);
+}
+
+export async function encryptBool(
+    contractAddress: string,
+    userAddress: string,
+    value: boolean
+): Promise<ZamaEncryptField> {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [{ value, type: "ebool" }],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    return fieldFromEncrypt(encryptedValues, inputProof, 0);
+}
+
+export type PatientProfileValues = {
+    age: number;
+    gender: boolean;
+    weight: number;
+    height: number;
+    hasDiabetes: boolean;
+    hbLevel: number;
+    isSmoker: boolean;
+    hasHypertension: boolean;
+};
+
+/** Batch-encrypt a patient profile (APR contract, MVR as FHE user for delegated register). */
+export async function buildPatientProfileInputs(
+    contractAddress: string,
+    userAddress: string,
+    values: PatientProfileValues
+) {
+    const sdk = mainSdkOrThrow();
+    const { encryptedValues, inputProof } = await sdk.encrypt({
+        values: [
+            { value: BigInt(values.age), type: "euint8" },
+            { value: values.gender, type: "ebool" },
+            { value: BigInt(values.weight), type: "euint16" },
+            { value: BigInt(values.height), type: "euint8" },
+            { value: values.hasDiabetes, type: "ebool" },
+            { value: BigInt(values.hbLevel), type: "euint16" },
+            { value: values.isSmoker, type: "ebool" },
+            { value: values.hasHypertension, type: "ebool" },
+        ],
+        contractAddress: contractAddress as Address,
+        userAddress: userAddress as Address,
+    });
+    const [age, gender, weight, height, hasDiabetes, hbLevel, isSmoker, hasHypertension] =
+        encryptedValues.map((_, i) => fieldFromEncrypt(encryptedValues, inputProof, i));
+    return {
+        age,
+        gender,
+        weight,
+        height,
+        hasDiabetes,
+        hbLevel,
+        isSmoker,
+        hasHypertension,
+        inputProof,
+    };
+}
+
+async function userDecryptOneWithSdk(
+    sdk: ZamaSDK,
+    contractAddress: string,
+    handle: `0x${string}`
+): Promise<ClearValue> {
+    await sdk.permits.grantPermit([contractAddress as Address]);
+    const values = await sdk.decryption.decryptValues([
+        { encryptedValue: handle, contractAddress: contractAddress as Address },
+    ]);
+    return values[handle]!;
+}
+
+async function userDecryptOne(
+    contractAddress: string,
+    handle: `0x${string}`
+): Promise<ClearValue> {
+    return userDecryptOneWithSdk(mainSdkOrThrow(), contractAddress, handle);
+}
+
+export async function decryptForView(
+    ctHash: bigint | string,
+    _utype: FheTypeName,
+    contractAddress: string
+): Promise<ClearValue> {
+    return userDecryptOne(contractAddress, toHandleHex(ctHash));
+}
+
+/** User-decrypt with a Semaphore-derived ephemeral signer (isolated SDK, no main-session swap). */
+export async function decryptForViewWithEphemeral(
+    ephemeralSigner: Signer,
+    ctHash: bigint | string,
+    utype: FheTypeName,
+    contractAddress: string
+): Promise<ClearValue> {
+    return withEphemeralZamaSDK(ephemeralSigner, (sdk) =>
+        userDecryptOneWithSdk(sdk, contractAddress, toHandleHex(ctHash))
     );
-    return plaintext; // boolean | bigint | string depending on utype
 }
 
-async function genericReencrypt(contractAddress: string, ciphertext: string, type: any) {
-    const c = await getFHEClient();
-    if (!c.connected) {
-        throw new Error(
-            "FHE client not connected. Connect your wallet or call ensureFHEConnected / connectFHE before decrypting."
-        );
-    }
-
-    // Use Fhenix async decryption view protocol with permit-refresh retry.
-    const result = await runWithPermitRefresh(c, (permit) =>
-        c.decryptForView(ciphertext, type).withPermit(permit).execute()
-    );
-    return result;
+export async function reencryptUint8(contractAddress: string, _userAddress: string, handle: string) {
+    return decryptForView(handle, FheTypes.Uint8, contractAddress);
 }
 
-export async function reencryptUint8(contractAddress: string, userAddress: string, handle: string) {
-    return genericReencrypt(contractAddress, handle, FheTypes.Uint8);
+export async function reencryptUint8WithEphemeral(
+    ephemeralSigner: Signer,
+    contractAddress: string,
+    handle: string
+) {
+    return decryptForViewWithEphemeral(ephemeralSigner, handle, FheTypes.Uint8, contractAddress);
 }
 
-export async function reencryptUint32(contractAddress: string, userAddress: string, handle: string) {
-    return genericReencrypt(contractAddress, handle, FheTypes.Uint32);
+export async function reencryptUint32(contractAddress: string, _userAddress: string, handle: string) {
+    return decryptForView(handle, FheTypes.Uint32, contractAddress);
 }
 
-export async function reencryptUint64(contractAddress: string, userAddress: string, handle: string) {
-    return genericReencrypt(contractAddress, handle, FheTypes.Uint64);
+export async function reencryptUint64(contractAddress: string, _userAddress: string, handle: string) {
+    return decryptForView(handle, FheTypes.Uint64, contractAddress);
 }
 
-export function toHex(bytes: Uint8Array | string) {
-    if (typeof bytes === "string") {
-        return bytes.startsWith("0x") ? bytes : "0x" + bytes;
-    }
-    return "0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+export async function reencryptUint64WithEphemeral(
+    ephemeralSigner: Signer,
+    contractAddress: string,
+    handle: string
+) {
+    return decryptForViewWithEphemeral(ephemeralSigner, handle, FheTypes.Uint64, contractAddress);
 }
 
-// --- PROFILE DECRYPTION --- //
+/** KMS public decrypt for handles marked `makePubliclyDecryptable` on-chain. */
+export async function publicDecrypt(ctHash: bigint | string) {
+    const sdk = mainSdkOrThrow();
+    const handle = toHandleHex(ctHash);
+    const result = await sdk.decryption.decryptPublicValues([handle]);
+    const first = Object.values(result.clearValues)[0];
+    return {
+        value: typeof first === "boolean" ? (first ? 1n : 0n) : BigInt(first as bigint | number | string),
+        cleartexts: result.abiEncodedClearValues,
+        proof: result.decryptionProof,
+    };
+}
+
+export function isZamaUserRejection(err: unknown): boolean {
+    return err instanceof SigningRejectedError;
+}
 
 export interface EncryptedPatientData {
     age: string;
@@ -374,36 +397,58 @@ export interface DecryptedPatientData {
     hasHypertension: boolean;
 }
 
-/**
- * Decrypt patient profile data using the new @cofhe/sdk decryptForView API
- * Uses the builder pattern: decryptForView(ctHash, type).withPermit(permit).execute()
- */
-export async function decryptPatientProfile(encryptedData: EncryptedPatientData): Promise<DecryptedPatientData> {
-    const c = await getFHEClient();
-
-    // Decrypt all fields in parallel using a permit-refresh retry flow.
-    const [age, gender, weight, height, hasDiabetes, hbLevel, isSmoker, hasHypertension] =
-        await runWithPermitRefresh(c, async (permit) =>
-            Promise.all([
-                c.decryptForView(BigInt(encryptedData.age), FheTypes.Uint8).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.gender), FheTypes.Bool).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.weight), FheTypes.Uint16).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.height), FheTypes.Uint8).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.hasDiabetes), FheTypes.Bool).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.hbLevel), FheTypes.Uint16).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.isSmoker), FheTypes.Bool).withPermit(permit).execute(),
-                c.decryptForView(BigInt(encryptedData.hasHypertension), FheTypes.Bool).withPermit(permit).execute(),
-            ])
-        );
+async function decryptPatientProfileWithSdk(
+    sdk: ZamaSDK,
+    encryptedData: EncryptedPatientData,
+    contractAddress: string
+): Promise<DecryptedPatientData> {
+    await sdk.permits.grantPermit([contractAddress as Address]);
+    const inputs = [
+        { encryptedValue: toHandleHex(encryptedData.age), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.gender), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.weight), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.height), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.hasDiabetes), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.hbLevel), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.isSmoker), contractAddress: contractAddress as Address },
+        { encryptedValue: toHandleHex(encryptedData.hasHypertension), contractAddress: contractAddress as Address },
+    ];
+    const values = await sdk.decryption.decryptValues(inputs);
+    const pick = (h: string) => values[toHandleHex(h)]!;
 
     return {
-        age: Number(age),
-        gender: Boolean(gender),
-        weight: Number(weight),
-        height: Number(height),
-        hasDiabetes: Boolean(hasDiabetes),
-        hbLevel: Number(hbLevel),
-        isSmoker: Boolean(isSmoker),
-        hasHypertension: Boolean(hasHypertension)
+        age: Number(pick(encryptedData.age)),
+        gender: Boolean(pick(encryptedData.gender)),
+        weight: Number(pick(encryptedData.weight)),
+        height: Number(pick(encryptedData.height)),
+        hasDiabetes: Boolean(pick(encryptedData.hasDiabetes)),
+        hbLevel: Number(pick(encryptedData.hbLevel)),
+        isSmoker: Boolean(pick(encryptedData.isSmoker)),
+        hasHypertension: Boolean(pick(encryptedData.hasHypertension)),
     };
+}
+
+export async function decryptPatientProfile(
+    encryptedData: EncryptedPatientData,
+    contractAddress: string
+): Promise<DecryptedPatientData> {
+    return decryptPatientProfileWithSdk(mainSdkOrThrow(), encryptedData, contractAddress);
+}
+
+/** Decrypt a patient profile using the Semaphore-derived ephemeral permit holder. */
+export async function decryptPatientProfileWithEphemeral(
+    ephemeralSigner: Signer,
+    encryptedData: EncryptedPatientData,
+    contractAddress: string
+): Promise<DecryptedPatientData> {
+    return withEphemeralZamaSDK(ephemeralSigner, (sdk) =>
+        decryptPatientProfileWithSdk(sdk, encryptedData, contractAddress)
+    );
+}
+
+export function toHex(bytes: Uint8Array | string) {
+    if (typeof bytes === "string") {
+        return bytes.startsWith("0x") ? bytes : "0x" + bytes;
+    }
+    return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }

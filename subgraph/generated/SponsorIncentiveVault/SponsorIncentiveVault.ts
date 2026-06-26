@@ -10,6 +10,68 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AnonymousParticipantRegistered extends ethereum.Event {
+  get params(): AnonymousParticipantRegistered__Params {
+    return new AnonymousParticipantRegistered__Params(this);
+  }
+}
+
+export class AnonymousParticipantRegistered__Params {
+  _event: AnonymousParticipantRegistered;
+
+  constructor(event: AnonymousParticipantRegistered) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get nullifier(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
+export class ClaimInitiated extends ethereum.Event {
+  get params(): ClaimInitiated__Params {
+    return new ClaimInitiated__Params(this);
+  }
+}
+
+export class ClaimInitiated__Params {
+  _event: ClaimInitiated;
+
+  constructor(event: ClaimInitiated) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get permitHolder(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get sufficientHandle(): Bytes {
+    return this._event.parameters[2].value.toBytes();
+  }
+}
+
+export class EIP712DomainChanged extends ethereum.Event {
+  get params(): EIP712DomainChanged__Params {
+    return new EIP712DomainChanged__Params(this);
+  }
+}
+
+export class EIP712DomainChanged__Params {
+  _event: EIP712DomainChanged;
+
+  constructor(event: EIP712DomainChanged) {
+    this._event = event;
+  }
+}
+
 export class IncentiveFunded extends ethereum.Event {
   get params(): IncentiveFunded__Params {
     return new IncentiveFunded__Params(this);
@@ -29,10 +91,6 @@ export class IncentiveFunded__Params {
 
   get sponsor(): Address {
     return this._event.parameters[1].value.toAddress();
-  }
-
-  get amount(): BigInt {
-    return this._event.parameters[2].value.toBigInt();
   }
 }
 
@@ -55,10 +113,6 @@ export class MilestoneRewardsDistributed__Params {
 
   get milestoneIndex(): BigInt {
     return this._event.parameters[1].value.toBigInt();
-  }
-
-  get shareWei(): BigInt {
-    return this._event.parameters[2].value.toBigInt();
   }
 }
 
@@ -98,16 +152,16 @@ export class OwnershipProposed__Params {
   }
 }
 
-export class ParticipantRegistered extends ethereum.Event {
-  get params(): ParticipantRegistered__Params {
-    return new ParticipantRegistered__Params(this);
+export class RewardDustSkipped extends ethereum.Event {
+  get params(): RewardDustSkipped__Params {
+    return new RewardDustSkipped__Params(this);
   }
 }
 
-export class ParticipantRegistered__Params {
-  _event: ParticipantRegistered;
+export class RewardDustSkipped__Params {
+  _event: RewardDustSkipped;
 
-  constructor(event: ParticipantRegistered) {
+  constructor(event: RewardDustSkipped) {
     this._event = event;
   }
 
@@ -115,29 +169,7 @@ export class ParticipantRegistered__Params {
     return this._event.parameters[0].value.toBigInt();
   }
 
-  get participant(): Address {
-    return this._event.parameters[1].value.toAddress();
-  }
-}
-
-export class RewardClaimed extends ethereum.Event {
-  get params(): RewardClaimed__Params {
-    return new RewardClaimed__Params(this);
-  }
-}
-
-export class RewardClaimed__Params {
-  _event: RewardClaimed;
-
-  constructor(event: RewardClaimed) {
-    this._event = event;
-  }
-
-  get patient(): Address {
-    return this._event.parameters[0].value.toAddress();
-  }
-
-  get amount(): BigInt {
+  get milestoneIndex(): BigInt {
     return this._event.parameters[1].value.toBigInt();
   }
 }
@@ -158,19 +190,102 @@ export class RewardsDistributed__Params {
   get trialId(): BigInt {
     return this._event.parameters[0].value.toBigInt();
   }
+}
 
-  get participantCount(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
+export class SponsorIncentiveVault__eip712DomainResult {
+  value0: Bytes;
+  value1: string;
+  value2: string;
+  value3: BigInt;
+  value4: Address;
+  value5: Bytes;
+  value6: Array<BigInt>;
+
+  constructor(
+    value0: Bytes,
+    value1: string,
+    value2: string,
+    value3: BigInt,
+    value4: Address,
+    value5: Bytes,
+    value6: Array<BigInt>,
+  ) {
+    this.value0 = value0;
+    this.value1 = value1;
+    this.value2 = value2;
+    this.value3 = value3;
+    this.value4 = value4;
+    this.value5 = value5;
+    this.value6 = value6;
   }
 
-  get shareWei(): BigInt {
-    return this._event.parameters[2].value.toBigInt();
+  toMap(): TypedMap<string, ethereum.Value> {
+    let map = new TypedMap<string, ethereum.Value>();
+    map.set("value0", ethereum.Value.fromFixedBytes(this.value0));
+    map.set("value1", ethereum.Value.fromString(this.value1));
+    map.set("value2", ethereum.Value.fromString(this.value2));
+    map.set("value3", ethereum.Value.fromUnsignedBigInt(this.value3));
+    map.set("value4", ethereum.Value.fromAddress(this.value4));
+    map.set("value5", ethereum.Value.fromFixedBytes(this.value5));
+    map.set("value6", ethereum.Value.fromUnsignedBigIntArray(this.value6));
+    return map;
+  }
+
+  getFields(): Bytes {
+    return this.value0;
+  }
+
+  getName(): string {
+    return this.value1;
+  }
+
+  getVersion(): string {
+    return this.value2;
+  }
+
+  getChainId(): BigInt {
+    return this.value3;
+  }
+
+  getVerifyingContract(): Address {
+    return this.value4;
+  }
+
+  getSalt(): Bytes {
+    return this.value5;
+  }
+
+  getExtensions(): Array<BigInt> {
+    return this.value6;
   }
 }
 
 export class SponsorIncentiveVault extends ethereum.SmartContract {
   static bind(address: Address): SponsorIncentiveVault {
     return new SponsorIncentiveVault("SponsorIncentiveVault", address);
+  }
+
+  DISTRIBUTE_BATCH_SIZE(): BigInt {
+    let result = super.call(
+      "DISTRIBUTE_BATCH_SIZE",
+      "DISTRIBUTE_BATCH_SIZE():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_DISTRIBUTE_BATCH_SIZE(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "DISTRIBUTE_BATCH_SIZE",
+      "DISTRIBUTE_BATCH_SIZE():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   MAX_PARTICIPANTS(): BigInt {
@@ -187,6 +302,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     let result = super.tryCall(
       "MAX_PARTICIPANTS",
       "MAX_PARTICIPANTS():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  RECLAIM_GRACE_PERIOD(): BigInt {
+    let result = super.call(
+      "RECLAIM_GRACE_PERIOD",
+      "RECLAIM_GRACE_PERIOD():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_RECLAIM_GRACE_PERIOD(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "RECLAIM_GRACE_PERIOD",
+      "RECLAIM_GRACE_PERIOD():(uint256)",
       [],
     );
     if (result.reverted) {
@@ -234,6 +372,50 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  claimAuthUsed(param0: Bytes): boolean {
+    let result = super.call("claimAuthUsed", "claimAuthUsed(bytes32):(bool)", [
+      ethereum.Value.fromFixedBytes(param0),
+    ]);
+
+    return result[0].toBoolean();
+  }
+
+  try_claimAuthUsed(param0: Bytes): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "claimAuthUsed",
+      "claimAuthUsed(bytes32):(bool)",
+      [ethereum.Value.fromFixedBytes(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   dataAccessLog(): Address {
     let result = super.call("dataAccessLog", "dataAccessLog():(address)", []);
 
@@ -251,6 +433,47 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  eip712Domain(): SponsorIncentiveVault__eip712DomainResult {
+    let result = super.call(
+      "eip712Domain",
+      "eip712Domain():(bytes1,string,string,uint256,address,bytes32,uint256[])",
+      [],
+    );
+
+    return new SponsorIncentiveVault__eip712DomainResult(
+      result[0].toBytes(),
+      result[1].toString(),
+      result[2].toString(),
+      result[3].toBigInt(),
+      result[4].toAddress(),
+      result[5].toBytes(),
+      result[6].toBigIntArray(),
+    );
+  }
+
+  try_eip712Domain(): ethereum.CallResult<SponsorIncentiveVault__eip712DomainResult> {
+    let result = super.tryCall(
+      "eip712Domain",
+      "eip712Domain():(bytes1,string,string,uint256,address,bytes32,uint256[])",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      new SponsorIncentiveVault__eip712DomainResult(
+        value[0].toBytes(),
+        value[1].toString(),
+        value[2].toString(),
+        value[3].toBigInt(),
+        value[4].toAddress(),
+        value[5].toBytes(),
+        value[6].toBigIntArray(),
+      ),
+    );
   }
 
   eligibilityEngine(): Address {
@@ -481,6 +704,38 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  milestoneDistributedWei(param0: BigInt, param1: BigInt): BigInt {
+    let result = super.call(
+      "milestoneDistributedWei",
+      "milestoneDistributedWei(uint256,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_milestoneDistributedWei(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "milestoneDistributedWei",
+      "milestoneDistributedWei(uint256,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   milestoneManager(): Address {
     let result = super.call(
       "milestoneManager",
@@ -502,6 +757,38 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  milestoneRemainderPaid(param0: BigInt, param1: BigInt): boolean {
+    let result = super.call(
+      "milestoneRemainderPaid",
+      "milestoneRemainderPaid(uint256,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_milestoneRemainderPaid(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "milestoneRemainderPaid",
+      "milestoneRemainderPaid(uint256,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   owner(): Address {
@@ -628,6 +915,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  sponsorRegistry(): Address {
+    let result = super.call(
+      "sponsorRegistry",
+      "sponsorRegistry():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_sponsorRegistry(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "sponsorRegistry",
+      "sponsorRegistry():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   trialManager(): Address {
     let result = super.call("trialManager", "trialManager():(address)", []);
 
@@ -737,16 +1047,12 @@ export class ClaimParticipantRewardsCall__Inputs {
     return this._call.inputValues[2].value.toAddress();
   }
 
-  get units(): BigInt {
-    return this._call.inputValues[3].value.toBigInt();
+  get encryptedUnits(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
   }
 
-  get balanceSig(): Bytes {
+  get inputProof(): Bytes {
     return this._call.inputValues[4].value.toBytes();
-  }
-
-  get balance(): BigInt {
-    return this._call.inputValues[5].value.toBigInt();
   }
 }
 
@@ -754,6 +1060,72 @@ export class ClaimParticipantRewardsCall__Outputs {
   _call: ClaimParticipantRewardsCall;
 
   constructor(call: ClaimParticipantRewardsCall) {
+    this._call = call;
+  }
+}
+
+export class ClaimParticipantRewardsForCall extends ethereum.Call {
+  get inputs(): ClaimParticipantRewardsForCall__Inputs {
+    return new ClaimParticipantRewardsForCall__Inputs(this);
+  }
+
+  get outputs(): ClaimParticipantRewardsForCall__Outputs {
+    return new ClaimParticipantRewardsForCall__Outputs(this);
+  }
+}
+
+export class ClaimParticipantRewardsForCall__Inputs {
+  _call: ClaimParticipantRewardsForCall;
+
+  constructor(call: ClaimParticipantRewardsForCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _nullifier(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _permitHolder(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get _destination(): Address {
+    return this._call.inputValues[3].value.toAddress();
+  }
+
+  get _units(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
+  get encryptedUnits(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
+  }
+
+  get _nonce(): BigInt {
+    return this._call.inputValues[7].value.toBigInt();
+  }
+
+  get _deadline(): BigInt {
+    return this._call.inputValues[8].value.toBigInt();
+  }
+
+  get _signature(): Bytes {
+    return this._call.inputValues[9].value.toBytes();
+  }
+}
+
+export class ClaimParticipantRewardsForCall__Outputs {
+  _call: ClaimParticipantRewardsForCall;
+
+  constructor(call: ClaimParticipantRewardsForCall) {
     this._call = call;
   }
 }
@@ -962,6 +1334,36 @@ export class ProposeOwnershipCall__Outputs {
   }
 }
 
+export class ReclaimAbandonedToOwnerCall extends ethereum.Call {
+  get inputs(): ReclaimAbandonedToOwnerCall__Inputs {
+    return new ReclaimAbandonedToOwnerCall__Inputs(this);
+  }
+
+  get outputs(): ReclaimAbandonedToOwnerCall__Outputs {
+    return new ReclaimAbandonedToOwnerCall__Outputs(this);
+  }
+}
+
+export class ReclaimAbandonedToOwnerCall__Inputs {
+  _call: ReclaimAbandonedToOwnerCall;
+
+  constructor(call: ReclaimAbandonedToOwnerCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class ReclaimAbandonedToOwnerCall__Outputs {
+  _call: ReclaimAbandonedToOwnerCall;
+
+  constructor(call: ReclaimAbandonedToOwnerCall) {
+    this._call = call;
+  }
+}
+
 export class ReclaimUndistributedCall extends ethereum.Call {
   get inputs(): ReclaimUndistributedCall__Inputs {
     return new ReclaimUndistributedCall__Inputs(this);
@@ -1022,6 +1424,56 @@ export class RegisterAnonymousParticipantCall__Outputs {
   _call: RegisterAnonymousParticipantCall;
 
   constructor(call: RegisterAnonymousParticipantCall) {
+    this._call = call;
+  }
+}
+
+export class RegisterAnonymousParticipantForCall extends ethereum.Call {
+  get inputs(): RegisterAnonymousParticipantForCall__Inputs {
+    return new RegisterAnonymousParticipantForCall__Inputs(this);
+  }
+
+  get outputs(): RegisterAnonymousParticipantForCall__Outputs {
+    return new RegisterAnonymousParticipantForCall__Outputs(this);
+  }
+}
+
+export class RegisterAnonymousParticipantForCall__Inputs {
+  _call: RegisterAnonymousParticipantForCall;
+
+  constructor(call: RegisterAnonymousParticipantForCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _nullifier(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _permitHolder(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get _nonce(): BigInt {
+    return this._call.inputValues[3].value.toBigInt();
+  }
+
+  get _deadline(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
+  get _signature(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
+  }
+}
+
+export class RegisterAnonymousParticipantForCall__Outputs {
+  _call: RegisterAnonymousParticipantForCall;
+
+  constructor(call: RegisterAnonymousParticipantForCall) {
     this._call = call;
   }
 }
@@ -1176,6 +1628,36 @@ export class SetMilestoneManagerCall__Outputs {
   _call: SetMilestoneManagerCall;
 
   constructor(call: SetMilestoneManagerCall) {
+    this._call = call;
+  }
+}
+
+export class SetSponsorRegistryCall extends ethereum.Call {
+  get inputs(): SetSponsorRegistryCall__Inputs {
+    return new SetSponsorRegistryCall__Inputs(this);
+  }
+
+  get outputs(): SetSponsorRegistryCall__Outputs {
+    return new SetSponsorRegistryCall__Outputs(this);
+  }
+}
+
+export class SetSponsorRegistryCall__Inputs {
+  _call: SetSponsorRegistryCall;
+
+  constructor(call: SetSponsorRegistryCall) {
+    this._call = call;
+  }
+
+  get _registry(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class SetSponsorRegistryCall__Outputs {
+  _call: SetSponsorRegistryCall;
+
+  constructor(call: SetSponsorRegistryCall) {
     this._call = call;
   }
 }

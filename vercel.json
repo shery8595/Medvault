@@ -2,12 +2,12 @@
     "buildCommand": "npm run build:prebuilt",
     "rewrites": [
         {
-            "source": "/cofhe-vrf",
-            "destination": "https://testnet-cofhe-vrf.fhenix.zone"
+            "source": "/api/relayer/11155111",
+            "destination": "https://relayer.testnet.zama.org"
         },
         {
-            "source": "/cofhe-vrf/:path*",
-            "destination": "https://testnet-cofhe-vrf.fhenix.zone/:path*"
+            "source": "/api/relayer/11155111/:path*",
+            "destination": "https://relayer.testnet.zama.org/:path*"
         },
         {
             "source": "/(.*)",

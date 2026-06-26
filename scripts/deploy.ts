@@ -5,7 +5,7 @@ const path = require("path");
 const { execSync } = require("child_process");
 
 function resolveNetworkName(name: string) {
-    return name === "arbitrumSepolia" ? "arbSepolia" : name === "sepolia" ? "sepolia" : "hardhat";
+    return name === "sepolia" ? "sepolia" : "hardhat";
 }
 
 /** Block where the contract bytecode was first deployed (The Graph startBlock). */
@@ -38,14 +38,19 @@ async function main() {
     const sponsorRegistryAddress = await sponsorRegistry.getAddress();
     console.log(`✓ SponsorRegistry         → ${sponsorRegistryAddress}`);
 
+    const isTestnet = hre.network.name !== "mainnet";
+    const AAVE_POOL = process.env.AAVE_POOL || "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff";
+    const WETH_GATEWAY = process.env.WETH_GATEWAY || "0x20040a64612555042335926d72B4E5F667a67fA1";
+    const AWETH = process.env.AWETH || "0xf5f17EbE81E516Dc7cB38D61908EC252F150CE60";
+
     const TrialManager = await ethers.getContractFactory("TrialManager");
-    const trialManager = await TrialManager.deploy(sponsorRegistryAddress);
+    const trialManager = await TrialManager.deploy(sponsorRegistryAddress, isTestnet);
     await trialManager.waitForDeployment();
     const trialManagerAddress = await trialManager.getAddress();
     console.log(`✓ TrialManager            → ${trialManagerAddress}`);
 
     const ConsentManager = await ethers.getContractFactory("ConsentManager");
-    const consentManager = await ConsentManager.deploy();
+    const consentManager = await ConsentManager.deploy(isTestnet);
     await consentManager.waitForDeployment();
     const consentManagerAddress = await consentManager.getAddress();
     console.log(`✓ ConsentManager          → ${consentManagerAddress}`);
@@ -99,13 +104,13 @@ async function main() {
     console.log(`✓ TrialMilestoneManager   → ${milestoneManagerAddress}`);
 
     const MedVaultAutomation = await ethers.getContractFactory("MedVaultAutomation");
-    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress);
+    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress, ethers.ZeroAddress);
     await automation.waitForDeployment();
     const automationAddress = await automation.getAddress();
     console.log(`✓ MedVaultAutomation      → ${automationAddress}`);
 
     const StakingManager = await ethers.getContractFactory("StakingManager");
-    const stakingManager = await StakingManager.deploy(cETHAddress);
+    const stakingManager = await StakingManager.deploy(cETHAddress, AAVE_POOL, WETH_GATEWAY, AWETH);
     await stakingManager.waitForDeployment();
     const stakingManagerAddress = await stakingManager.getAddress();
     console.log(`✓ StakingManager          → ${stakingManagerAddress}`);
@@ -153,19 +158,31 @@ async function main() {
     await (await engine.setAutomationContract(automationAddress)).wait();
     await (await engine.setDataAccessLog(dataAccessLogAddress)).wait();
     await (await engine.setConsentGate(consentGateAddress)).wait();
+    await (await engine.setScoreLeaderboard(leaderboardAddress)).wait();
     await (await engine.setEligibilityVerifier(honkVerifierAddress)).wait();
+    await (await engine.setSponsorIncentiveVault(vaultAddress)).wait();
     if (medVaultRegistryAddress !== ethers.ZeroAddress) {
         await (await engine.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
     }
     console.log("✓ EligibilityEngine wiring (+ HonkVerifier set)");
 
+    await (await consentManager.setEligibilityEngine(engineAddress)).wait();
+    await (await consentManager.setDataAccessLog(dataAccessLogAddress)).wait();
+    await (await consentManager.setConsentGate(consentGateAddress)).wait();
+    console.log("✓ ConsentManager wiring");
+
+    await (await trialManager.setEligibilityEngine(engineAddress)).wait();
+    console.log("✓ TrialManager.setEligibilityEngine");
+
     await (await vault.setMilestoneManager(milestoneManagerAddress)).wait();
     await (await vault.setDataAccessLog(dataAccessLogAddress)).wait();
     await (await vault.setAutomationContract(automationAddress)).wait();
+    await (await vault.setSponsorRegistry(sponsorRegistryAddress)).wait();
     console.log("✓ SponsorIncentiveVault wiring");
 
     await (await milestoneManager.setVault(vaultAddress)).wait();
-    console.log("✓ TrialMilestoneManager.setVault");
+    await (await milestoneManager.setDataAccessLog(dataAccessLogAddress)).wait();
+    console.log("✓ TrialMilestoneManager wiring");
 
     await (await automation.setVault(vaultAddress)).wait();
     console.log("✓ MedVaultAutomation.setVault");
@@ -177,11 +194,27 @@ async function main() {
     await (await dataAccessLog.setAuthorizedLogger(engineAddress, true)).wait();
     await (await dataAccessLog.setAuthorizedLogger(anonymousRegistryAddress, true)).wait();
     await (await dataAccessLog.setAuthorizedLogger(vaultAddress, true)).wait();
+    await (await dataAccessLog.setAuthorizedLogger(consentManagerAddress, true)).wait();
+    await (await dataAccessLog.setAuthorizedLogger(milestoneManagerAddress, true)).wait();
     console.log("✓ DataAccessLog authorized loggers");
 
     await (await leaderboard.authorizeCaller(engineAddress)).wait();
     await (await consentGate.authorizeComputer(engineAddress)).wait();
     console.log("✓ Leaderboard + ConsentGate authorizations");
+
+    if (medVaultRegistry) {
+        const trustedRelayer =
+            process.env.TRUSTED_RELAYER_ADDRESS ||
+            (process.env.RELAYER_PRIVATE_KEY
+                ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
+                : "");
+        if (trustedRelayer && ethers.isAddress(trustedRelayer)) {
+            await (await medVaultRegistry.setTrustedRelayer(trustedRelayer)).wait();
+            await (await cETH.authorizeContract(trustedRelayer)).wait();
+            console.log(`✓ MedVaultRegistry.setTrustedRelayer → ${trustedRelayer}`);
+            console.log(`✓ ConfidentialETH.authorizeContract (relayer)`);
+        }
+    }
 
     const addressesPath = path.join(__dirname, "../src/lib/contracts/addresses.json");
     const existing = fs.existsSync(addressesPath) ? JSON.parse(fs.readFileSync(addressesPath, "utf8")) : {};
@@ -214,10 +247,11 @@ async function main() {
     fs.writeFileSync(addressesPath, JSON.stringify(existing, null, 4));
     console.log(`\n✓ addresses.json updated (${networkName})`);
 
-    if (networkName === "arbSepolia" && hre.network.name === "arbitrumSepolia") {
-        const sbPath = path.join(__dirname, "../subgraph/arbSepolia-start-blocks.json");
+    if (networkName === "sepolia" && hre.network.name === "sepolia") {
+        const sbFile = "sepolia-start-blocks.json";
+        const sbPath = path.join(__dirname, "../subgraph", sbFile);
         fs.writeFileSync(sbPath, JSON.stringify(subgraphStartBlocks, null, 4));
-        console.log(`✓ subgraph/arbSepolia-start-blocks.json written (deployment start blocks)`);
+        console.log(`✓ subgraph/${sbFile} written (deployment start blocks)`);
         try {
             execSync(`node ${path.join(__dirname, "update-subgraph-yaml.js")}`, {
                 stdio: "inherit",

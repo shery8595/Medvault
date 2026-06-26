@@ -10,7 +10,7 @@
 import { ethers } from "ethers";
 import { MedVaultSDK } from "../dist/index.js";
 
-const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc";
+const rpcUrl = process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 const pk = process.env.PRIVATE_KEY || process.env.MCP_PRIVATE_KEY;
 
 if (!pk) {

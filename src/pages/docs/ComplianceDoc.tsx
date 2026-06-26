@@ -96,7 +96,7 @@ export function ComplianceDoc() {
                 {/* ═════════════ HIPAA ═════════════ */}
                 <h2>I. HIPAA Technical Safeguard Mapping</h2>
                 <p>
-                    The HIPAA Security Rule (45 CFR §164.312) defines technical safeguards that covered entities must implement to protect electronic Protected Health Information (ePHI). MedVault's FHE architecture satisfies these requirements at a level far exceeding traditional encrypted database approaches because the data remains encrypted <strong>during computation</strong>, not just at rest and in transit.
+                    The HIPAA Security Rule (45 CFR §164.312) defines technical safeguards that covered entities must implement to protect electronic Protected Health Information (ePHI). MedVault maps its architecture to these themes for <strong>design review</strong> — this is not legal advice and does not constitute HIPAA certification.
                 </p>
 
                 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
@@ -131,7 +131,7 @@ export function ComplianceDoc() {
                 </div>
 
                 <Callout type="tip" title="Beyond Traditional Encryption">
-                    Traditional HIPAA compliance requires encrypting data <em>at rest</em> and <em>in transit</em>—but the data must be decrypted for processing, creating a window of exposure. MedVault's FHE approach <strong>eliminates this window entirely</strong>. Data is encrypted at rest, in transit, <em>and during computation</em>. This exceeds the HIPAA Security Rule's requirements and provides a fundamentally stronger privacy guarantee.
+                    Traditional approaches encrypt data at rest and in transit, but often decrypt for processing. MedVault uses Zama FHE so patient health fields can be compared on-chain without publishing plaintext vitals. This strengthens technical privacy but does not by itself make a deployment HIPAA-compliant.
                 </Callout>
 
                 <hr className="my-12 border-slate-200" />
@@ -139,7 +139,7 @@ export function ComplianceDoc() {
                 {/* ═════════════ GDPR ═════════════ */}
                 <h2>II. GDPR Compliance Mapping</h2>
                 <p>
-                    The General Data Protection Regulation (EU 2016/679) imposes strict requirements on the processing of personal data. MedVault's architecture is designed with GDPR's principles embedded as core design constraints, not afterthought compliance patches.
+                    The General Data Protection Regulation (EU 2016/679) imposes strict requirements on the processing of personal data. The sections below describe how MedVault&apos;s architecture aligns with common GDPR themes — not a formal GDPR compliance assessment.
                 </p>
 
                 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
@@ -269,7 +269,7 @@ dataAccessLog.log(
                 <div className="mt-16 pt-8 border-t border-slate-200 flex items-center justify-between">
                     <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Compliance Assessment</div>
-                        <div className="text-slate-900 font-medium">March 2026 — Fhenix Sepolia Testnet</div>
+                        <div className="text-slate-900 font-medium">March 2026 — Ethereum Sepolia Testnet</div>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-full text-xs font-bold border border-emerald-500/20">
                         <CheckCircle2 className="w-4 h-4" />

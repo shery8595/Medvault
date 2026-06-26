@@ -38,8 +38,8 @@ export function McpServerDoc() {
                     >
                         Model Context Protocol
                     </a>{" "}
-                    bridge for <strong>developers</strong> and <strong>sponsors</strong>. It does not run inside the
-                    browser app and is <strong>not hosted</strong> on Vercel.
+                    bridge for <strong>developers</strong> and <strong>sponsors</strong> — protocol debugging and
+                    sponsor trial operations, not patient-facing flows. It does not run inside the browser app.
                 </p>
 
                 <Callout type="info" title="Separate from the dApp">
@@ -102,12 +102,14 @@ config/mcp/              # Client config snippets`}
                     code={`npm install
 npm run mcp:build
 npm run mcp:export-config
+npm run mcp:validate-config
 
 # Set env in your shell (see Setup page)
-export ARBITRUM_SEPOLIA_RPC_URL=...
+export SEPOLIA_RPC_URL=...
 export MEDVAULT_SUBGRAPH_URL=...   # same as VITE_SUBGRAPH_URL
 
-npm run mcp:smoke   # optional`}
+npm run mcp:doctor   # optional
+npm run mcp:smoke    # offline; mcp:smoke:live for Sepolia`}
                 />
 
                 <h2>Security</h2>

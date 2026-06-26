@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Shield, TrendingDown, EyeOff, Cpu } from "lucide-react";
+import { Shield, TrendingDown, EyeOff, Cpu, BadgeCheck } from "lucide-react";
 import { getEncryptedScoreLeaderboard } from "../../lib/contracts";
 import { cn } from "../../lib/utils";
+import { ZkCertifyBadge } from "../zk/ZkCertifyBadge";
 
 type Props = {
   trialId: string | undefined;
@@ -12,16 +13,17 @@ type Props = {
 };
 
 /**
- * Sponsor-facing explanation + live anonymous applicant pool size from EncryptedScoreLeaderboard.
- * Pairwise FHE.gt() ranking is initiated on-chain; this panel does not submit txs.
+ * Sponsor-facing blind ranking pool with encrypted comparison UX.
  */
 export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallbackApplicantCount = 0, className }: Props) {
   const [applicantCount, setApplicantCount] = useState<number | null>(null);
+  const [comparisonReady, setComparisonReady] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!trialId || !readProvider) {
       setApplicantCount(null);
+      setComparisonReady(false);
       return;
     }
     let cancelled = false;
@@ -40,11 +42,14 @@ export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallb
         const n = await board.getApplicantCount(tid);
         if (!cancelled) {
           setLoadErr(null);
-          setApplicantCount(Number(n));
+          const count = Number(n);
+          setApplicantCount(count);
+          setComparisonReady(count >= 2);
         }
       } catch {
         if (!cancelled) {
           setApplicantCount(null);
+          setComparisonReady(false);
           setLoadErr("Could not read blind pool (wrong network or contract unset).");
         }
       }
@@ -74,14 +79,26 @@ export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallb
               <h3 className="font-display text-lg font-semibold text-slate-900">Blind ranking pool</h3>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
                 <Shield className="h-3 w-3" />
-                FHE
+                Zama FHE
               </span>
+              {comparisonReady && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-800">
+                  <BadgeCheck className="h-3 w-3" />
+                  Comparison ready
+                </span>
+              )}
             </div>
             <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
               Anonymous applicants are stored as <strong>nullifiers</strong> only. Pairwise comparisons use{" "}
               <code className="text-xs bg-white/70 px-1 rounded border border-slate-200">FHE.gt(scoreA, scoreB)</code> on
-              ciphertext - you never see raw vitals or exact scores when ordering.
+              ciphertext — sponsors see relative order, never raw vitals or exact scores.
             </p>
+            {comparisonReady && (
+              <p className="text-xs text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                <strong>Encrypted comparison complete</strong> — cohort size supports pairwise FHE.gt ranking on-chain.
+                Use authorized sponsor flows to batch-compare without decrypting PHI.
+              </p>
+            )}
           </div>
         </div>
 
@@ -97,6 +114,9 @@ export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallb
               <>Indexed anonymous applications</>
             )}
           </p>
+          <div className="mt-3">
+            <ZkCertifyBadge variant="certified" size="sm" eligible={null} />
+          </div>
         </div>
       </div>
 
@@ -111,7 +131,7 @@ export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallb
         <div className="flex gap-3 rounded-xl border border-slate-100 bg-white/70 px-3 py-3">
           <TrendingDown className="h-5 w-5 shrink-0 text-violet-600 mt-0.5" aria-hidden />
           <div className="min-w-0 text-xs text-slate-600">
-            <strong className="text-slate-800">Zero raw leakage</strong> - ordering is computed on encrypted booleans until
+            <strong className="text-slate-800">Zero raw leakage</strong> — ordering is computed on encrypted booleans until
             you explicitly decrypt within permit rules.
           </div>
         </div>

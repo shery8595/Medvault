@@ -13,6 +13,7 @@ import {
 } from "../../lib/dashboardLayout";
 import { useSidebarCollapsed } from "../../lib/useSidebarCollapsed";
 import { PanelLeft, PanelLeftClose } from "lucide-react";
+import { MobileNativeHints } from "../mobile/MobileNativeHints";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -99,6 +100,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
           <div className="hidden md:block min-w-0 flex-1" aria-hidden />
         </header>
+
+        <MobileNativeHints />
 
         <main
           ref={scrollRef}

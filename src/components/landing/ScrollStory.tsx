@@ -115,7 +115,7 @@ export function ScrollStory() {
               Blind Computation.
             </h3>
             <p className="text-slate-400 text-lg leading-relaxed">
-              Powered by Fhenix CoFHE, researchers can query an encrypted index to check matching eligibility—without ever decrypting the core payload.
+              Powered by Zama FHE, researchers can query an encrypted index to check matching eligibility—without ever decrypting the core payload.
             </p>
           </motion.div>
 

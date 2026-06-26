@@ -7,20 +7,20 @@ import { Terminal, Database, Server, CheckCircle2, AlertCircle, KeyRound } from 
 import { PRODUCTION_APP_URL } from "../../lib/docsNav";
 
 const envVars = [
-    { key: "VITE_PRIVY_APP_ID", required: true, desc: "Privy app ID (dashboard) for sign-in and embedded EOA wallets on Arbitrum Sepolia." },
+    { key: "VITE_PRIVY_APP_ID", required: true, desc: "Privy app ID (dashboard) for sign-in and embedded EOA wallets on Ethereum Sepolia." },
     { key: "VITE_REGISTRY_ADDRESS", required: true, desc: "MedVaultRegistry (or related registry) address from deploy output / addresses.json." },
     { key: "VITE_TRIAL_MANAGER_ADDRESS", required: true, desc: "TrialManager proxy contract address." },
     { key: "VITE_ELIGIBILITY_ENGINE_ADDRESS", required: true, desc: "EligibilityEngine contract address." },
     { key: "VITE_SPONSOR_REGISTRY_ADDRESS", required: true, desc: "SponsorRegistry contract address." },
     { key: "VITE_SUBGRAPH_URL", required: true, desc: "The Graph Studio deployment URL for the medvault-subgraph. Found in Studio dashboard after deploy." },
-    { key: "VITE_CHAIN_ID", required: true, desc: "Chain ID for Arbitrum Sepolia: 421614." },
+    { key: "VITE_CHAIN_ID", required: true, desc: "Chain ID for Ethereum Sepolia: 11155111." },
     { key: "DEPLOY_PRIVATE_KEY", required: true, desc: "Private key of the deployer EOA. Never commit to git. Used only by Hardhat." },
     { key: "GRAPH_STUDIO_DEPLOY_KEY", required: false, desc: "Your Graph Studio API key for `graph deploy`. Found in Studio settings." },
 ];
 
 const depChecklist = [
     { label: "Privy app ID + login methods enabled in dashboard", cat: "Pre-deploy" },
-    { label: "Testnet: embedded wallet funded with Arbitrum Sepolia ETH (e.g. public faucet) for on-chain actions", cat: "Pre-deploy" },
+    { label: "Testnet: embedded wallet funded with Ethereum Sepolia ETH (e.g. public faucet) for on-chain actions", cat: "Pre-deploy" },
     { label: "MetaMask or external wallet (optional) if you link it in Privy", cat: "Pre-deploy" },
     { label: ".env file populated from .env.example", cat: "Pre-deploy" },
     { label: "Node.js ≥ 20 installed", cat: "Pre-deploy" },
@@ -38,9 +38,14 @@ const depChecklist = [
     { label: "App loads and shows FHE Ready indicator", cat: "Frontend" },
     { label: "Production frontend live at med-vault.xyz (Vercel custom domain)", cat: "Frontend" },
     { label: "HTTP relayer live (RPC, relayer key, REGISTRY_ADDRESS, SEMAPHORE_ADDRESS, FRONTEND_URL / CORS)", cat: "Ops" },
+    { label: "ConfidentialETH.authorizeContract(relayer) for claim/withdraw *For helpers", cat: "Ops" },
     { label: "Relayer FRONTEND_URL=https://med-vault.xyz (CORS for production)", cat: "Ops" },
-    { label: "Optional: private faucet (`arb-sepolia-faucet`) + `VITE_TESTNET_FAUCET_URL`", cat: "Ops" },
+    { label: "Optional: private drip service + `VITE_TESTNET_FAUCET_URL` (Ethereum Sepolia)", cat: "Ops" },
     { label: "Optional: `VITE_RELAYER_URL` or Vite `/relay` proxy for local CORS", cat: "Ops" },
+    { label: "Relayer FRONTEND_URL includes https://localhost (Capacitor APK CORS)", cat: "Ops" },
+    { label: "Privy dashboard allows https://localhost (Android WebView origin)", cat: "Ops" },
+    { label: "Android: android/local.properties → SDK path; JDK 21 for Gradle", cat: "Mobile" },
+    { label: "Android: `npm run mobile:apk:debug` produces app-debug.apk", cat: "Mobile" },
     { label: "Optional: Chainlink Automation upkeep for MedVaultAutomation + `setChainlinkForwarder`", cat: "Ops" },
 ];
 
@@ -64,6 +69,10 @@ const catColorStyles: Record<string, { bg: string; text: string }> = {
     Ops: {
         bg: "bg-amber-100",
         text: "text-amber-800"
+    },
+    Mobile: {
+        bg: "bg-teal-100",
+        text: "text-teal-800"
     }
 };
 
@@ -107,7 +116,9 @@ export function DeploymentGuideDoc() {
 
                 <h2>I. Step 1 — Smart Contract Deployment</h2>
                 <p>
-                    The Hardhat project is pre-configured with a custom <code>fhenixSepolia</code> network entry pointing to Fhenix's testnet RPC. Contracts use <code>@fhenixprotocol/fhevm</code>, which is a drop-in replacement for standard Solidity but includes the FHE precompile importers.
+                    The Hardhat project targets <strong>Ethereum Sepolia</strong> (<code>chainId 11155111</code>). Contracts
+                    use <code>@fhevm/solidity</code> for encrypted types and FHE precompiles. Set{" "}
+                    <code>SEPOLIA_RPC_URL</code> and <code>PRIVATE_KEY</code> in <code>.env</code> before deploying.
                 </p>
 
                 <CodeBlock
@@ -119,17 +130,18 @@ npm install
 # Clean previous compilation artifacts
 npx hardhat clean
 
-# Compile all contracts (includes @fhenixprotocol/fhevm and @chainlink/contracts)
+# Compile all contracts (@fhevm/solidity + @chainlink/contracts)
 npx hardhat compile
 
-# Deploy to the Fhenix Sepolia testnet
-# This runs scripts/deploy.js which deploys all contracts in order:
-# 1. SponsorRegistry, 2. MedVaultRegistry, 3. TrialManager, 4. EligibilityEngine
-npx hardhat deploy --network fhenixSepolia`}
+# Deploy to Ethereum Sepolia (scripts/deploy.ts)
+npm run deploy:sepolia
+# or: npx hardhat run scripts/deploy.ts --network sepolia`}
                 />
 
                 <Callout type="warning" title="Capture Contract Addresses Immediately">
-                    After a successful deploy, Hardhat will print each contract's address to the console. Copy them now — they are needed for <strong>both</strong> the frontend <code>.env</code> file and the Subgraph's <code>subgraph.yaml</code>. If you lose them, you can re-query them via Hardhat's artifact files in <code>./deployments/fhenixSepolia/</code>.
+                    After deploy, copy each contract address into <code>src/lib/contracts/addresses.json</code> (sepolia
+                    key), <code>subgraph/subgraph.yaml</code>, and <code>relayer/.env</code>. Use{" "}
+                    <code>scripts/fetch-sepolia-start-blocks.mjs</code> to refresh subgraph start blocks.
                 </Callout>
 
                 <hr className="my-12 border-slate-200" />
@@ -254,7 +266,34 @@ npm run vercel:ship`}
                 </Callout>
 
                 <Callout type="tip" title="Verify FHE Readiness in the Browser">
-                    After launching, sign in with Privy and ensure the app finishes wallet + FHE setup. If CoFHE stays disconnected, verify <code>VITE_PRIVY_APP_ID</code>, Arbitrum Sepolia as the active chain, and optional <code>VITE_RPC_URL</code> for reads.
+                    After launching, sign in with Privy and ensure the app finishes wallet + FHE setup. If Zama FHE stays disconnected, verify <code>VITE_PRIVY_APP_ID</code>, Ethereum Sepolia as the active chain, and optional <code>VITE_RPC_URL</code> for reads.
+                </Callout>
+
+                <hr className="my-12 border-slate-200" />
+
+                <h2>IV. Android demo APK (Capacitor)</h2>
+                <p>
+                    The same Vite frontend can be packaged as an installable Android APK for internal demos. See the{" "}
+                    <a href="/docs/mobile/android-apk" className="font-semibold text-[#00685f] underline-offset-2 hover:underline">
+                        Android APK runbook
+                    </a>{" "}
+                    and repo <code>docs/ANDROID_APK.md</code>.
+                </p>
+                <CodeBlock
+                    language="bash"
+                    filename="Terminal — Android APK"
+                    code={`# Android Studio (recommended):
+npm run mobile:studio
+# → Run ▶ or Build → Build APK(s)
+
+# CLI only:
+npm run mobile:apk:debug
+# → android/app/build/outputs/apk/debug/app-debug.apk`}
+                />
+                <Callout type="warning" title="Mobile-specific ops">
+                    Add <code>https://localhost</code> to Privy allowed origins and relayer{" "}
+                    <code>FRONTEND_URL</code> (comma-separated with production). Create{" "}
+                    <code>android/local.properties</code> with your SDK path; Gradle needs JDK 21.
                 </Callout>
 
             </Prose>

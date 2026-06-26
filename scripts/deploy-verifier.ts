@@ -21,8 +21,7 @@ async function main() {
     console.log(`✓ HonkVerifier deployed to: ${verifierAddress}\n`);
 
     // Detect network
-    const networkName = hre.network.name === "arbitrumSepolia" ? "arbSepolia" :
-                        hre.network.name === "sepolia" ? "sepolia" : "hardhat";
+    const networkName = hre.network.name === "sepolia" ? "sepolia" : "hardhat";
 
     // Update addresses.json
     const addressesPath = path.join(__dirname, "../src/lib/contracts/addresses.json");

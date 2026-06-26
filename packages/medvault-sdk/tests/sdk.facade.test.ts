@@ -5,7 +5,7 @@ import { MedVaultSDK, serializeProofForRelay, NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSA
 describe("MedVaultSDK", () => {
   it("throws when listing trials without subgraphUrl", async () => {
     const sdk = MedVaultSDK.create({
-      rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+      rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       subgraphUrl: "",
     });
     await assert.rejects(
@@ -14,9 +14,9 @@ describe("MedVaultSDK", () => {
     );
   });
 
-  it("exposes protocol addresses for arbSepolia", () => {
+  it("exposes protocol addresses for sepolia", () => {
     const sdk = MedVaultSDK.create({
-      rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+      rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       subgraphUrl: "https://example.com/subgraph",
     });
     const addresses = sdk.protocol.getAddresses();
@@ -38,30 +38,41 @@ describe("MedVaultSDK", () => {
     assert.equal(serialized.points.length, 8);
   });
 
-  it("finalizeApply rejects decryptedEligible false", async () => {
-    const sdk = MedVaultSDK.create({
-      relayerUrl: "https://relayer.test",
-      subgraphUrl: "https://example.com/subgraph",
-    });
-    await assert.rejects(
-      () =>
-        sdk.relayer.finalizeApply({
-          trialId: 1,
-          proof: {
-            merkleTreeDepth: 20,
-            merkleTreeRoot: "1",
-            nullifier: "2",
-            message: "3",
-            scope: "4",
-            points: ["0", "0", "0", "0", "0", "0", "0", "0"],
-          },
-          commitment: "99",
-          permitRecipient: "0x0000000000000000000000000000000000000001",
-          decryptedEligible: false,
-          decryptSignature: "0x01",
-        }),
-      (err: Error) => err.message === NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE
-    );
+  it("finalizeApply posts stageTxHash to relayer", async () => {
+    const originalFetch = globalThis.fetch;
+    let postedBody: Record<string, unknown> | undefined;
+    globalThis.fetch = mock.fn(async (_url, init) => {
+      postedBody = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ success: true, txHash: "0xabc" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    try {
+      const sdk = MedVaultSDK.create({
+        relayerUrl: "https://relayer.test",
+        subgraphUrl: "https://example.com/subgraph",
+      });
+      const txHash = await sdk.relayer.finalizeApply({
+        trialId: 1,
+        proof: {
+          merkleTreeDepth: 20,
+          merkleTreeRoot: "1",
+          nullifier: "2",
+          message: "3",
+          scope: "4",
+          points: ["0", "0", "0", "0", "0", "0", "0", "0"],
+        },
+        commitment: "99",
+        permitRecipient: "0x0000000000000000000000000000000000000001",
+        stageTxHash: "0xstage",
+      });
+      assert.equal(txHash, "0xabc");
+      assert.equal(postedBody?.stageTxHash, "0xstage");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("relayer.health parses JSON from fetch", async () => {

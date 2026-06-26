@@ -18,7 +18,7 @@ import { useEncryptedData } from "../lib/EncryptedDataContext";
 import { useTrials } from "../hooks/useTrials";
 import { getContractAddressForChain, getMedVaultRegistry, getEligibilityEngine, resolveChainIdFrom } from "../lib/contracts";
 import { getEncryptedScoreHandle } from "../lib/contracts/sponsorAdapters";
-import { forceConnectFHE, reencryptUint8, getFHEClient, resetFheClient, FheTypes } from "../lib/fhe";
+import { reencryptUint8, reencryptUint8WithEphemeral, decryptForViewWithEphemeral, FheTypes } from "../lib/fhe";
 import { getStoredIdentity, getEphemeralSigner } from "../lib/semaphore";
 import { parseFieldElement, parseTrialId } from "../lib/field";
 import { Trial } from "../types";
@@ -260,7 +260,7 @@ function ResultRow({
                   </>
                 ) : (
                   <>
-                    <Fingerprint className="h-3.5 w-3.5" /> Seal FHE result
+                    <Fingerprint className="h-3.5 w-3.5" /> Generate compliance seal
                   </>
                 )}
               </Button>
@@ -368,25 +368,16 @@ export function PatientResultsPage() {
         setRevealedScore(engineAddress, trial.id, 0);
         return;
       }
-      let ephemeralAddress: string | null = null;
+      let score: unknown;
       if (trial.nullifier) {
         const identity = getStoredIdentity();
         if (!identity || !signer.provider) {
           throw new Error("Anonymous result decrypt requires the local Semaphore identity.");
         }
         const ephemeralWallet = getEphemeralSigner(identity, signer.provider);
-        ephemeralAddress = ephemeralWallet.address;
-        await forceConnectFHE(signer.provider, ephemeralWallet);
-      }
-
-      let score: unknown;
-      try {
-        const decryptAccount = ephemeralAddress ?? account;
-        score = await reencryptUint8(engineAddress, decryptAccount, handle);
-      } finally {
-        if (trial.nullifier && signer.provider) {
-          await forceConnectFHE(signer.provider, signer);
-        }
+        score = await reencryptUint8WithEphemeral(ephemeralWallet, engineAddress, handle);
+      } else {
+        score = await reencryptUint8(engineAddress, account, handle);
       }
       const n = Number(score);
       setScores((prev) => ({ ...prev, [trial.id]: n }));
@@ -403,22 +394,18 @@ export function PatientResultsPage() {
               parseTrialId(trial.id)
             );
             const ephemeralSigner = getEphemeralSigner(identity, signer.provider);
-            const client = await getFHEClient();
-            await client.connect({ provider: signer.provider, signer: ephemeralSigner });
-            const permit = await client.permits.getOrCreateSelfPermit(ephemeralSigner.address);
-            const decryptChainId = Number(chainId ?? 421614n);
-            const isEligible: boolean = await client
-              .decryptForView(resultHandle, FheTypes.Bool)
-              .setAccount(ephemeralSigner.address)
-              .setChainId(decryptChainId)
-              .withPermit(permit)
-              .execute();
+            const isEligible = Boolean(
+              await decryptForViewWithEphemeral(
+                ephemeralSigner,
+                resultHandle,
+                FheTypes.Bool,
+                engineAddress
+              )
+            );
             setEligibleResults((prev) => ({ ...prev, [trial.id]: isEligible }));
           }
         } catch (boolErr) {
           console.warn("Eligibility boolean decrypt failed:", boolErr);
-        } finally {
-          resetFheClient();
         }
       }
     } catch (e) {
@@ -575,12 +562,12 @@ export function PatientResultsPage() {
         <div className="space-y-5">
           {certifyError && (
             <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
-              Certification failed: {certifyError}
+              Compliance seal failed: {certifyError}
             </p>
           )}
           {certifyStatus === "certified" && !certifyError && (
             <p className="text-xs text-teal-800 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
-              FHE result sealed on-chain. Sponsors can verify your anonymous attestation without seeing your
+              Zama match sealed on-chain. Sponsors can verify your anonymous attestation receipt without seeing your
               medical record.
             </p>
           )}

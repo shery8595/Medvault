@@ -1,0 +1,14 @@
+{
+    "AnonymousPatientRegistry": 11141076,
+    "SponsorRegistry": 11141076,
+    "TrialManager": 11141076,
+    "ConsentManager": 11141076,
+    "DataAccessLog": 11141076,
+    "EligibilityEngine": 11141076,
+    "SponsorIncentiveVault": 11141550,
+    "TrialMilestoneManager": 11141076,
+    "StakingManager": 11141076,
+    "MedVaultRegistry": 11141076,
+    "EncryptedConsentGate": 11141076,
+    "EncryptedScoreLeaderboard": 11141076
+}

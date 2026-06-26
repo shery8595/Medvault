@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { importFhirJson, type FhirImportIssue, type FhirMappedProfile } from "../lib/fhirImport";
-import { ArbSepoliaGasBanner } from "../components/ui/ArbSepoliaGasBanner";
+import { SepoliaGasBanner } from "../components/ui/SepoliaGasBanner";
 
 /* ─── Animation helpers ───────────────────────────────────────────────────── */
 const fadeUp = (delay = 0) => ({
@@ -189,7 +189,7 @@ export function PatientVaultPage() {
           onChainActive={Boolean(account && isRegistered)}
         />
 
-        <ArbSepoliaGasBanner />
+        <SepoliaGasBanner />
 
         <PatientVaultHero
           account={account}

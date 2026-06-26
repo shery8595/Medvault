@@ -13,7 +13,7 @@ const PORT = Number(process.env.MCP_HTTP_PORT ?? 3100);
 const HOST = process.env.MCP_HTTP_HOST ?? "127.0.0.1";
 
 async function main() {
-  const ctx = new MedVaultMcpContext();
+  const ctx = new MedVaultMcpContext(undefined, "http");
   const mcp = createMedVaultMcpServer(ctx);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),

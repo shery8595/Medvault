@@ -120,35 +120,118 @@ export class PatientRegistered__Params {
   }
 }
 
-export class WalletLinkedApplication extends ethereum.Event {
-  get params(): WalletLinkedApplication__Params {
-    return new WalletLinkedApplication__Params(this);
+export class PatientRegisteredViaRelayer extends ethereum.Event {
+  get params(): PatientRegisteredViaRelayer__Params {
+    return new PatientRegisteredViaRelayer__Params(this);
   }
 }
 
-export class WalletLinkedApplication__Params {
-  _event: WalletLinkedApplication;
+export class PatientRegisteredViaRelayer__Params {
+  _event: PatientRegisteredViaRelayer;
 
-  constructor(event: WalletLinkedApplication) {
+  constructor(event: PatientRegisteredViaRelayer) {
     this._event = event;
   }
 
-  get trialId(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
+  get relayer(): Address {
+    return this._event.parameters[0].value.toAddress();
   }
 
-  get wallet(): Address {
-    return this._event.parameters[1].value.toAddress();
+  get commitment(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
+export class TrustedRelayerUpdated extends ethereum.Event {
+  get params(): TrustedRelayerUpdated__Params {
+    return new TrustedRelayerUpdated__Params(this);
+  }
+}
+
+export class TrustedRelayerUpdated__Params {
+  _event: TrustedRelayerUpdated;
+
+  constructor(event: TrustedRelayerUpdated) {
+    this._event = event;
   }
 
-  get blindedRef(): Bytes {
-    return this._event.parameters[2].value.toBytes();
+  get relayer(): Address {
+    return this._event.parameters[0].value.toAddress();
   }
 }
 
 export class MedVaultRegistry extends ethereum.SmartContract {
   static bind(address: Address): MedVaultRegistry {
     return new MedVaultRegistry("MedVaultRegistry", address);
+  }
+
+  ANONYMOUS_APPLY_TYPEHASH(): Bytes {
+    let result = super.call(
+      "ANONYMOUS_APPLY_TYPEHASH",
+      "ANONYMOUS_APPLY_TYPEHASH():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_ANONYMOUS_APPLY_TYPEHASH(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "ANONYMOUS_APPLY_TYPEHASH",
+      "ANONYMOUS_APPLY_TYPEHASH():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  CANCEL_ANONYMOUS_APPLY_TYPEHASH(): Bytes {
+    let result = super.call(
+      "CANCEL_ANONYMOUS_APPLY_TYPEHASH",
+      "CANCEL_ANONYMOUS_APPLY_TYPEHASH():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_CANCEL_ANONYMOUS_APPLY_TYPEHASH(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "CANCEL_ANONYMOUS_APPLY_TYPEHASH",
+      "CANCEL_ANONYMOUS_APPLY_TYPEHASH():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  CONSENT_WALLET_BINDING_TYPEHASH(): Bytes {
+    let result = super.call(
+      "CONSENT_WALLET_BINDING_TYPEHASH",
+      "CONSENT_WALLET_BINDING_TYPEHASH():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_CONSENT_WALLET_BINDING_TYPEHASH(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "CONSENT_WALLET_BINDING_TYPEHASH",
+      "CONSENT_WALLET_BINDING_TYPEHASH():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   MERKLE_TREE_DURATION(): BigInt {
@@ -165,6 +248,138 @@ export class MedVaultRegistry extends ethereum.SmartContract {
     let result = super.tryCall(
       "MERKLE_TREE_DURATION",
       "MERKLE_TREE_DURATION():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  REGISTER_VIA_RELAYER_TYPEHASH(): Bytes {
+    let result = super.call(
+      "REGISTER_VIA_RELAYER_TYPEHASH",
+      "REGISTER_VIA_RELAYER_TYPEHASH():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_REGISTER_VIA_RELAYER_TYPEHASH(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "REGISTER_VIA_RELAYER_TYPEHASH",
+      "REGISTER_VIA_RELAYER_TYPEHASH():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  anonymousApplyDeadlines(param0: BigInt): BigInt {
+    let result = super.call(
+      "anonymousApplyDeadlines",
+      "anonymousApplyDeadlines(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_anonymousApplyDeadlines(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "anonymousApplyDeadlines",
+      "anonymousApplyDeadlines(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  computeHealthDataHash(
+    _age: Bytes,
+    _gender: Bytes,
+    _weight: Bytes,
+    _height: Bytes,
+    _hasDiabetes: Bytes,
+    _hbLevel: Bytes,
+    _isSmoker: Bytes,
+    _hasHypertension: Bytes,
+    inputProof: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "computeHealthDataHash",
+      "computeHealthDataHash(bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromFixedBytes(_age),
+        ethereum.Value.fromFixedBytes(_gender),
+        ethereum.Value.fromFixedBytes(_weight),
+        ethereum.Value.fromFixedBytes(_height),
+        ethereum.Value.fromFixedBytes(_hasDiabetes),
+        ethereum.Value.fromFixedBytes(_hbLevel),
+        ethereum.Value.fromFixedBytes(_isSmoker),
+        ethereum.Value.fromFixedBytes(_hasHypertension),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_computeHealthDataHash(
+    _age: Bytes,
+    _gender: Bytes,
+    _weight: Bytes,
+    _height: Bytes,
+    _hasDiabetes: Bytes,
+    _hbLevel: Bytes,
+    _isSmoker: Bytes,
+    _hasHypertension: Bytes,
+    inputProof: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "computeHealthDataHash",
+      "computeHealthDataHash(bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromFixedBytes(_age),
+        ethereum.Value.fromFixedBytes(_gender),
+        ethereum.Value.fromFixedBytes(_weight),
+        ethereum.Value.fromFixedBytes(_height),
+        ethereum.Value.fromFixedBytes(_hasDiabetes),
+        ethereum.Value.fromFixedBytes(_hbLevel),
+        ethereum.Value.fromFixedBytes(_isSmoker),
+        ethereum.Value.fromFixedBytes(_hasHypertension),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialProtocolId(): BigInt {
+    let result = super.call(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_confidentialProtocolId(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "confidentialProtocolId",
+      "confidentialProtocolId():(uint256)",
       [],
     );
     if (result.reverted) {
@@ -387,6 +602,29 @@ export class MedVaultRegistry extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  registerNonces(param0: Address): BigInt {
+    let result = super.call(
+      "registerNonces",
+      "registerNonces(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_registerNonces(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "registerNonces",
+      "registerNonces(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   semaphore(): Address {
     let result = super.call("semaphore", "semaphore():(address)", []);
 
@@ -432,6 +670,25 @@ export class MedVaultRegistry extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  trustedRelayer(): Address {
+    let result = super.call("trustedRelayer", "trustedRelayer():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_trustedRelayer(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "trustedRelayer",
+      "trustedRelayer():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 }
 
@@ -499,44 +756,6 @@ export class AcceptOwnershipCall__Outputs {
   }
 }
 
-export class ApplyToTrialWithConsentCall extends ethereum.Call {
-  get inputs(): ApplyToTrialWithConsentCall__Inputs {
-    return new ApplyToTrialWithConsentCall__Inputs(this);
-  }
-
-  get outputs(): ApplyToTrialWithConsentCall__Outputs {
-    return new ApplyToTrialWithConsentCall__Outputs(this);
-  }
-}
-
-export class ApplyToTrialWithConsentCall__Inputs {
-  _call: ApplyToTrialWithConsentCall;
-
-  constructor(call: ApplyToTrialWithConsentCall) {
-    this._call = call;
-  }
-
-  get trialId(): BigInt {
-    return this._call.inputValues[0].value.toBigInt();
-  }
-
-  get commitment(): BigInt {
-    return this._call.inputValues[1].value.toBigInt();
-  }
-
-  get nullifier(): BigInt {
-    return this._call.inputValues[2].value.toBigInt();
-  }
-}
-
-export class ApplyToTrialWithConsentCall__Outputs {
-  _call: ApplyToTrialWithConsentCall;
-
-  constructor(call: ApplyToTrialWithConsentCall) {
-    this._call = call;
-  }
-}
-
 export class CancelAnonymousApplyStageCall extends ethereum.Call {
   get inputs(): CancelAnonymousApplyStageCall__Inputs {
     return new CancelAnonymousApplyStageCall__Inputs(this);
@@ -570,6 +789,18 @@ export class CancelAnonymousApplyStageCall__Inputs {
 
   get permitRecipient(): Address {
     return this._call.inputValues[3].value.toAddress();
+  }
+
+  get deadline(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
+  get permitSignature(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
+  }
+
+  get cancelSignature(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
   }
 }
 
@@ -607,20 +838,20 @@ export class CancelAnonymousApplyStageCallProofStruct extends ethereum.Tuple {
   }
 }
 
-export class FinalizeAnonymousApplyCall extends ethereum.Call {
-  get inputs(): FinalizeAnonymousApplyCall__Inputs {
-    return new FinalizeAnonymousApplyCall__Inputs(this);
+export class FinalizeAnonymousApplyWithProofCall extends ethereum.Call {
+  get inputs(): FinalizeAnonymousApplyWithProofCall__Inputs {
+    return new FinalizeAnonymousApplyWithProofCall__Inputs(this);
   }
 
-  get outputs(): FinalizeAnonymousApplyCall__Outputs {
-    return new FinalizeAnonymousApplyCall__Outputs(this);
+  get outputs(): FinalizeAnonymousApplyWithProofCall__Outputs {
+    return new FinalizeAnonymousApplyWithProofCall__Outputs(this);
   }
 }
 
-export class FinalizeAnonymousApplyCall__Inputs {
-  _call: FinalizeAnonymousApplyCall;
+export class FinalizeAnonymousApplyWithProofCall__Inputs {
+  _call: FinalizeAnonymousApplyWithProofCall;
 
-  constructor(call: FinalizeAnonymousApplyCall) {
+  constructor(call: FinalizeAnonymousApplyWithProofCall) {
     this._call = call;
   }
 
@@ -628,8 +859,8 @@ export class FinalizeAnonymousApplyCall__Inputs {
     return this._call.inputValues[0].value.toBigInt();
   }
 
-  get proof(): FinalizeAnonymousApplyCallProofStruct {
-    return changetype<FinalizeAnonymousApplyCallProofStruct>(
+  get proof(): FinalizeAnonymousApplyWithProofCallProofStruct {
+    return changetype<FinalizeAnonymousApplyWithProofCallProofStruct>(
       this._call.inputValues[1].value.toTuple(),
     );
   }
@@ -642,24 +873,44 @@ export class FinalizeAnonymousApplyCall__Inputs {
     return this._call.inputValues[3].value.toAddress();
   }
 
-  get decryptedEligible(): boolean {
-    return this._call.inputValues[4].value.toBoolean();
+  get consentWallet(): Address {
+    return this._call.inputValues[4].value.toAddress();
   }
 
-  get decryptSig(): Bytes {
-    return this._call.inputValues[5].value.toBytes();
+  get deadline(): BigInt {
+    return this._call.inputValues[5].value.toBigInt();
+  }
+
+  get permitSignature(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
+  }
+
+  get consentWalletSignature(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
+  }
+
+  get noirProof(): Bytes {
+    return this._call.inputValues[8].value.toBytes();
+  }
+
+  get publicInputs(): Array<Bytes> {
+    return this._call.inputValues[9].value.toBytesArray();
+  }
+
+  get eligible(): boolean {
+    return this._call.inputValues[10].value.toBoolean();
   }
 }
 
-export class FinalizeAnonymousApplyCall__Outputs {
-  _call: FinalizeAnonymousApplyCall;
+export class FinalizeAnonymousApplyWithProofCall__Outputs {
+  _call: FinalizeAnonymousApplyWithProofCall;
 
-  constructor(call: FinalizeAnonymousApplyCall) {
+  constructor(call: FinalizeAnonymousApplyWithProofCall) {
     this._call = call;
   }
 }
 
-export class FinalizeAnonymousApplyCallProofStruct extends ethereum.Tuple {
+export class FinalizeAnonymousApplyWithProofCallProofStruct extends ethereum.Tuple {
   get merkleTreeDepth(): BigInt {
     return this[0].toBigInt();
   }
@@ -740,52 +991,44 @@ export class RegisterPatientCall__Inputs {
     return this._call.inputValues[1].value.toAddress();
   }
 
-  get _age(): RegisterPatientCall_ageStruct {
-    return changetype<RegisterPatientCall_ageStruct>(
-      this._call.inputValues[2].value.toTuple(),
-    );
+  get _profileCommitment(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
   }
 
-  get _gender(): RegisterPatientCall_genderStruct {
-    return changetype<RegisterPatientCall_genderStruct>(
-      this._call.inputValues[3].value.toTuple(),
-    );
+  get _age(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
   }
 
-  get _weight(): RegisterPatientCall_weightStruct {
-    return changetype<RegisterPatientCall_weightStruct>(
-      this._call.inputValues[4].value.toTuple(),
-    );
+  get _gender(): Bytes {
+    return this._call.inputValues[4].value.toBytes();
   }
 
-  get _height(): RegisterPatientCall_heightStruct {
-    return changetype<RegisterPatientCall_heightStruct>(
-      this._call.inputValues[5].value.toTuple(),
-    );
+  get _weight(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
   }
 
-  get _hasDiabetes(): RegisterPatientCall_hasDiabetesStruct {
-    return changetype<RegisterPatientCall_hasDiabetesStruct>(
-      this._call.inputValues[6].value.toTuple(),
-    );
+  get _height(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
   }
 
-  get _hbLevel(): RegisterPatientCall_hbLevelStruct {
-    return changetype<RegisterPatientCall_hbLevelStruct>(
-      this._call.inputValues[7].value.toTuple(),
-    );
+  get _hasDiabetes(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
   }
 
-  get _isSmoker(): RegisterPatientCall_isSmokerStruct {
-    return changetype<RegisterPatientCall_isSmokerStruct>(
-      this._call.inputValues[8].value.toTuple(),
-    );
+  get _hbLevel(): Bytes {
+    return this._call.inputValues[8].value.toBytes();
   }
 
-  get _hasHypertension(): RegisterPatientCall_hasHypertensionStruct {
-    return changetype<RegisterPatientCall_hasHypertensionStruct>(
-      this._call.inputValues[9].value.toTuple(),
-    );
+  get _isSmoker(): Bytes {
+    return this._call.inputValues[9].value.toBytes();
+  }
+
+  get _hasHypertension(): Bytes {
+    return this._call.inputValues[10].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[11].value.toBytes();
   }
 }
 
@@ -797,147 +1040,123 @@ export class RegisterPatientCall__Outputs {
   }
 }
 
-export class RegisterPatientCall_ageStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
+export class RegisterPatientViaRelayerCall extends ethereum.Call {
+  get inputs(): RegisterPatientViaRelayerCall__Inputs {
+    return new RegisterPatientViaRelayerCall__Inputs(this);
   }
 
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
+  get outputs(): RegisterPatientViaRelayerCall__Outputs {
+    return new RegisterPatientViaRelayerCall__Outputs(this);
   }
 }
 
-export class RegisterPatientCall_genderStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
+export class RegisterPatientViaRelayerCall__Inputs {
+  _call: RegisterPatientViaRelayerCall;
+
+  constructor(call: RegisterPatientViaRelayerCall) {
+    this._call = call;
   }
 
-  get securityZone(): i32 {
-    return this[1].toI32();
+  get patientWallet(): Address {
+    return this._call.inputValues[0].value.toAddress();
   }
 
-  get utype(): i32 {
-    return this[2].toI32();
+  get identityCommitment(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _viewPermitRecipient(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get _profileCommitment(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+
+  get _age(): Bytes {
+    return this._call.inputValues[4].value.toBytes();
+  }
+
+  get _gender(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
+  }
+
+  get _weight(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
+  }
+
+  get _height(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
+  }
+
+  get _hasDiabetes(): Bytes {
+    return this._call.inputValues[8].value.toBytes();
+  }
+
+  get _hbLevel(): Bytes {
+    return this._call.inputValues[9].value.toBytes();
+  }
+
+  get _isSmoker(): Bytes {
+    return this._call.inputValues[10].value.toBytes();
+  }
+
+  get _hasHypertension(): Bytes {
+    return this._call.inputValues[11].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[12].value.toBytes();
+  }
+
+  get nonce(): BigInt {
+    return this._call.inputValues[13].value.toBigInt();
+  }
+
+  get deadline(): BigInt {
+    return this._call.inputValues[14].value.toBigInt();
   }
 
   get signature(): Bytes {
-    return this[3].toBytes();
+    return this._call.inputValues[15].value.toBytes();
   }
 }
 
-export class RegisterPatientCall_weightStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
+export class RegisterPatientViaRelayerCall__Outputs {
+  _call: RegisterPatientViaRelayerCall;
 
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
+  constructor(call: RegisterPatientViaRelayerCall) {
+    this._call = call;
   }
 }
 
-export class RegisterPatientCall_heightStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
+export class SetTrustedRelayerCall extends ethereum.Call {
+  get inputs(): SetTrustedRelayerCall__Inputs {
+    return new SetTrustedRelayerCall__Inputs(this);
   }
 
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
+  get outputs(): SetTrustedRelayerCall__Outputs {
+    return new SetTrustedRelayerCall__Outputs(this);
   }
 }
 
-export class RegisterPatientCall_hasDiabetesStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
+export class SetTrustedRelayerCall__Inputs {
+  _call: SetTrustedRelayerCall;
+
+  constructor(call: SetTrustedRelayerCall) {
+    this._call = call;
   }
 
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
+  get _relayer(): Address {
+    return this._call.inputValues[0].value.toAddress();
   }
 }
 
-export class RegisterPatientCall_hbLevelStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
+export class SetTrustedRelayerCall__Outputs {
+  _call: SetTrustedRelayerCall;
 
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_isSmokerStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
-  }
-}
-
-export class RegisterPatientCall_hasHypertensionStruct extends ethereum.Tuple {
-  get ctHash(): BigInt {
-    return this[0].toBigInt();
-  }
-
-  get securityZone(): i32 {
-    return this[1].toI32();
-  }
-
-  get utype(): i32 {
-    return this[2].toI32();
-  }
-
-  get signature(): Bytes {
-    return this[3].toBytes();
+  constructor(call: SetTrustedRelayerCall) {
+    this._call = call;
   }
 }
 
@@ -974,6 +1193,14 @@ export class StageAnonymousApplyCall__Inputs {
 
   get permitRecipient(): Address {
     return this._call.inputValues[3].value.toAddress();
+  }
+
+  get deadline(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
+  get permitSignature(): Bytes {
+    return this._call.inputValues[5].value.toBytes();
   }
 }
 

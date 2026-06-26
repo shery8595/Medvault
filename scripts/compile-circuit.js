@@ -253,8 +253,8 @@ function printDone() {
     console.log("================================================================");
     console.log("  Next steps:");
     console.log("  1. npx hardhat compile");
-    console.log("  2. npx hardhat run scripts/deploy-verifier.ts --network arbitrumSepolia");
-    console.log("  3. npx hardhat run scripts/set-verifier.ts    --network arbitrumSepolia");
+    console.log("  2. npx hardhat run scripts/deploy-verifier.ts --network sepolia");
+    console.log("  3. npx hardhat run scripts/set-verifier.ts    --network sepolia");
     console.log("================================================================\n");
 }
 

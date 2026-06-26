@@ -11,21 +11,20 @@ const VERSION = rawVersion.startsWith("v") ? rawVersion : `v${rawVersion}`;
 const STUDIO_DEPLOY_NODE =
     process.env.GRAPH_STUDIO_DEPLOY_NODE || "https://api.studio.thegraph.com/deploy/";
 /** Subgraph name/slug shown in Studio “Deploy” command (often medvault-1, not npm package name). */
-const SUBGRAPH_SLUG = process.env.GRAPH_SUBGRAPH_SLUG || "medvault-final";
-// Log only; per-data-source startBlock lives in subgraph.yaml (see scripts/update-subgraph-yaml.js)
-const START_BLOCK = 262816811;
+const SUBGRAPH_SLUG = process.env.GRAPH_SUBGRAPH_SLUG || "medvault";
+const SUBGRAPH_NETWORK = process.env.GRAPH_SUBGRAPH_NETWORK || "sepolia";
 
 async function main() {
     console.log(`Starting Subgraph redeployment ${VERSION}...`);
-    console.log(`Target network: Arbitrum Sepolia | startBlock: ${START_BLOCK}\n`);
+    console.log(`Target network: ${SUBGRAPH_NETWORK} | slug: ${SUBGRAPH_SLUG}\n`);
 
     try {
         const rootDir = path.join(__dirname, "..");
         console.log("0. Syncing ABIs (Hardhat artifacts → frontend + subgraph)...");
         execSync("node scripts/sync-abis.js", { cwd: rootDir, stdio: "inherit" });
 
-        console.log("0b. Applying arbSepolia addresses + start blocks to subgraph.yaml...");
-        execSync("node scripts/update-subgraph-yaml.js", { cwd: rootDir, stdio: "inherit" });
+        console.log(`0b. Applying ${SUBGRAPH_NETWORK} addresses + start blocks to subgraph.yaml...`);
+        execSync(`node scripts/update-subgraph-yaml.js ${SUBGRAPH_NETWORK}`, { cwd: rootDir, stdio: "inherit" });
 
         const subgraphDir = path.join(__dirname, "../subgraph");
 

@@ -4,10 +4,10 @@
       "transport": "stdio",
       "command": "node",
       "args": [
-        "E:/medvault/mcp-server/dist/index.js"
+        "<REPO_ROOT>/mcp-server/dist/index.js"
       ],
       "env": {
-        "ARBITRUM_SEPOLIA_RPC_URL": "${ARBITRUM_SEPOLIA_RPC_URL}",
+        "SEPOLIA_RPC_URL": "${SEPOLIA_RPC_URL}",
         "MEDVAULT_SUBGRAPH_URL": "${MEDVAULT_SUBGRAPH_URL}",
         "MCP_PRIVATE_KEY": "${MCP_PRIVATE_KEY}"
       }

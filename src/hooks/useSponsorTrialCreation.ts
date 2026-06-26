@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { getSponsorIncentiveVault, getSponsorRegistry, getTrialManager, getTrialMilestoneManager } from "../lib/contracts";
 import { friendlyTrialManagerRevert } from "../lib/trialManagerRevert";
 import { useWeb3 } from "../lib/Web3Context";
+import { buildSponsorCriteriaInputs } from "../lib/fhe";
 
 export interface SponsorTrialFormData {
   name: string;
@@ -66,20 +67,35 @@ export function useSponsorTrialCreation() {
 
     try {
       const trialManager = getTrialManager(signer);
-      const tx = await trialManager.createTrial(
+      const tmAddr = await trialManager.getAddress();
+      setStatus("Encrypting sponsor criteria with Zama FHE...");
+      const encryptedCriteria = await buildSponsorCriteriaInputs(tmAddr, account, {
+        minAge: criteria.minAge,
+        maxAge: criteria.maxAge,
+        requiresDiabetes: criteria.requiresDiabetes,
+        minHb: criteria.minHb,
+        genderRequirement: criteria.genderRequirement,
+        minHeight: criteria.minHeight,
+        maxWeight: criteria.maxWeight > 0 ? criteria.maxWeight : 65535,
+        requiresNonSmoker: criteria.requiresNonSmoker,
+        requiresNormalBP: criteria.requiresNormalBP,
+      });
+
+      const tx = await trialManager.createTrialWithEncryptedCriteria(
         formData.name,
         formData.phase,
         formData.location,
         formData.compensation,
-        criteria.minAge,
-        criteria.maxAge,
-        criteria.requiresDiabetes,
-        criteria.minHb,
-        criteria.genderRequirement,
-        criteria.minHeight,
-        criteria.maxWeight,
-        criteria.requiresNonSmoker,
-        criteria.requiresNormalBP,
+        encryptedCriteria.minAge.handle,
+        encryptedCriteria.maxAge.handle,
+        encryptedCriteria.requiresDiabetes.handle,
+        encryptedCriteria.minHb.handle,
+        encryptedCriteria.genderRequirement.handle,
+        encryptedCriteria.minHeight.handle,
+        encryptedCriteria.maxWeight.handle,
+        encryptedCriteria.requiresNonSmoker.handle,
+        encryptedCriteria.requiresNormalBP.handle,
+        encryptedCriteria.inputProof,
         formData.durationUnit === "days" ? formData.duration * 86400 : formData.duration * 60
       );
 

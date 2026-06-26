@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { useWeb3 } from "../../lib/Web3Context";
 import { getAnonymousPatientRegistry } from "../../lib/contracts";
-import { forceConnectFHE, decryptPatientProfile, EncryptedPatientData, DecryptedPatientData } from "../../lib/fhe";
+import { decryptPatientProfileWithEphemeral, EncryptedPatientData, DecryptedPatientData } from "../../lib/fhe";
+import { txExplorerUrl } from "../../lib/network";
 
 interface VaultCardProps {
   report: MedicalReport;
@@ -92,9 +93,7 @@ export const VaultCard: React.FC<VaultCardProps> = ({ report }) => {
   const shortTx = report.txHash
     ? `${report.txHash.slice(0, 6)}…${report.txHash.slice(-4)}`
     : "—";
-  const etherscanUrl = report.txHash
-    ? `https://sepolia.arbiscan.io/tx/${report.txHash}`
-    : "#";
+  const etherscanUrl = report.txHash ? txExplorerUrl(report.txHash) : "#";
 
   const handleViewClick = async () => {
     if (!signer || !account || !provider) return;
@@ -126,15 +125,10 @@ export const VaultCard: React.FC<VaultCardProps> = ({ report }) => {
       );
       const ephemeralWallet = new ethers.Wallet(ephemeralPrivateKey, provider);
 
-      // Connect CoFHE with the ephemeral wallet so permits are signed by it.
-      // The FHE ACL has this address (not the main wallet), so the threshold
-      // network will accept the decryption request.
-      await forceConnectFHE(provider, ephemeralWallet);
-
-      // Get encrypted patient handles from the registry
       const registry = getAnonymousPatientRegistry(signer);
+      const aprAddress = await registry.getAddress();
       const encryptedPatient = await registry.getPatientProfile(commitment);
-      
+
       const encryptedData: EncryptedPatientData = {
         age: encryptedPatient.age,
         gender: encryptedPatient.gender,
@@ -145,23 +139,18 @@ export const VaultCard: React.FC<VaultCardProps> = ({ report }) => {
         isSmoker: encryptedPatient.isSmoker,
         hasHypertension: encryptedPatient.hasHypertension,
       };
-      
-      // Decrypt — the CoFHE client is now connected as the ephemeral wallet,
-      // so getOrCreateSelfPermit() will create a permit for the ephemeral address,
-      // which the threshold network will accept (it's in the FHE ACL).
-      const decrypted = await decryptPatientProfile(encryptedData);
+
+      const decrypted = await decryptPatientProfileWithEphemeral(
+        ephemeralWallet,
+        encryptedData,
+        aprAddress
+      );
       setDecryptedData(decrypted);
     } catch (err: any) {
       console.error("Failed to decrypt profile:", err);
       setError(err.message || "Failed to decrypt profile data");
     } finally {
       setIsDecrypting(false);
-      // Restore the main wallet connection for all other FHE operations
-      try {
-        await forceConnectFHE(provider, signer);
-      } catch (_) {
-        // Non-fatal: next connectFHE call will re-establish
-      }
     }
   };
 

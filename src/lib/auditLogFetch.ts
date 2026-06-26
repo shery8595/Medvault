@@ -12,7 +12,7 @@ export interface AuditLogEntry {
     source?: "chain" | "subgraph";
 }
 
-/** MedVault stack deploy window on Arbitrum Sepolia (matches subgraph start). */
+/** MedVault stack deploy window on Ethereum Sepolia (matches subgraph start). */
 const DATA_ACCESS_LOG_FROM_BLOCK = 272205848;
 
 const MAX_DISPLAY_LOGS = 500;

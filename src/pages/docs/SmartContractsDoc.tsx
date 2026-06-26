@@ -28,8 +28,8 @@ export function SmartContractsDoc() {
                                 {DOCS_CONTRACT_COUNT} production contracts + Honk verifier
                             </p>
                             <p className="text-xs text-slate-500 m-0">
-                                Arbitrum Sepolia · Solidity 0.8.24+ ·{" "}
-                                <code>@fhenixprotocol/cofhe-contracts</code>
+                                Ethereum Sepolia · Solidity 0.8.24+ ·{" "}
+                                <code>@fhevm/solidity</code>
                             </p>
                         </div>
                     </div>
@@ -38,14 +38,14 @@ export function SmartContractsDoc() {
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full hover:bg-emerald-100 shrink-0"
                     >
                         <FlaskConical className="w-3.5 h-3.5" />
-                        191+ Hardhat tests
+                        258+ Hardhat tests
                     </Link>
                 </div>
 
                 <Callout type="info" title="Addresses & deployment">
                     Live addresses live in <code>src/lib/contracts/addresses.json</code>. Deploy scripts wire
                     dependencies in the same order as <code>test-support/deployments.ts</code> (
-                    <code>deployMedVaultStack()</code>). The dApp defaults to chainId <strong>421614</strong> via
+                    <code>deployMedVaultStack()</code>). The dApp defaults to chainId <strong>11155111</strong> via
                     Privy.
                 </Callout>
 
@@ -71,7 +71,7 @@ export function SmartContractsDoc() {
                     ))}
                 </div>
 
-                <h2>Optional: ZK verifier</h2>
+                <h2>Optional: Noir attestation verifier</h2>
                 <div className="not-prose space-y-4 my-6">
                     {PROTOCOL_OPTIONAL_CONTRACTS.map((c) => (
                         <ProtocolContractSection key={c.name} contract={c} />
@@ -111,9 +111,9 @@ export function SmartContractsDoc() {
                     </div>
                 </div>
 
-                <Callout type="warning" title="CoFHE ACL & proof accounts">
+                <Callout type="warning" title="Zama FHE ACL & proof accounts">
                     Client encryption must set the correct <strong>proof account</strong> in{" "}
-                    <code>@cofhe/sdk</code> (must match <code>msg.sender</code> at the FHE verify site). Example:
+                    <code>@zama-fhe/sdk</code> (must match <code>msg.sender</code> at the FHE verify site). Example:
                     MedVaultRegistry address when registering through the vault; patient EOA for direct consent grants.
                     See <Link to="/docs/testing/infrastructure">test infrastructure docs</Link> for mock patterns.
                 </Callout>

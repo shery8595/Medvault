@@ -26,6 +26,9 @@ import {
   restoreIdentityFromBackup,
 } from "../lib/semaphore";
 import { WalletSendCard } from "../components/identity/WalletSendCard";
+import { PrivacyTimeline, buildDefaultPrivacyTimeline } from "../components/privacy/PrivacyTimeline";
+import { usePatientProfile } from "../hooks/usePatientProfile";
+import { useConsent } from "../hooks/useConsent";
 
 const NULLIFIERS_KEY = "medvault_anon_nullifiers";
 
@@ -42,6 +45,8 @@ const fadeUp = (delay = 0) => ({
 
 export function PatientIdentityPage() {
   const { account } = useWeb3();
+  const { hasProfile } = usePatientProfile(account || undefined);
+  const { consents, applications } = useConsent(account || undefined);
   const [ephemeralAddress, setEphemeralAddress] = useState<string | null>(null);
   const [hasIdentity, setHasIdentity] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -170,7 +175,7 @@ export function PatientIdentityPage() {
       circle: "bg-teal-100 text-teal-700",
     },
     {
-      title: "Fhenix FHE data",
+      title: "Zama FHE data",
       body: "Fully homomorphic encryption lets researchers compute on your clinical signals while data stays ciphertext on-chain.",
       icon: Lock,
       circle: "bg-violet-100 text-violet-700",
@@ -226,6 +231,19 @@ export function PatientIdentityPage() {
       <motion.p {...fadeUp(0)} className="-mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
         Manage your zero-knowledge proofs and secure data enclaves.
       </motion.p>
+
+      <motion.div {...fadeUp(0.04)}>
+        <PrivacyTimeline
+          events={buildDefaultPrivacyTimeline({
+            hasProfile: Boolean(hasProfile),
+            hasConsent: consents.length > 0,
+            hasSemaphoreIdentity: hasIdentity,
+            hasApplied: applications.length > 0,
+            applicationAccepted: applications.some((a: { status?: string }) => a.status === "Accepted"),
+            rewardClaimed: false,
+          })}
+        />
+      </motion.div>
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
         {/* Left column */}

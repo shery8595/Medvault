@@ -31,6 +31,9 @@ contract DataAccessLog {
 
     LogEntry[] public logs;
     mapping(address => bool) public isAuthorizedLogger;
+    mapping(address => bool) public pendingLoggerChanges;
+    uint256 public constant LOGGER_CHANGE_DELAY = 2 days;
+    mapping(address => uint256) public loggerChangeEta;
     address public owner;
     address public pendingOwner; // FINDING 11: Two-step ownership transfer
 
@@ -77,9 +80,20 @@ contract DataAccessLog {
         _;
     }
 
-    function setAuthorizedLogger(address _logger, bool _status) external onlyOwner {
-        isAuthorizedLogger[_logger] = _status;
+    function scheduleAuthorizedLogger(address _logger, bool _status) external onlyOwner {
+        require(_logger != address(0), "Zero address");
+        pendingLoggerChanges[_logger] = _status;
+        loggerChangeEta[_logger] = block.timestamp + LOGGER_CHANGE_DELAY;
     }
+
+    function applyAuthorizedLogger(address _logger) external onlyOwner {
+        require(loggerChangeEta[_logger] != 0 && block.timestamp >= loggerChangeEta[_logger], "Timelock active");
+        isAuthorizedLogger[_logger] = pendingLoggerChanges[_logger];
+        loggerChangeEta[_logger] = 0;
+    }
+
+    /// @dev Immediate path retained for test deployments; production should use schedule/apply.
+    /// @dev Removed instant bypass — use scheduleAuthorizedLogger + applyAuthorizedLogger.
 
     /**
      * @notice Records an action in the audit trail
@@ -105,27 +119,33 @@ contract DataAccessLog {
         // FINDING 10: Ring buffer - overwrite old entries when at capacity
         if (logs.length < MAX_LOG_ENTRIES) {
             logs.push(entry);
+            emit ActionLogged(_action, _trialId, _patientHash);
+            emit DetailedActionLogged(
+                _action,
+                _trialId,
+                _patientHash,
+                block.timestamp,
+                msg.sender,
+                logs.length - 1
+            );
         } else {
-            // M-3: Emit wrap event at start of each new cycle (when we overwrite index 0)
             uint256 wrappedIndex = _logHead % MAX_LOG_ENTRIES;
             if (wrappedIndex == 0) {
-                emit LogBufferWrapped(_logHead / MAX_LOG_ENTRIES + 1); // cycle number
+                emit LogBufferWrapped(_logHead / MAX_LOG_ENTRIES + 1);
             }
             logs[wrappedIndex] = entry;
+            uint256 writtenIndex = wrappedIndex;
             _logHead++;
+            emit ActionLogged(_action, _trialId, _patientHash);
+            emit DetailedActionLogged(
+                _action,
+                _trialId,
+                _patientHash,
+                block.timestamp,
+                msg.sender,
+                writtenIndex
+            );
         }
-
-        // LOW-1: Emit detailed event for complete off-chain audit trail
-        // Even when ring buffer overwrites, the event log remains complete
-        emit ActionLogged(_action, _trialId, _patientHash);
-        emit DetailedActionLogged(
-            _action,
-            _trialId,
-            _patientHash,
-            block.timestamp,
-            msg.sender,
-            _logHead  // Current head position for tracking
-        );
     }
 
     function getLogCount() external view returns (uint256) {
@@ -133,6 +153,7 @@ contract DataAccessLog {
     }
 
     function getLog(uint256 _index) external view returns (LogEntry memory) {
+        require(_index < logs.length, "Index out of bounds");
         return logs[_index];
     }
 }

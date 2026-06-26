@@ -3,14 +3,21 @@ import { useWeb3 } from "../lib/Web3Context";
 import { getConfidentialETH } from "../lib/contracts";
 import { ethers } from "ethers";
 import {
-    decryptForTxWithPermit,
-    ensureFHEConnected,
-    forceConnectFHE,
+    ensureZamaConnected,
+    isZamaUserRejection,
     reencryptUint64,
-    restoreMainFheSession,
+    reencryptUint64WithEphemeral,
 } from "../lib/fhe";
-import { isCofheError } from "@cofhe/sdk";
-import { generateEphemeralAddress, getEphemeralSigner, getStoredIdentity } from "../lib/semaphore";
+import {
+    requestEncryptedWithdraw,
+    completeEncryptedWithdraw,
+    signPublicExitAuthorization,
+    completePublicExitViaRelayer,
+    type WithdrawExitMode,
+} from "../lib/withdrawFlow";
+import { generateStealthRecipient } from "../lib/stealthAddress";
+import { getStoredIdentity } from "../lib/semaphore";
+import { getMedVaultRelayerUrl } from "../lib/mobile";
 
 export function useConfidentialBalance() {
     const { signer, account } = useWeb3();
@@ -28,7 +35,7 @@ export function useConfidentialBalance() {
             const contract = getConfidentialETH(signer);
             const handle = await contract.getBalance(address);
             return handle.toString();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to fetch encrypted balance:", err);
             return null;
         }
@@ -54,10 +61,11 @@ export function useConfidentialBalance() {
                 throw new Error("Wallet provider not available");
             }
 
+            await ensureZamaConnected(provider, signer);
+
             const walletHandle = await fetchEncryptedBalance(account);
             let walletUnits = 0;
             if (walletHandle && BigInt(walletHandle) !== 0n) {
-                await ensureFHEConnected(provider, signer);
                 const decryptedValue = await reencryptUint64(contractAddress, account, walletHandle);
                 walletUnits = Number(decryptedValue);
             }
@@ -65,21 +73,17 @@ export function useConfidentialBalance() {
             let rewardUnits = 0;
             const identity = getStoredIdentity();
             if (identity && provider) {
+                const { generateEphemeralAddress, getEphemeralSigner } = await import("../lib/semaphore");
                 const ephemeralAddress = await generateEphemeralAddress(identity);
                 const rewardHandle = await fetchEncryptedBalance(ephemeralAddress);
                 if (rewardHandle && BigInt(rewardHandle) !== 0n) {
                     const ephemeralSigner = getEphemeralSigner(identity, provider);
-                    await forceConnectFHE(provider, ephemeralSigner);
-                    try {
-                        const decryptedRewardValue = await reencryptUint64(
-                            contractAddress,
-                            ephemeralAddress,
-                            rewardHandle
-                        );
-                        rewardUnits = Number(decryptedRewardValue);
-                    } finally {
-                        await restoreMainFheSession(provider, signer);
-                    }
+                    const decryptedRewardValue = await reencryptUint64WithEphemeral(
+                        ephemeralSigner,
+                        contractAddress,
+                        rewardHandle
+                    );
+                    rewardUnits = Number(decryptedRewardValue);
                 }
             }
 
@@ -89,17 +93,12 @@ export function useConfidentialBalance() {
             setRewardBalanceEth(formatUnitsAsEth(rewardUnits));
             setBalanceEth(formatUnitsAsEth(units));
             setIsRevealed(true);
-
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Decryption failed:", err);
-            if (isCofheError(err)) {
-                if (err.message && err.message.toLowerCase().includes("rejected")) {
-                    setError("You cancelled the signature request.");
-                } else {
-                    setError(`Decryption error (${err.code}): ${err.message}`);
-                }
+            if (isZamaUserRejection(err)) {
+                setError("You cancelled the signature request.");
             } else {
-                setError(err.message || "Failed to reveal balance");
+                setError((err as Error).message || "Failed to reveal balance");
             }
         } finally {
             setLoading(false);
@@ -121,99 +120,75 @@ export function useConfidentialBalance() {
             const contract = getConfidentialETH(signer);
             const tx = await contract.deposit({ value: ethers.parseEther(amountEth) });
             await tx.wait();
-            // Automatically hide after state change to force a fresh re-encryption next time
             hideBalance();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Deposit failed:", err);
-            setError(err.message || "Failed to deposit funds");
-            throw err; // Re-throw to let component handle UX
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // C-2: Get current withdrawal nonce for replay protection
-    const getWithdrawNonce = useCallback(async (): Promise<bigint> => {
-        if (!signer || !account) return 0n;
-        try {
-            const contract = getConfidentialETH(signer);
-            const nonce = await contract.withdrawNonces(account);
-            return BigInt(nonce.toString());
-        } catch (err) {
-            console.error("Failed to fetch withdraw nonce:", err);
-            return 0n;
-        }
-    }, [signer, account]);
-
-    // C-2: Generate Threshold Network signature for withdrawal
-    // This signature must cover (ctHash, balance, msg.sender, units, nonce)
-    const generateWithdrawSignature = async (
-        balanceHandle: string,
-        balance: bigint,
-        units: number,
-        nonce: bigint
-    ): Promise<{ signature: string; balance: bigint }> => {
-        if (!account || !signer) {
-            throw new Error("Wallet not connected");
-        }
-
-        try {
-            const provider = signer.provider;
-            if (!provider) {
-                throw new Error("Wallet provider not available");
-            }
-
-            const handle = typeof balanceHandle === "string" ? BigInt(balanceHandle) : balanceHandle;
-            const result = await decryptForTxWithPermit(handle, provider, signer);
-            return {
-                signature: result.signature,
-                balance: result.decryptedValue,
-            };
-        } catch (err: any) {
-            console.error("Failed to generate withdrawal signature:", err);
-            if (isCofheError(err) && err.message && err.message.toLowerCase().includes("rejected")) {
-                throw new Error("You cancelled the signature request.");
-            }
-            throw new Error(
-                `Failed to generate Threshold Network signature: ${err.message || err}`
-            );
-        }
-    };
-
-    const withdraw = async (amountEth: string, balanceSig?: string, currentBalance?: string) => {
-        if (!signer || !account) return;
-        try {
-            setLoading(true);
-            const contract = getConfidentialETH(signer);
-            // Convert ETH to units (1 unit = 1e-6 ETH = 0.000001 ETH)
-            const unitsString = (parseFloat(amountEth) * 1_000_000).toFixed(0);
-            const units = parseInt(unitsString, 10);
-
-            if (units <= 0) throw new Error("Amount too low. Minimum is 0.000001 ETH");
-
-            // C-2: If signature and balance proof provided, use new secure withdrawal
-            if (balanceSig && currentBalance) {
-                const balance = BigInt(currentBalance);
-                const tx = await contract.withdraw(units, balanceSig, balance);
-                await tx.wait();
-            } else {
-                // Fallback: will fail on-chain after contract update - require signature
-                throw new Error(
-                    "C-2: Threshold Network signature required for withdrawal. " +
-                    "Please provide balanceSig and currentBalance parameters."
-                );
-            }
-            hideBalance();
-        } catch (err: any) {
-            console.error("Withdrawal failed:", err);
-            setError(err.message || "Failed to withdraw funds");
+            setError((err as Error).message || "Failed to deposit funds");
             throw err;
         } finally {
             setLoading(false);
         }
     };
 
-    // Auto-hide on account change
+    /**
+     * Encrypted withdraw with optional exit mode:
+     * - wallet: direct complete to connected wallet (public amount at settlement)
+     * - fast: relayer + stealth recipient, immediate
+     * - private_batch: relayer + stealth recipient, batched settlement
+     */
+    const withdraw = async (amountEth: string, exitMode: WithdrawExitMode = "wallet") => {
+        if (!signer || !account) return;
+        try {
+            setLoading(true);
+            const contract = getConfidentialETH(signer);
+            const contractAddress = await contract.getAddress();
+            const unitsString = (parseFloat(amountEth) * 1_000_000).toFixed(0);
+            const units = parseInt(unitsString, 10);
+            if (units <= 0) throw new Error("Amount too low. Minimum is 0.000001 ETH");
+
+            const { sufficientHandle } = await requestEncryptedWithdraw(signer, units);
+
+            if (exitMode === "wallet") {
+                await completeEncryptedWithdraw(signer, sufficientHandle);
+            } else {
+                const provider = signer.provider;
+                if (!provider) throw new Error("Wallet provider not available");
+                const network = await provider.getNetwork();
+                const stealth = generateStealthRecipient();
+                const nonce = await contract.withdrawNonces(account);
+                const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+                const signature = await signPublicExitAuthorization(signer, {
+                    contractAddress,
+                    chainId: Number(network.chainId),
+                    owner: account,
+                    stealthRecipient: stealth.address,
+                    sufficientHandle,
+                    exitMode,
+                    nonce,
+                    deadline,
+                });
+
+                await completePublicExitViaRelayer(getMedVaultRelayerUrl(), {
+                    owner: account,
+                    stealthRecipient: stealth.address,
+                    exitMode: exitMode === "private_batch" ? 1 : 0,
+                    nonce: nonce.toString(),
+                    deadline: deadline.toString(),
+                    signature,
+                    sufficientHandle,
+                });
+            }
+
+            hideBalance();
+        } catch (err: unknown) {
+            console.error("Withdrawal failed:", err);
+            setError((err as Error).message || "Failed to complete withdrawal");
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         hideBalance();
     }, [account]);
@@ -229,8 +204,5 @@ export function useConfidentialBalance() {
         hideBalance,
         deposit,
         withdraw,
-        // C-2: Expose helper methods for signature generation
-        getWithdrawNonce,
-        generateWithdrawSignature
     };
 }

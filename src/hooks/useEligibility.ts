@@ -36,11 +36,8 @@ export function useEligibility(address?: string) {
             const engine = getEligibilityEngine(signer);
             const encryptedResult = await engine.getEncryptedResult(address, trialId);
 
-            // In the hardened plan, result is NOT public. 
-            // We use the FHE library's decrypt utility which handles the Fhenix reveal process.
             const decrypted = await publicDecrypt(encryptedResult);
-
-            setResults(prev => ({ ...prev, [trialId]: decrypted.value === 1 }));
+            setResults(prev => ({ ...prev, [trialId]: decrypted.value === 1n }));
         } catch (err) {
             console.error("Decryption failed:", err);
         } finally {

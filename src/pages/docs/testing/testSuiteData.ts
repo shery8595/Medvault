@@ -1,13 +1,13 @@
 /** Shared facts for the in-app Testing documentation section (keep in sync with docs/TEST_MATRIX.md). */
 
 export const SUITE_STATS = {
-    totalPassing: 191,
-    unitPassing: 148,
-    integrationPassing: 40,
+    totalPassing: 265,
+    unitPassing: 188,
+    integrationPassing: 66,
     cryptoPassing: 3,
     honkPassing: 1,
     skipped: 2,
-    lastVerified: "May 2026",
+    lastVerified: "June 2026",
 } as const;
 
 export const NPM_SCRIPTS = [
@@ -22,14 +22,16 @@ export const NPM_SCRIPTS = [
 
 export const REPO_LAYOUT = `medvault/
   test/
-    smoke/              # CoFHE + deployMedVaultStack smoke (4 cases)
-    unit/               # Per-contract unit tests (148 cases)
-    integration/        # Registry, eligibility, vault, E2E (40 cases)
+    smoke/              # Zama fhEVM + deployMedVaultStack smoke (4 cases)
+    unit/               # Per-contract unit tests (incl. v0.9, apply wizard)
+    integration/        # Registry, eligibility, vault, complete flow (62 cases)
     staking/            # StakingManager + MockAave (8 cases)
     crypto/             # Nullifier + Honk pipeline (3 + 1 optional)
   test-support/         # Shared helpers (not executed as tests)
     deployments.ts      # deployMedVaultStack(), registerPatientOnRegistry()
-    fhe.ts              # CoFHE 0.5 encryption + mock decrypt
+    fhe.ts              # Zama FHE encrypt / mock decrypt via hre.fhevm
+    journey.ts          # Stage/finalize/claim journey helpers
+    withdraw.ts           # Encrypted withdraw/claim/public-exit test helpers
     consent.ts          # grantConsent overload disambiguation
     signers.ts          # impersonateAccount for contract callers
     semaphore.ts        # MockSemaphore proofs, nullifier derivation
@@ -61,13 +63,26 @@ export const TEST_FILES: Array<{
     { path: "test/unit/eligibility-engine.test.ts", contracts: "EligibilityEngine", cases: 14, pillar: "FHE", ids: "EE-01–14" },
     { path: "test/unit/encrypted-consent-gate.test.ts", contracts: "EncryptedConsentGate", cases: 6, pillar: "FHE", ids: "ECG-01–06" },
     { path: "test/unit/encrypted-score-leaderboard.test.ts", contracts: "EncryptedScoreLeaderboard", cases: 8, pillar: "FHE", ids: "ESL-01–08" },
-    { path: "test/unit/sponsor-incentive-vault.test.ts", contracts: "SponsorIncentiveVault", cases: 16, pillar: "ETH/FHE", ids: "SIV-01–16" },
+    { path: "test/unit/sponsor-incentive-vault.test.ts", contracts: "SponsorIncentiveVault", cases: 18, pillar: "ETH/FHE", ids: "SIV-01–18" },
     { path: "test/unit/trial-milestone-manager.test.ts", contracts: "TrialMilestoneManager", cases: 6, pillar: "ACL", ids: "TMM-01–06" },
     { path: "test/unit/medvault-automation.test.ts", contracts: "MedVaultAutomation", cases: 6, pillar: "ACL", ids: "MVA-01–06" },
+    { path: "test/unit/medvault-registry-finalize.test.ts", contracts: "MedVaultRegistry", cases: 6, pillar: "FHE", ids: "MVR-FIN-01–06" },
+    { path: "test/unit/v09-proof-of-computation.test.ts", contracts: "cETH, Staking, EE", cases: 13, pillar: "FHE", ids: "V09-01–13" },
+    { path: "test/unit/public-exit.test.ts", contracts: "ConfidentialETH", cases: 5, pillar: "ETH/FHE", ids: "PEX-01–05" },
+    { path: "test/unit/batch-exit-queue.test.ts", contracts: "Relayer (off-chain)", cases: 3, pillar: "Infra", ids: "BEX-01–03" },
+    { path: "test/unit/privacy-events.test.ts", contracts: "cETH, SIV, Staking", cases: 5, pillar: "FHE", ids: "PRIV-01–05" },
+    { path: "test/unit/apply-wizard.test.ts", contracts: "UI state", cases: 2, pillar: "UI", ids: "UI-APPLY-01–02" },
+    { path: "test/unit/attestation-binding.test.ts", contracts: "EligibilityEngine", cases: 6, pillar: "ZK/FHE", ids: "DIFF-*, BIND-01–04" },
+    { path: "test/unit/encrypted-criteria.test.ts", contracts: "TrialManager, EE", cases: 2, pillar: "FHE", ids: "ECR-01–02" },
+    { path: "test/unit/encrypted-aggregate.test.ts", contracts: "EncryptedScoreLeaderboard", cases: 1, pillar: "FHE", ids: "AGG-01" },
     { path: "test/integration/medvault-registry.test.ts", contracts: "MedVaultRegistry", cases: 12, pillar: "ZK/FHE", ids: "MVR-01–12" },
-    { path: "test/integration/eligibility-anonymous.test.ts", contracts: "EE, MVR, CM", cases: 10, pillar: "FHE", ids: "INT-EE-01–10" },
+    { path: "test/integration/eligibility-anonymous.test.ts", contracts: "EE, MVR, CM", cases: 11, pillar: "FHE", ids: "INT-EE-01–11" },
+    { path: "test/integration/consent-gate-flow.test.ts", contracts: "ECG, CM", cases: 4, pillar: "FHE", ids: "CG-INT-01–04" },
     { path: "test/integration/vault-funding-distribution.test.ts", contracts: "SIV, TMM, MVA", cases: 10, pillar: "ETH", ids: "INT-VAULT-01–10" },
-    { path: "test/integration/e2e-patient-to-claim.test.ts", contracts: "Full stack", cases: 8, pillar: "E2E", ids: "E2E-01–08" },
+    { path: "test/integration/e2e-patient-to-claim.test.ts", contracts: "Full stack", cases: 9, pillar: "E2E", ids: "E2E-01–09" },
+    { path: "test/integration/v09-complete-flow.test.ts", contracts: "Full stack v0.9", cases: 16, pillar: "E2E", ids: "FLOW-01–16" },
+    { path: "test/integration/batch-eligibility.test.ts", contracts: "EligibilityEngine", cases: 1, pillar: "FHE", ids: "BAT-01" },
+    { path: "test/integration/relayer-registration.test.ts", contracts: "MedVaultRegistry", cases: 1, pillar: "Privacy", ids: "REL-REG-01" },
     { path: "test/staking/staking-manager.test.ts", contracts: "StakingManager", cases: 8, pillar: "ETH/FHE", ids: "STK-01–08" },
     { path: "test/crypto/noir-nullifier.test.ts", contracts: "Off-chain", cases: 3, pillar: "ZK", ids: "CRYPTO-NULL-01–03" },
     { path: "test/crypto/honk-pipeline.test.ts", contracts: "HonkVerifier", cases: 1, pillar: "ZK", ids: "CRYPTO-HONK-01" },
@@ -79,13 +94,20 @@ export const AUDIT_TRACEABILITY: Array<{ finding: string; tests: string }> = [
     { finding: "Two-step ownership", tests: "OWN-*-*" },
     { finding: "Deprecated legacy entrypoints", tests: "DEP-01–04" },
     { finding: "Sponsor verification on Hardhat", tests: "TM-02, SR-*" },
-    { finding: "CoFHE InvalidSigner / proof account binding", tests: "APR-01, SR-01, CM-01" },
+    { finding: "Zama FHE encrypt / ACL binding", tests: "APR-01, SR-01, CM-01" },
     { finding: "EligibilityEngine ↔ ConsentManager FHE ACL", tests: "INT-EE-03, SIV-05+" },
+    { finding: "Noir attestation ↔ Zama FHE stage binding", tests: "DIFF-*, BIND-*" },
+    { finding: "v0.9 publicDecrypt completion", tests: "V09-*, FLOW-07–08" },
+    { finding: "Encrypted withdraw staging & public exit", tests: "PEX-*, BEX-*, PRIV-01–04" },
+    { finding: "Encrypted sponsor criteria + aggregates", tests: "ECR-*, AGG-01" },
+    { finding: "Relayer registration privacy", tests: "REL-REG-01" },
+    { finding: "Batch FHE eligibility", tests: "BAT-01" },
 ];
 
 export const PINNED_DEPS = [
-    { pkg: "@cofhe/hardhat-plugin", version: "^0.5.1" },
-    { pkg: "@cofhe/sdk", version: "^0.5.2" },
+    { pkg: "@fhevm/hardhat-plugin", version: "^0.3.x" },
+    { pkg: "@zama-fhe/sdk", version: "^0.4.x" },
+    { pkg: "@fhevm/solidity", version: "^0.9.x" },
     { pkg: "hardhat", version: "^2.26.x" },
     { pkg: "ethers", version: "^6.16.x" },
     { pkg: "@nomicfoundation/hardhat-ethers", version: "^3.x" },

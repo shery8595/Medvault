@@ -19,7 +19,7 @@ const INITIAL_NODES: Node<ProtocolNodeData>[] = [
         id: "patient",
         type: "protocol",
         position: { x: 0, y: 0 },
-        data: { title: "Patient", subtitle: "@cofhe/sdk encrypt", kind: "client" },
+        data: { title: "Patient", subtitle: "@zama-fhe/sdk encrypt", kind: "client" },
         sourcePosition: Position.Right,
     },
     {
@@ -44,7 +44,7 @@ const INITIAL_NODES: Node<ProtocolNodeData>[] = [
         position: { x: 220, y: 160 },
         data: {
             title: "EligibilityEngine",
-            subtitle: "CoFHE scoring · consent",
+            subtitle: "Zama FHE scoring · consent",
             kind: "compute",
             hub: true,
         },

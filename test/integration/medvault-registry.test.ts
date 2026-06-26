@@ -6,6 +6,7 @@ import {
     registerPatientOnRegistry,
 } from "../../test-support/deployments";
 import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
+import { buildAnonymousApplyArgs, cancelAnonymousApplyStage, stageAnonymousApply } from "../../test-support/anonymousApply";
 import { buildMockSemaphoreProof, consentMessage, deriveNullifier } from "../../test-support/semaphore";
 import { expectRevert } from "../../test-support/assertions";
 
@@ -34,17 +35,23 @@ describe("Integration: MedVaultRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
         await expect(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address)
+                .stageAnonymousApply(
+                    trialId,
+                    args.proof,
+                    args.commitment,
+                    args.permitRecipient,
+                    args.deadline,
+                    args.permitSignature
+                )
         ).to.emit(stack.medVaultRegistry, "AnonymousApplyStaged");
     });
 
@@ -59,19 +66,20 @@ describe("Integration: MedVaultRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        await stageAnonymousApply(
+            stack.medVaultRegistry,
+            stack.patient,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .cancelAnonymousApplyStage(trialId, proof, id.commitment, stack.patient.address);
+        await cancelAnonymousApplyStage(
+            stack.medVaultRegistry,
+            stack.patient,
+            trialId,
+            id,
+            stack.patient.address
+        );
     });
 
     it("MVR-04: hasAppliedToTrial false before finalize", async function () {
@@ -100,18 +108,24 @@ describe("Integration: MedVaultRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
             trialId,
-            nullifier,
-            id.commitment,
+            id,
             stack.patient.address
         );
         await stack.mockSemaphore.setProofsValid(false);
         await expectRevert(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address),
+                .stageAnonymousApply(
+                    trialId,
+                    args.proof,
+                    args.commitment,
+                    args.permitRecipient,
+                    args.deadline,
+                    args.permitSignature
+                ),
             "Invalid Semaphore proof"
         );
         await stack.mockSemaphore.setProofsValid(true);
@@ -128,22 +142,34 @@ describe("Integration: MedVaultRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
+            trialId,
+            id,
+            stack.patient.address
+        );
+        const badProof = buildMockSemaphoreProof(
             trialId + 99n,
-            nullifier,
+            deriveNullifier(id, trialId),
             id.commitment,
             stack.patient.address
         );
         await expectRevert(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address),
+                .stageAnonymousApply(
+                    trialId,
+                    badProof,
+                    args.commitment,
+                    args.permitRecipient,
+                    args.deadline,
+                    args.permitSignature
+                ),
             "Scope mismatch"
         );
     });
 
-    it("MVR-07: consent signal mismatch reverts", async function () {
+    it("MVR-07: commitment/signal mismatch reverts", async function () {
         const stack = await deployMedVaultStack();
         const id = new Identity();
         await registerPatientOnRegistry(
@@ -154,18 +180,25 @@ describe("Integration: MedVaultRegistry", function () {
             ELIGIBLE_PROFILE
         );
         const trialId = await createTrialForSponsor(stack);
-        const nullifier = deriveNullifier(id, trialId);
-        const proof = buildMockSemaphoreProof(
+        const args = await buildAnonymousApplyArgs(
+            stack.medVaultRegistry,
             trialId,
-            nullifier,
-            id.commitment,
-            stack.stranger.address
+            id,
+            stack.patient.address
         );
+        const mismatched = { ...args.proof, message: id.commitment + 1n };
         await expectRevert(
             stack.medVaultRegistry
                 .connect(stack.patient)
-                .stageAnonymousApply(trialId, proof, id.commitment, stack.patient.address),
-            "Proof does not encode consent"
+                .stageAnonymousApply(
+                    trialId,
+                    mismatched,
+                    args.commitment,
+                    args.permitRecipient,
+                    args.deadline,
+                    args.permitSignature
+                ),
+            "Commitment/signal mismatch"
         );
     });
 
@@ -182,7 +215,7 @@ describe("Integration: MedVaultRegistry", function () {
         expect(await stack.medVaultRegistry.connect(stack.patient).isRegistered()).to.equal(true);
     });
 
-    it("MVR-09: applyToTrialWithConsent marks applied", async function () {
+    it("MVR-09: applyToTrialWithConsent is deprecated", async function () {
         const stack = await deployMedVaultStack();
         const id = new Identity();
         await registerPatientOnRegistry(
@@ -194,10 +227,12 @@ describe("Integration: MedVaultRegistry", function () {
         );
         const trialId = await createTrialForSponsor(stack);
         const nullifier = deriveNullifier(id, trialId);
-        await stack.medVaultRegistry
-            .connect(stack.patient)
-            .applyToTrialWithConsent(trialId, id.commitment, nullifier);
-        expect(await stack.medVaultRegistry.hasAppliedToTrial(trialId, nullifier)).to.equal(true);
+        await expectRevert(
+            stack.medVaultRegistry
+                .connect(stack.patient)
+                .applyToTrialWithConsent(trialId, id.commitment, nullifier),
+            /Deprecated: use stageAnonymousApply/
+        );
     });
 
     it("MVR-10: duplicate register reverts", async function () {

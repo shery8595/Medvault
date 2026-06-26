@@ -1,4 +1,4 @@
-﻿import { Fragment, useEffect, useId, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import {
@@ -46,7 +46,7 @@ const transition = {
   ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
 };
 
-const fhenixSpringSoft = { type: "spring" as const, stiffness: 280, damping: 32 };
+const zamaSpringSoft = { type: "spring" as const, stiffness: 280, damping: 32 };
 
 /* ─── data ─────────────────────────────────────────────────────────────────── */
 
@@ -54,7 +54,7 @@ const pillars = [
   {
     icon: UserCheck,
     title: "Anonymous matching",
-    text: "Semaphore-style proofs let you prove eligibility without exposing wallet-linked identity.",
+    text: "Semaphore-style identity lets you apply anonymously; Zama FHE computes the match and Noir seals a compliance receipt without exposing PHI.",
   },
   {
     icon: Lock,
@@ -762,11 +762,11 @@ function ProofIllus({ reduce }: { reduce: boolean }) {
   );
 }
 
-/* ─── Powered by Fhenix (distinct from generic “chain partner” promos) ───── */
+/* ─── Powered by Zama (distinct from generic “chain partner” promos) ───── */
 
-type FhenixRow = { Icon: React.ElementType; title: string; body: string };
+type ZamaRow = { Icon: React.ElementType; title: string; body: string };
 
-const fhenixHighlights: FhenixRow[] = [
+const zamaHighlights: ZamaRow[] = [
   {
     Icon: Lock,
     title: "Ciphertexts on-chain",
@@ -775,7 +775,7 @@ const fhenixHighlights: FhenixRow[] = [
   {
     Icon: Cpu,
     title: "FHE you can deploy",
-    body: "Solidity with Fhenix FHE opcodes for comparisons, boolean mux, and score accumulation - values stay sealed mid-execution.",
+    body: "Solidity with Zama FHE opcodes for comparisons, boolean mux, and score accumulation - values stay sealed mid-execution.",
   },
   {
     Icon: Shield,
@@ -796,7 +796,7 @@ const CIPHER_ROWS = [
   { input: "0x5f3c", field: "rx_index",  op: "mul",  handle: "0xa7d4e0" },
 ] as const;
 
-function FhenixCipherTerminal({ reduce }: { reduce: boolean }) {
+function ZamaCipherTerminal({ reduce }: { reduce: boolean }) {
   const [activeRow, setActiveRow] = useState(2);
 
   useEffect(() => {
@@ -816,7 +816,7 @@ function FhenixCipherTerminal({ reduce }: { reduce: boolean }) {
                 <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5" strokeWidth={1.6} />
               </div>
               <span className="font-mono text-[10px] font-medium text-slate-300 sm:text-[11px]">fhEVM</span>
-              <span className="font-mono text-[9px] text-slate-600 sm:text-[10px]">Fhenix</span>
+              <span className="font-mono text-[9px] text-slate-600 sm:text-[10px]">Zama</span>
             </div>
             <div className="flex items-center gap-1.5">
               {!reduce && (
@@ -885,7 +885,7 @@ function FhenixCipherTerminal({ reduce }: { reduce: boolean }) {
   );
 }
 
-function PoweredByFhenixSection() {
+function PoweredByZamaSection() {
   const reduce = useReducedMotion();
 
   const fadeLift = reduce
@@ -903,8 +903,8 @@ function PoweredByFhenixSection() {
   return (
     <section
       className="relative overflow-hidden border-y border-white/[0.05] bg-[#07090c] px-4 py-10 text-slate-200 sm:px-6 md:py-12"
-      id="fhenix"
-      aria-labelledby="fhenix-heading"
+      id="zama-fhe"
+      aria-labelledby="zama-fhe-heading"
     >
       {/* ambient mesh gradients */}
       <div
@@ -932,25 +932,25 @@ function PoweredByFhenixSection() {
             Confidential compute layer
           </span>
           <h2
-            id="fhenix-heading"
+            id="zama-fhe-heading"
             className="font-display mt-3 text-2xl font-bold tracking-tight text-white sm:mt-3.5 sm:text-3xl sm:leading-[1.1] md:text-4xl"
           >
             Health data stays sealed.
             <br className="hidden sm:inline" />
-            <span className="text-[#5eead4]"> Powered by Fhenix.</span>
+            <span className="text-[#5eead4]"> Powered by Zama.</span>
           </h2>
           <p className="mt-2.5 max-w-[56ch] text-pretty text-sm leading-relaxed text-slate-400 sm:mt-3">
             MedVault runs trial policy on{" "}
-            <strong className="font-semibold text-slate-200">Fhenix fhEVM</strong> - a co-processor where health metrics stay
+            <strong className="font-semibold text-slate-200">Zama fhEVM</strong> - a co-processor where health metrics stay
             ciphertext on-chain while smart contracts compute eligibility. No plaintext leaves the wallet.
           </p>
           <a
-            href="https://fhenix.io/"
+            href="https://docs.zama.org/"
             target="_blank"
             rel="noopener noreferrer"
             className="group mt-4 inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.04] pl-3.5 pr-1.5 py-1 text-xs font-medium text-slate-100 transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] [box-shadow:inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-teal-500/25 hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 active:scale-[0.985] sm:mt-3.5"
           >
-            <span className="pr-0.5">Fhenix documentation</span>
+            <span className="pr-0.5">Zama documentation</span>
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-px group-hover:translate-x-0.5 group-hover:bg-white/[0.15]">
               <ExternalLink className="h-3 w-3" strokeWidth={1.5} />
             </span>
@@ -968,12 +968,12 @@ function PoweredByFhenixSection() {
             variants={rowParent}
             className="flex flex-col divide-y divide-white/[0.05]"
           >
-            {fhenixHighlights.map(({ Icon, title, body }) => (
+            {zamaHighlights.map(({ Icon, title, body }) => (
               <motion.div
                 key={title}
                 variants={rowChild}
                 whileHover={reduce ? undefined : { x: 4 }}
-                transition={fhenixSpringSoft}
+                transition={zamaSpringSoft}
                 className="group flex items-start gap-3 py-2.5 first:pt-0 last:pb-0 sm:gap-3.5 sm:py-3"
               >
                 <div className="flex shrink-0 flex-col items-center gap-1 self-stretch">
@@ -1000,7 +1000,7 @@ function PoweredByFhenixSection() {
             transition={transition}
             className="relative flex justify-center self-center lg:sticky lg:top-16 lg:justify-end"
           >
-            <FhenixCipherTerminal reduce={!!reduce} />
+            <ZamaCipherTerminal reduce={!!reduce} />
           </motion.div>
 
         </div>
@@ -1422,7 +1422,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <PoweredByFhenixSection />
+      <PoweredByZamaSection />
 
       <McpLandingSection />
 

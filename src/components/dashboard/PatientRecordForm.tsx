@@ -3,9 +3,10 @@ import { motion } from "framer-motion";
 import { ArrowRight, Loader2, Lock, ShieldCheck, Stethoscope, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useWeb3 } from "../../lib/Web3Context";
-import { encryptBool, encryptUint8, encryptUint16, connectFHE, yieldToMain } from "../../lib/fhe";
+import { buildPatientProfileInputs, yieldToMain } from "../../lib/fhe";
 import { getOrCreateIdentity, isMemberRegistered, isPatientRegistered, forceNewIdentity, registerPatientWithHealthData } from "../../lib/semaphore";
 import { getContractAddressForChain, getDataAccessLog } from "../../lib/contracts";
+import { storePatientProfilePlain } from "../../lib/profileStorage";
 import { cn } from "../../lib/utils";
 
 import {
@@ -37,7 +38,7 @@ type EncryptPhase = {
     label: string;
 };
 
-const ENCRYPT_STEPS_TOTAL = 10;
+const ENCRYPT_STEPS_TOTAL = 5;
 
 export function PatientRecordForm({ onSuccess, onCancel, reclaimAttestation, prefillProfile }: PatientRecordFormProps) {
     const { signer, account, isFHEReady, connect, isConnecting, error: connectError } = useWeb3();
@@ -137,19 +138,20 @@ export function PatientRecordForm({ onSuccess, onCancel, reclaimAttestation, pre
             if (!anonymousRegistryAddress) {
                 throw new Error("AnonymousPatientRegistry address not configured for current network.");
             }
+            const registryAddress = getContractAddressForChain("MedVaultRegistry", chainId);
+            if (!registryAddress) {
+                throw new Error("MedVaultRegistry address not configured for current network.");
+            }
             const dataAccessLog = getDataAccessLog(provider, chainId);
             const patientRegistryCanLog = await dataAccessLog.isAuthorizedLogger(anonymousRegistryAddress);
             if (!patientRegistryCanLog) {
                 throw new Error(
                     "Protocol wiring issue: AnonymousPatientRegistry is not authorized in DataAccessLog. " +
-                    "Ask the protocol admin to run `npx hardhat run scripts/fix-loggers.ts --network arbitrumSepolia`, then try again."
+                    "Ask the protocol admin to run `npx hardhat run scripts/fix-loggers.ts --network sepolia`, then try again."
                 );
             }
 
-            await advance(2, "FHE: connecting…");
-            await connectFHE(provider, signer);
-
-            await advance(3, "Private identity…");
+            await advance(2, "Private identity…");
             const identity = getOrCreateIdentity();
             await yieldToMain();
 
@@ -178,53 +180,41 @@ export function PatientRecordForm({ onSuccess, onCancel, reclaimAttestation, pre
                 return;
             }
 
-            // CoFHE verifies encrypted inputs against the Solidity msg.sender passed into
-            // FHE.asEuint*(). This function is executed inside AnonymousPatientRegistry, but
-            // it is called externally by MedVaultRegistry, so msg.sender is MedVaultRegistry.
-            // If the SDK proof is bound to any other account, the FHE TaskManager reverts with
-            // InvalidSigner(address,address), selector 0x7ba5ffb5.
-            const registryAddress = getContractAddressForChain("MedVaultRegistry", chainId);
-            if (!registryAddress) {
-                throw new Error("MedVaultRegistry address not configured for current network.");
-            }
-
+            // FHE verifyInput binds (contract=APR, user=MVR) when MVR forwards registerPatient.
             const parsedAge = Number(age);
             const parsedWeight = Number(weight);
             const parsedHeight = Number(height);
             const parsedHb = Number(hbLevel);
-            const genderFlag = gender === "male";
-            const diabetesFlag = hasDiabetes === "yes";
 
-            await advance(4, "Encrypt: age…");
-            const rawAge = await encryptUint8(registryAddress, account, parsedAge);
-            await advance(5, "Encrypt: sex…");
-            const rawGender = await encryptBool(registryAddress, account, genderFlag);
-            await advance(6, "Encrypt: weight…");
-            const rawWeight = await encryptUint16(registryAddress, account, parsedWeight);
-            await advance(7, "Encrypt: height…");
-            const rawHeight = await encryptUint8(registryAddress, account, parsedHeight);
-            await advance(8, "Encrypt: diabetes, HbA1c…");
-            const rawDiabetes = await encryptBool(registryAddress, account, diabetesFlag);
-            await yieldToMain();
-            const rawHb = await encryptUint16(registryAddress, account, parsedHb);
-            await advance(9, "Encrypt: smoker, hypertension…");
-            const rawSmoker = await encryptBool(registryAddress, account, isSmoker);
-            await yieldToMain();
-            const rawHypertension = await encryptBool(registryAddress, account, hasHypertension);
+            await advance(3, "Encrypt: health profile…");
+            const encryptedData = await buildPatientProfileInputs(
+                anonymousRegistryAddress,
+                registryAddress,
+                {
+                    age: parsedAge,
+                    gender: gender === "male",
+                    weight: parsedWeight,
+                    height: parsedHeight,
+                    hasDiabetes: hasDiabetes === "yes",
+                    hbLevel: parsedHb,
+                    isSmoker,
+                    hasHypertension,
+                }
+            );
 
-            const encryptedData = {
-                age: rawAge,
-                gender: rawGender,
-                weight: rawWeight,
-                height: rawHeight,
-                hasDiabetes: rawDiabetes,
-                hbLevel: rawHb,
-                isSmoker: rawSmoker,
-                hasHypertension: rawHypertension
+            await advance(4, "Wallet: sign & submit…");
+            const profilePlain = {
+                age: parsedAge,
+                gender: gender === "male",
+                weight: parsedWeight,
+                height: parsedHeight,
+                hasDiabetes: hasDiabetes === "yes",
+                hbLevel: parsedHb,
+                isSmoker,
+                hasHypertension,
             };
-
-            await advance(10, "Wallet: sign & submit…");
-            await registerPatientWithHealthData(signer, identity, encryptedData);
+            storePatientProfilePlain(profilePlain);
+            await registerPatientWithHealthData(signer, identity, encryptedData, profilePlain);
 
             setStatus("Submitted. Record encrypted and linked to your anonymous identity.");
             setEncryptPhase({ step: ENCRYPT_STEPS_TOTAL, total: ENCRYPT_STEPS_TOTAL, label: "Done" });

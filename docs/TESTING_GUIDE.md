@@ -1,6 +1,6 @@
 # Testing Guide — MedVault Smart Contracts
 
-MedVault uses **Hardhat 2**, **Mocha/Chai**, and **@cofhe/hardhat-plugin** (CoFHE local mocks) for Solidity tests. The suite has **191 passing cases** in the default CI run (148 unit/smoke/staking + 40 integration + 3 crypto), plus **1 optional** Honk pipeline test.
+MedVault uses **Hardhat 2**, **Mocha/Chai**, and **@fhevm/hardhat-plugin** (Zama FHE local mocks) for Solidity tests. The default suite has **259+ passing** cases (+ **2 pending**, **1 optional** Honk), including unit/smoke/staking, integration (v0.9 complete flow), encrypted withdrawal/public-exit tests (`test/unit/public-exit.test.ts`, `test/unit/batch-exit-queue.test.ts`), attestation binding, direct-apply FHE stage binding (`test/unit/direct-apply-fhe-stage.test.ts`), and crypto nullifier tests.
 
 In-app documentation: open the dapp **Docs → Tests & verification** tab (`/docs/testing`).
 
@@ -8,15 +8,16 @@ In-app documentation: open the dapp **Docs → Tests & verification** tab (`/doc
 
 ```
 test/
-  smoke/                    # CoFHE + deployMedVaultStack (4 cases)
-  unit/                     # Per-contract tests (140+ cases)
-  integration/              # Cross-contract + E2E (40 cases)
+  smoke/                    # Zama FHE + deployMedVaultStack (4 cases)
+  unit/                     # Per-contract tests (170+ cases)
+  integration/              # Cross-contract + E2E (62 cases)
   staking/                  # StakingManager + MockAave (8 cases)
   crypto/                   # Nullifier alignment + Honk (3 + 1 optional)
 
 test-support/               # Shared helpers (imported by tests, not executed as tests)
   deployments.ts            # deployMedVaultStack(), registerPatientOnRegistry()
-  fhe.ts                    # CoFHE 0.5 encryption + mock decrypt
+  fhe.ts                    # Zama FHE encryption + mock decrypt (hre.fhevm)
+  journey.ts                # Stage/finalize/claim journey helpers
   consent.ts                # grantConsent overload disambiguation
   signers.ts                # impersonateAccount()
   semaphore.ts              # MockSemaphore proofs, nullifiers
@@ -30,6 +31,7 @@ scripts/
 docs/
   TESTING_GUIDE.md          # This file
   TEST_MATRIX.md            # Case ID catalog
+  PRIVATE_WITHDRAWALS.md    # Encrypted withdraw + public exit architecture
 ```
 
 **Do not run** legacy files at the repo root of `test/` (e.g. `comprehensive_medvault.test.js`) — they are retired.
@@ -80,26 +82,31 @@ Also calls `consentManager.setEligibilityEngine`, authorizes loggers on `DataAcc
 
 Signers: `owner`, `patient`, `sponsor`, `sponsor2`, `stranger`.
 
-## FHE helpers (CoFHE 0.5)
+## FHE helpers (Zama fhEVM)
 
-`test-support/fhe.ts` — **not** legacy `fhevm` from Hardhat.
+`test-support/fhe.ts` uses **`hre.fhevm`** from `@fhevm/hardhat-plugin` (mock network only).
 
 ```typescript
 import hre from "hardhat";
-const client = await hre.cofhe.createClientWithBatteries(signer);
-const [enc] = await client
-  .encryptInputs([Encryptable.uint8(30n)])
-  .setAccount(proofAccount)  // must match msg.sender at FHE.verify site
-  .execute();
+
+assertFhevmMock(); // hre.fhevm.isMock === true
+
+const input = hre.fhevm.createEncryptedInput(contractAddress, userAddress);
+input.add8(BigInt(age));
+const encrypted = await input.encrypt();
+// encrypted.handles[0], encrypted.inputProof → contract call
+
+// Decrypt in tests (never on production eligibility path)
+await hre.fhevm.userDecryptEuint(FhevmType.euint8, handle, contract, user);
 ```
 
-| Call site | `proofAccount` |
-|-----------|----------------|
-| `MedVaultRegistry.registerPatient` → APR | `medVaultRegistry` address |
+| Call site | `userAddress` in `createEncryptedInput` |
+|-----------|----------------------------------------|
+| `MedVaultRegistry.registerPatient` → APR | Patient EOA |
 | `SponsorRegistry.requestSponsorship` | Sponsor EOA |
-| `ConsentManager.grantConsent(InEbool)` | Patient EOA |
+| `ConsentManager.grantConsent` | Patient EOA |
 
-Decrypt in tests: `mockDecryptBool(ctHash)` or `hre.cofhe.mocks.getPlaintext(coerceFheHandle(handle))`.
+Integration helpers: `test-support/journey.ts` (`stageSemaphoreApply`, `claimAndCompleteRewards`, etc.).
 
 ## Consent in tests
 
@@ -135,6 +142,6 @@ await stack.eligibilityEngine.connect(signer).stageAnonymousEligibility(...);
 
 ## Remote networks
 
-Default tests use **Hardhat + CoFHE mocks**. Arbitrum Sepolia is for deploy scripts and the Vite app, not CI.
+Default tests use **Hardhat + Zama FHE mocks**. Ethereum Sepolia is for deploy scripts and the Vite app, not CI.
 
 See also [TEST_MATRIX.md](./TEST_MATRIX.md) for every case ID.

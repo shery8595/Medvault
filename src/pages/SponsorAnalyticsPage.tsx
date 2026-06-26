@@ -48,6 +48,7 @@ import { SponsorHeroBanner } from "../components/sponsor/SponsorHeroBanner";
 import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt";
 import { useAaveYield } from "../hooks/useAaveYield";
 import { useStaking } from "../hooks/useStaking";
+import { useEncryptedTrialAggregates } from "../hooks/useEncryptedTrialAggregates";
 
 const ACCENT = "#1D2634";
 const TEAL = "#0d9488";
@@ -80,6 +81,14 @@ export function SponsorAnalyticsPage() {
   } = useSponsorDashboard();
   const { apy, loading: apyLoading, source: apySource, error: apyError } = useAaveYield();
   const { stakedBalanceEth, isRevealed, revealBalance, loading: stakingLoading } = useStaking();
+
+  const trialIds = useMemo(() => trials.map((t) => String(t.id)), [trials]);
+  const {
+    aggregates: fheAggregates,
+    loading: fheAggLoading,
+    decryptError: fheAggError,
+    decryptAggregates,
+  } = useEncryptedTrialAggregates(trialIds);
 
   const pipelineData = useMemo(() => {
     return charts.donutChart.map((slice) => ({
@@ -134,7 +143,7 @@ export function SponsorAnalyticsPage() {
     apySource === "protocol"
       ? "Live pool (linear APR snapshot)"
       : apySource === "wrong_chain"
-        ? "Reference only — connect Arbitrum Sepolia"
+        ? "Reference only — connect Ethereum Sepolia"
         : "Fallback / degraded pool read";
 
   if (loading) {
@@ -207,6 +216,62 @@ export function SponsorAnalyticsPage() {
           artClassName={sponsorHeroComponentArtClassCompact}
         />
       </SponsorHeroBanner>
+
+      <Card className={cn(sponsorCardShell, "border-0 overflow-hidden")}>
+        <CardHeader className={cn(sponsorCardHeader, "px-5 py-4")}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-teal-700" />
+              <div>
+                <CardTitle className="font-display text-base font-semibold text-slate-900">
+                  Zama FHE encrypted aggregates
+                </CardTitle>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Homomorphic applicant count &amp; average propensity — no per-patient scores on-chain
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void decryptAggregates()}
+              disabled={fheAggLoading || trialIds.length === 0}
+              className="rounded-lg bg-[#1D2634] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {fheAggLoading ? "Decrypting…" : "Decrypt aggregates"}
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5">
+          {fheAggError ? (
+            <p className="text-sm text-amber-800">{fheAggError}</p>
+          ) : null}
+          {fheAggregates.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              Click decrypt to load encrypted match counts from <code className="text-xs">EncryptedScoreLeaderboard</code>{" "}
+              (requires Zama FHE permit).
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {fheAggregates.map((row) => (
+                <li
+                  key={row.trialId}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2"
+                >
+                  <span className="font-medium text-slate-800">Trial #{row.trialId}</span>
+                  {row.error ? (
+                    <span className="text-xs text-rose-700">{row.error}</span>
+                  ) : (
+                    <span className="text-xs text-slate-600">
+                      {row.applicantCount ?? "—"} applicants
+                      {row.avgScore != null ? ` · avg score ${row.avgScore}` : ""}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className={cn(sponsorCardShell, "border-0 overflow-hidden")}>

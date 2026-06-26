@@ -3,7 +3,9 @@ import { deployMedVaultStack } from "../../test-support/deployments";
 import { CET_MIN_DEPOSIT_WEI } from "../../test-support/constants";
 import { expectRevert } from "../../test-support/assertions";
 import { impersonateAccount } from "../../test-support/signers";
-import { coerceFheHandle } from "../../test-support/fhe";
+import { requestEncryptedWithdraw } from "../../test-support/withdraw";
+import { coerceFheHandle, createEncryptedUint64 } from "../../test-support/fhe";
+import { transferEncryptedWithProof } from "../../test-support/transfer";
 
 describe("Unit: ConfidentialETH", function () {
     it("CET-01: deposit increases balance handle", async function () {
@@ -61,12 +63,13 @@ describe("Unit: ConfidentialETH", function () {
         ).to.equal(true);
     });
 
-    it("CET-06: withdraw without valid sig reverts", async function () {
+    it("CET-06: requestWithdraw without complete leaves pending", async function () {
         const stack = await deployMedVaultStack();
         await stack.confidentialETH.connect(stack.patient).deposit({ value: CET_MIN_DEPOSIT_WEI });
+        await requestEncryptedWithdraw(stack.confidentialETH, stack.patient, 1);
         await expectRevert(
-            stack.confidentialETH.connect(stack.patient).withdraw(1, "0x", 1),
-            /revert/
+            requestEncryptedWithdraw(stack.confidentialETH, stack.patient, 1),
+            /Withdrawal already pending/
         );
     });
 
@@ -77,32 +80,40 @@ describe("Unit: ConfidentialETH", function () {
             .connect(vaultSigner)
             .depositFor(stack.patient.address, { value: CET_MIN_DEPOSIT_WEI * 2n });
         const bal = await stack.confidentialETH.getBalance(stack.patient.address);
-        await stack.confidentialETH
-            .connect(vaultSigner)
-            .transferEncrypted(stack.patient.address, stack.sponsor.address, bal);
+        await transferEncryptedWithProof(
+            stack.confidentialETH,
+            vaultSigner,
+            stack.patient.address,
+            stack.sponsor.address,
+            bal
+        );
         const sponsorBal = await stack.confidentialETH.getBalance(stack.sponsor.address);
         expect(coerceFheHandle(sponsorBal)).to.be.gt(0n);
     });
 
-    it("CET-08: withdrawTo only authorized", async function () {
+    it("CET-08: requestWithdrawTo only authorized", async function () {
         const stack = await deployMedVaultStack();
+        const encrypted = await createEncryptedUint64(
+            await stack.confidentialETH.getAddress(),
+            stack.stranger.address,
+            1
+        );
         await expectRevert(
             stack.confidentialETH
                 .connect(stack.stranger)
-                .getFunction("withdrawTo(address,address,uint64,bytes,uint64)")(
+                .requestWithdrawTo(
                     stack.patient.address,
                     stack.stranger.address,
-                    1,
-                    "0x",
-                    1
+                    encrypted.handle,
+                    encrypted.inputProof
                 ),
-            /Not authorized|reverted/
+            /Not authorized/
         );
     });
 
-    it("CET-09: withdrawNonces start at zero", async function () {
+    it("CET-09: CANCEL_TIMEOUT_FUNDS is one hour", async function () {
         const stack = await deployMedVaultStack();
-        expect(await stack.confidentialETH.withdrawNonces(stack.patient.address)).to.equal(0n);
+        expect(await stack.confidentialETH.CANCEL_TIMEOUT_FUNDS()).to.equal(3600n);
     });
 
     it("CET-10: getBalance returns handle", async function () {

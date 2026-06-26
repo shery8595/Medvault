@@ -62,8 +62,8 @@ const mcpCapabilities = [
     icon: Bot,
     accent: "border-l-[#00685f]",
     title: "Sponsor MCP",
-    body: "Create trials, milestones, fund pools, and application status with MCP_PRIVATE_KEY.",
-    tools: ["medvault_create_trial", "medvault_fund_trial_pool", "medvault_update_application_status"],
+    body: "Create trials, milestones, fund pools, and application status with MCP_PRIVATE_KEY (sponsor only).",
+    tools: ["medvault_create_trial", "medvault_fund_trial_pool", "medvault_get_sponsor_trial_pool_details"],
   },
   {
     badge: "Dev",
@@ -85,9 +85,9 @@ const MCP_CONFIG_SNIPPET = `{
   "mcpServers": {
     "medvault": {
       "command": "node",
-      "args": ["mcp-server/dist/index.js"],
+      "args": ["\${workspaceFolder}/mcp-server/dist/index.js"],
       "env": {
-        "ARBITRUM_SEPOLIA_RPC_URL": "…",
+        "SEPOLIA_RPC_URL": "…",
         "MEDVAULT_SUBGRAPH_URL": "…"
       }
     }
@@ -458,7 +458,7 @@ export function McpLandingSection() {
         >
           <Cpu className="mx-auto mb-2 h-4 w-4 text-[#6bd8cb]" strokeWidth={1.5} />
           The web app at med-vault.xyz is unchanged — MCP is optional for developers and verified sponsors. Patient flows
-          stay in the browser with CoFHE and Privy.
+          stay in the browser with Zama FHE and Privy.
         </motion.p>
       </div>
     </section>

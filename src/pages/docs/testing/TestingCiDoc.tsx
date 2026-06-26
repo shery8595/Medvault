@@ -55,7 +55,7 @@ export function TestingCiDoc() {
                 <h2>Hardhat configuration</h2>
                 <ul>
                     <li>
-                        <code>@cofhe/hardhat-plugin</code> — auto-deploys CoFHE mocks before <code>hardhat test</code>
+                        <code>@fhevm/hardhat-plugin</code> — auto-deploys Zama FHE mocks before <code>hardhat test</code>
                     </li>
                     <li>
                         Mocha timeout: 120s (Honk file sets 300s locally)
@@ -88,9 +88,9 @@ export function TestingCiDoc() {
                 <h2>Expected CI output (summary)</h2>
                 <CodeBlock
                     language="text"
-                    code={`✓ cofhe-hardhat-plugin :: mocks deployed
+                    code={`✓ @fhevm/hardhat-plugin :: mocks deployed
 
-  Smoke: Hardhat + CoFHE          4 passing
+  Smoke: Hardhat + Zama FHE          4 passing
   Unit: *                         140+ passing
   Staking: StakingManager         8 passing
   Integration: *                  40 passing
@@ -144,7 +144,7 @@ export function TestingCiDoc() {
                 </div>
 
                 <Callout type="info" title="Remote networks">
-                    Default tests run on Hardhat with CoFHE mocks. Arbitrum Sepolia is for manual deploy scripts and
+                    Default tests run on Hardhat with Zama FHE mocks. Ethereum Sepolia is for manual deploy scripts and
                     the Vite app — not required for CI.
                 </Callout>
             </Prose>

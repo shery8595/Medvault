@@ -39,7 +39,8 @@ Match the Playground query URL exactly.
 | **v0.1.4** | Start **272205848** (Med ID block **272207848**) | **Default** — registration + recent events |
 | v0.1.2 | Synced near head, start **after** Med ID | Fallback if v0.1.4 stalls |
 | v0.1.3 | Stuck at **272207848** | Deprecated |
-| v0.1.0 / v0.1.1 | Older near-head deploys | Superseded |
+| v0.1.1 | Attestation fields on `AnonymousSubmission` (`attestationResultHash`, `attestationFheStageHash`, `attestationCriteriaSchemaHash`) | Sepolia attestation upgrade deploy |
+| v0.1.0 / older | Pre-attestation schema | Superseded |
 
 Patient “registered” in the UI uses **on-chain** `isRegistered()` when the subgraph has no `Patient` row (v0.1.2 starts after some registrations).
 

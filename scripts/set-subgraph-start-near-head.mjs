@@ -1,7 +1,7 @@
 /**
- * Set all arbSepolia start blocks near chain head for fast Studio sync.
+ * Set all sepolia start blocks near chain head for fast Studio sync.
  * Usage: node scripts/set-subgraph-start-near-head.mjs [blocksBehind]
- * Default blocksBehind: 500 (~2 min on Arbitrum Sepolia).
+ * Default blocksBehind: 500.
  */
 import fs from "fs";
 import path from "path";
@@ -15,11 +15,12 @@ dotenv.config({ path: path.join(root, ".env") });
 
 const blocksBehind = Number(process.argv[2] ?? 500);
 const rpc =
-  process.env.ARBITRUM_SEPOLIA_RPC_URL ||
-  process.env.VITE_ARBITRUM_SEPOLIA_RPC_URL ||
-  "https://sepolia-rollup.arbitrum.io/rpc";
+  process.env.SEPOLIA_RPC_URL ||
+  process.env.VITE_SEPOLIA_RPC_URL ||
+  process.env.VITE_RPC_URL ||
+  "https://ethereum-sepolia-rpc.publicnode.com";
 
-const startBlocksPath = path.join(root, "subgraph/arbSepolia-start-blocks.json");
+const startBlocksPath = path.join(root, "subgraph/sepolia-start-blocks.json");
 const existing = JSON.parse(fs.readFileSync(startBlocksPath, "utf8"));
 
 const provider = new ethers.JsonRpcProvider(rpc);

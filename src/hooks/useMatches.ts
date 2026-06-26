@@ -47,6 +47,9 @@ const GET_SPONSOR_DATA = `
         noirCertified
         noirEligible
         noirCertifiedAt
+        attestationResultHash
+        attestationFheStageHash
+        attestationCriteriaSchemaHash
       }
     }
   }
@@ -194,6 +197,9 @@ export function useMatches(sponsorAddress?: string) {
           noirCertified: anon.noirCertified === true,
           noirEligible:
             anon.noirEligible === true || anon.noirEligible === false ? anon.noirEligible : null,
+          attestationResultHash: anon.attestationResultHash ?? null,
+          attestationFheStageHash: anon.attestationFheStageHash ?? null,
+          attestationCriteriaSchemaHash: anon.attestationCriteriaSchemaHash ?? null,
         });
       });
     });

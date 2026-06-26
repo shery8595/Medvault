@@ -70,7 +70,7 @@ export function ChainlinkAutomationDoc() {
                     </li>
                     <li>
                         Register an upkeep in the Chainlink Automation UI for this contract (
-                        <code>checkUpkeep</code>/<code>performUpkeep</code>) on Arbitrum Sepolia (or your network).
+                        <code>checkUpkeep</code>/<code>performUpkeep</code>) on Ethereum Sepolia (or your network).
                     </li>
                     <li>
                         After registration, copy the <strong>Forwarder address</strong> from your upkeep&apos;s Details page
@@ -84,7 +84,7 @@ export function ChainlinkAutomationDoc() {
                 </ul>
 
                 <Callout type="warning" title="Upkeep not running?">
-                    Run <code>npx hardhat run scripts/diagnose-automation-upkeep.ts --network arbitrumSepolia</code>.
+                    Run <code>npx hardhat run scripts/diagnose-automation-upkeep.ts --network sepolia</code>.
                     If <code>checkUpkeep</code> is <code>true</code> but <code>chainlinkForwarder</code> is{" "}
                     <code>0x000…000</code>, set the forwarder from the Chainlink UI with{" "}
                     <code>scripts/set-chainlink-forwarder.ts</code>. The contract owner may also call{" "}

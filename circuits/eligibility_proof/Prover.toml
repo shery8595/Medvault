@@ -1,31 +1,41 @@
-# MedVault Eligibility Proof — Prover inputs
+# MedVault Eligibility Proof — Prover inputs (see circuits/eligibility_proof/src/main.nr)
 #
-# Private inputs (never revealed):
-#   secret            — Semaphore V4 identity secret as decimal BigInt string
-#   eligibility_result — the eligibility decision (true/false)
+# Private witnesses include patient profile fields, Semaphore secret, staged FHE handle,
+# decrypted_eligible (encrypted-criteria mode), and criteria_binding_hash echo.
 #
-# Public inputs (submitted on-chain to HonkVerifier.verify()):
-#   commitment   — Poseidon([secret])
-#   scope        — trial_id as Field
-#   scope_internal — keccak256(scope) as Field (private; matches Semaphore circuit input)
-#   nullifier    — Poseidon([scope_internal, secret])
-#   result_hash  — Poseidon([eligible_as_field, scope, secret])
-#
-# These placeholder values are computed for secret=12345678901234567890, scope=1, eligible=true.
-# In production the frontend (src/lib/noir.ts) computes all values from the live identity.
-#
-# To generate real values:
-#   1. nargo compile
-#   2. populate with real values from identity.toString() + poseidon-lite
-#   3. nargo prove
-#   4. nargo verify
+# Public inputs (17): scope, nullifier, profile_commitment, result_hash, eligible,
+#   fhe_stage_handle_hash, criteria_schema_hash, min_age (or binding echo at idx 7),
+#   max_age .. requires_normal_bp, criteria_mode (0=plaintext, 1=encrypted echo).
 
 secret = "12345678901234567890"
 scope_internal = "42"
-eligibility_result = true
+commitment = "555"
+age = 30
+gender = true
+weight = 70
+height = 175
+has_diabetes = false
+hb_level = 140
+is_smoker = false
+has_hypertension = false
+staged_fhe_handle = "999"
+decrypted_eligible = "1"
+criteria_binding_hash = "0"
 
-# Public outputs (derive these via: poseidon-lite in TS, or nargo test to see computed values)
-commitment = "0"   # replace with: poseidon1([secret])
-scope = "1"        # replace with: actual trial_id
-nullifier = "0"    # replace with: poseidon2([scope_internal, secret])
-result_hash = "0"  # replace with: poseidon3([1n, scope, secret])  (1n = eligible)
+scope = "1"
+nullifier = "0"
+profile_commitment = "0"
+result_hash = "0"
+eligible = "1"
+fhe_stage_handle_hash = "999"
+criteria_schema_hash = "1"
+min_age = "18"
+max_age = "65"
+requires_diabetes = "0"
+min_hb = "120"
+gender_requirement = "0"
+min_height = "0"
+max_weight = "0"
+requires_non_smoker = "0"
+requires_normal_bp = "0"
+criteria_mode = "0"

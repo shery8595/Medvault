@@ -14,6 +14,7 @@ import StakingManagerAbi from "./abis/StakingManager.json";
 import MedVaultRegistryAbi from "./abis/MedVaultRegistry.json";
 import EncryptedScoreLeaderboardAbi from "./abis/EncryptedScoreLeaderboard.json";
 import HonkVerifierAbi from "./abis/HonkVerifier.json";
+import { ETHEREUM_SEPOLIA_CHAIN_ID } from "../zamaChain";
 
 type ReclaimInfra = {
     reclaim: string;
@@ -35,20 +36,22 @@ export function getArbitrumOneReclaimInfra(): (ReclaimInfra & { chainId: 42161n 
     };
 }
 
-/** Arbitrum Sepolia (421614) — Reclaim verifier + Reclaim’s Semaphore table (MedVault’s own `Semaphore` may differ; see `semaphore.ts`). */
-export function getArbSepoliaReclaimInfra(): (ReclaimInfra & { chainId: 421614n }) | null {
-    const a = (addresses as Record<string, unknown>).arbSepolia as
+/** Ethereum Sepolia (11155111) — Reclaim verifier + Reclaim Semaphore table. */
+export function getEthereumSepoliaReclaimInfra(): (ReclaimInfra & { chainId: 11155111n }) | null {
+    const a = (addresses as Record<string, unknown>).sepolia as
         | { Reclaim?: string; ReclaimSemaphore?: string; SemaphoreVerifier?: string }
         | undefined;
     if (!a?.Reclaim) return null;
     if (!a.ReclaimSemaphore || !a.SemaphoreVerifier) return null;
     return {
-        chainId: 421614n,
+        chainId: 11155111n,
         reclaim: a.Reclaim,
         reclaimSemaphore: a.ReclaimSemaphore,
         semaphoreVerifier: a.SemaphoreVerifier,
     };
 }
+
+export type MedVaultNetworkKey = "sepolia" | "hardhat";
 
 type ContractName =
     | "AnonymousPatientRegistry"
@@ -66,30 +69,30 @@ type ContractName =
     | "EncryptedScoreLeaderboard"
     | "HonkVerifier";
 
-export const getContractAddresses = (network: string = "arbSepolia") => {
-    return (addresses as any)[network];
+export const getContractAddresses = (network: MedVaultNetworkKey = "sepolia") => {
+    return (addresses as Record<string, Record<string, string>>)[network];
 };
 
-export const resolveNetworkKey = (chainId?: bigint | number): "arbSepolia" | "sepolia" => {
-    if (chainId === undefined) return "arbSepolia";
+export const resolveNetworkKey = (chainId?: bigint | number): MedVaultNetworkKey => {
+    if (chainId === undefined) return "sepolia";
     const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
-    return normalized === 421614n ? "arbSepolia" : "sepolia";
+    if (normalized === ETHEREUM_SEPOLIA_CHAIN_ID) return "sepolia";
+    if (normalized === 31337n) return "hardhat";
+    return "sepolia";
 };
 
-export const getContractAddressForChain = (
-    contractName: ContractName,
-    chainId?: bigint | number
-) => {
-    const primaryNetwork = resolveNetworkKey(chainId);
-    const fallbackNetwork = primaryNetwork === "arbSepolia" ? "sepolia" : "arbSepolia";
-    return (addresses as any)[primaryNetwork]?.[contractName] ?? (addresses as any)[fallbackNetwork]?.[contractName];
+export const getContractAddressForChain = (contractName: ContractName, chainId?: bigint | number) => {
+    const network = resolveNetworkKey(chainId);
+    const primary = (addresses as Record<string, Record<string, string>>)[network]?.[contractName];
+    if (primary) return primary;
+    return (addresses as Record<string, Record<string, string>>).sepolia?.[contractName];
 };
 
-const getAbi = (abiData: any) => {
-    return Array.isArray(abiData) ? abiData : abiData.abi;
+const getAbi = (abiData: { abi?: unknown } | unknown[]) => {
+    return Array.isArray(abiData) ? abiData : (abiData as { abi: unknown }).abi;
 };
 
-const abiMap: Record<ContractName, any> = {
+const abiMap: Record<ContractName, unknown> = {
     AnonymousPatientRegistry: AnonymousPatientRegistryAbi,
     TrialManager: TrialManagerAbi,
     ConsentManager: ConsentManagerAbi,
@@ -109,15 +112,15 @@ const abiMap: Record<ContractName, any> = {
 export const getContract = (
     contractName: ContractName,
     signerOrProvider: ethers.Signer | ethers.Provider,
-    networkOrChainId?: string | bigint | number
+    networkOrChainId?: MedVaultNetworkKey | bigint | number
 ) => {
     const network =
         networkOrChainId === undefined
-            ? "arbSepolia"
+            ? "sepolia"
             : typeof networkOrChainId === "string"
               ? networkOrChainId
               : resolveNetworkKey(networkOrChainId);
-    const networkAddresses = getContractAddresses(network);
+    const networkAddresses = getContractAddresses(network === "hardhat" ? "hardhat" : "sepolia");
     if (!networkAddresses) {
         throw new Error(`No addresses found for network: ${network}`);
     }
@@ -127,7 +130,7 @@ export const getContract = (
     }
 
     const abi = getAbi(abiMap[contractName]);
-    return new ethers.Contract(address, abi, signerOrProvider);
+    return new ethers.Contract(address, abi as ethers.InterfaceAbi, signerOrProvider);
 };
 
 export async function resolveChainIdFrom(

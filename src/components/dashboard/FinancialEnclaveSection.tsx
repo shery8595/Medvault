@@ -17,6 +17,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { WithdrawModeSelector } from "./WithdrawModeSelector";
 
 const FEATURES = [
   { icon: Lock,        title: "AES-256",         sub: "Encryption Standard" },
@@ -36,8 +37,10 @@ function EnclaveBalance() {
     revealBalance,
     hideBalance,
     deposit,
-    getWithdrawNonce,
+    withdraw,
   } = useConfidentialBalance();
+
+  const [withdrawMode, setWithdrawMode] = useState<"wallet" | "fast" | "private_batch">("wallet");
 
   const [amount, setAmount]       = useState("");
   const [action, setAction]       = useState<"deposit" | "withdraw" | null>(null);
@@ -50,8 +53,9 @@ function EnclaveBalance() {
         await deposit(amount);
         setSuccess(`Shielded ${amount} ETH into the Confidential Vault.`);
       } else {
-        await getWithdrawNonce();
-        throw new Error("Reveal balance first to generate Threshold Network signature.");
+        if (!isRevealed) throw new Error("Reveal balance before withdrawing.");
+        await withdraw(amount, withdrawMode);
+        setSuccess(`Withdrawal submitted (${withdrawMode.replace("_", " ")}).`);
       }
       setAmount("");
       setAction(null);
@@ -206,6 +210,13 @@ function EnclaveBalance() {
                 {action === "deposit" ? "ETH" : "cETH"}
               </span>
             </div>
+            {action === "withdraw" ? (
+              <WithdrawModeSelector
+                value={withdrawMode}
+                onChange={setWithdrawMode}
+                variant="enclave"
+              />
+            ) : null}
             <Button
               className={`h-11 w-full rounded-xl font-semibold text-white ${
                 action === "deposit" ? "bg-teal-600 hover:bg-teal-500" : "bg-emerald-600 hover:bg-emerald-500"

@@ -97,6 +97,9 @@ export function handleEligibilityProofVerified(event: EligibilityProofVerified):
         application.noirCertified = true
         application.noirEligible = event.params.eligible
         application.noirCertifiedAt = event.block.timestamp
+        application.attestationResultHash = event.params.resultHash
+        application.attestationFheStageHash = event.params.fheStageHash
+        application.attestationCriteriaSchemaHash = event.params.criteriaSchemaHash
         application.save()
     }
 }

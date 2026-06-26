@@ -34,6 +34,7 @@ export function handleTrialCreated(event: TrialCreated): void {
     trial.requiresNonSmoker = trialData.requiresNonSmoker
     trial.requiresNormalBP = trialData.requiresNormalBP
 
+    trial.encryptedCriteria = event.params.encryptedCriteria
     trial.active = true
     trial.endTime = event.params.endTime
     trial.createdAt = event.block.timestamp
