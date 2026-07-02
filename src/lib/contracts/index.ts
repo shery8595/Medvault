@@ -78,7 +78,7 @@ export const getContractAddresses = (network: MedVaultNetworkKey = "sepolia") =>
 export const resolveNetworkKey = (chainId?: bigint | number): MedVaultNetworkKey => {
   if (chainId === undefined) return "sepolia";
   const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
-  if (normalized === ETHEREUM_SEPOLIA_CHAIN_ID) return "sepolia";
+  if (normalized === BigInt(ETHEREUM_SEPOLIA_CHAIN_ID)) return "sepolia";
   if (normalized === 31337n) return "hardhat";
   throw new Error(`Unsupported chainId: ${normalized.toString()}`);
 };
