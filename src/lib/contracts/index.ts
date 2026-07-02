@@ -4,7 +4,7 @@ import AnonymousPatientRegistryAbi from "./abis/AnonymousPatientRegistry.json";
 import TrialManagerAbi from "./abis/TrialManager.json";
 import ConsentManagerAbi from "./abis/ConsentManager.json";
 import EligibilityEngineAbi from "./abis/EligibilityEngine.json";
-import ConfidentialETHAbi from "./abis/ConfidentialETH.json";
+import ConfidentialETHAbi from "./abis/ConfidentialETH7984.json";
 import SponsorIncentiveVaultAbi from "./abis/SponsorIncentiveVault.json";
 import DataAccessLogAbi from "./abis/DataAccessLog.json";
 import TrialMilestoneManagerAbi from "./abis/TrialMilestoneManager.json";
@@ -14,6 +14,7 @@ import StakingManagerAbi from "./abis/StakingManager.json";
 import MedVaultRegistryAbi from "./abis/MedVaultRegistry.json";
 import EncryptedScoreLeaderboardAbi from "./abis/EncryptedScoreLeaderboard.json";
 import HonkVerifierAbi from "./abis/HonkVerifier.json";
+import PatientDocumentStoreAbi from "./abis/PatientDocumentStore.json";
 import { ETHEREUM_SEPOLIA_CHAIN_ID } from "../zamaChain";
 
 type ReclaimInfra = {
@@ -67,26 +68,50 @@ type ContractName =
     | "StakingManager"
     | "MedVaultRegistry"
     | "EncryptedScoreLeaderboard"
-    | "HonkVerifier";
+    | "HonkVerifier"
+    | "PatientDocumentStore";
 
 export const getContractAddresses = (network: MedVaultNetworkKey = "sepolia") => {
     return (addresses as Record<string, Record<string, string>>)[network];
 };
 
 export const resolveNetworkKey = (chainId?: bigint | number): MedVaultNetworkKey => {
-    if (chainId === undefined) return "sepolia";
-    const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
-    if (normalized === ETHEREUM_SEPOLIA_CHAIN_ID) return "sepolia";
-    if (normalized === 31337n) return "hardhat";
-    return "sepolia";
+  if (chainId === undefined) return "sepolia";
+  const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
+  if (normalized === ETHEREUM_SEPOLIA_CHAIN_ID) return "sepolia";
+  if (normalized === 31337n) return "hardhat";
+  throw new Error(`Unsupported chainId: ${normalized.toString()}`);
 };
 
 export const getContractAddressForChain = (contractName: ContractName, chainId?: bigint | number) => {
+    if (contractName === "PatientDocumentStore") {
+        const fromEnv =
+            typeof import.meta !== "undefined"
+                ? import.meta.env.VITE_PATIENT_DOCUMENT_STORE?.trim()
+                : "";
+        if (fromEnv) return fromEnv;
+    }
     const network = resolveNetworkKey(chainId);
     const primary = (addresses as Record<string, Record<string, string>>)[network]?.[contractName];
-    if (primary) return primary;
-    return (addresses as Record<string, Record<string, string>>).sepolia?.[contractName];
+    if (primary && !/^0x0+$/i.test(primary)) return primary;
+    const fallback = (addresses as Record<string, Record<string, string>>).sepolia?.[contractName];
+    if (fallback && !/^0x0+$/i.test(fallback)) return fallback;
+    if (contractName === "PatientDocumentStore") {
+        throw new Error(
+            "PatientDocumentStore address not configured. Set VITE_PATIENT_DOCUMENT_STORE or deploy and update addresses.json."
+        );
+    }
+    return primary ?? fallback;
 };
+
+/** Returns PatientDocumentStore address when configured; undefined otherwise (no throw). */
+export function tryGetPatientDocumentStoreAddress(chainId?: bigint | number): string | undefined {
+    try {
+        return getContractAddressForChain("PatientDocumentStore", chainId);
+    } catch {
+        return undefined;
+    }
+}
 
 const getAbi = (abiData: { abi?: unknown } | unknown[]) => {
     return Array.isArray(abiData) ? abiData : (abiData as { abi: unknown }).abi;
@@ -107,13 +132,14 @@ const abiMap: Record<ContractName, unknown> = {
     MedVaultRegistry: MedVaultRegistryAbi,
     EncryptedScoreLeaderboard: EncryptedScoreLeaderboardAbi,
     HonkVerifier: HonkVerifierAbi,
+    PatientDocumentStore: PatientDocumentStoreAbi,
 };
 
 export const getContract = (
     contractName: ContractName,
     signerOrProvider: ethers.Signer | ethers.Provider,
     networkOrChainId?: MedVaultNetworkKey | bigint | number
-) => {
+): ethers.Contract => {
     const network =
         networkOrChainId === undefined
             ? "sepolia"
@@ -146,6 +172,13 @@ export async function resolveChainIdFrom(
     } catch {
         return undefined;
     }
+}
+
+export function requireChainId(chainId: bigint | undefined): bigint {
+    if (chainId === undefined) {
+        throw new Error('Unable to resolve chain ID from provider');
+    }
+    return chainId;
 }
 
 export async function getContractAsync(
@@ -188,3 +221,5 @@ export const getEncryptedScoreLeaderboard = (
 ) => getContract("EncryptedScoreLeaderboard", signer, chainId);
 export const getHonkVerifier = (signer: ethers.Signer | ethers.Provider, chainId?: bigint | number) =>
     getContract("HonkVerifier", signer, chainId);
+export const getPatientDocumentStore = (signer: ethers.Signer | ethers.Provider, chainId?: bigint | number) =>
+    getContract("PatientDocumentStore", signer, chainId);

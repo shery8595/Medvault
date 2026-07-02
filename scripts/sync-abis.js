@@ -77,3 +77,14 @@ if (fs.existsSync(srcDir)) {
 }
 
 syncSubgraphAbisFromFrontend();
+
+// Full IERC7984 ABI lives on ConfidentialETH7984; alias wrapper artifact is minimal.
+const ceth7984 = path.join(destDir, "ConfidentialETH7984.json");
+const cethAlias = path.join(destDir, "ConfidentialETH.json");
+if (fs.existsSync(ceth7984)) {
+    fs.copyFileSync(ceth7984, cethAlias);
+    if (SUBGRAPH_ABIS.has("ConfidentialETH.json")) {
+        fs.copyFileSync(ceth7984, path.join(subgraphDestDir, "ConfidentialETH.json"));
+        console.log("[sync-abis] ConfidentialETH.json <- ConfidentialETH7984.json (IERC7984 ABI)");
+    }
+}

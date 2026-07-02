@@ -236,6 +236,25 @@ dataAccessLog.log(
                     MedVault logs <code>keccak256(patient, details)</code> instead of raw addresses in the public log title. This serves a dual purpose: (1) regulators can verify that a specific patient's data was handled correctly by reconstructing the hash, and (2) casual blockchain observers cannot enumerate patient addresses from the log entries. The patient address is only discoverable if you already know who you're looking for.
                 </Callout>
 
+                <Callout type="warning" title="Honest residual limits">
+                    Consent revocation (<code>revokeConsent</code>) updates on-chain flags but does not revoke all fhEVM{" "}
+                    <code>FHE.allow</code> grants on historical handles — epoch gating applies. Trial criteria may be
+                    public only when sponsors use legacy <code>createTrial</code>, which is <strong>Hardhat-only</strong>{" "}
+                    (chainid 31337 gate; reverts on Sepolia/mainnet); production UI, SDK, and MCP route to{" "}
+                    <code>createTrialWithEncryptedCriteria</code>. See{" "}
+                    <a href="/docs/security-model" className="font-semibold text-[#00685f] hover:underline">
+                        Security model
+                    </a>{" "}
+                    and repository{" "}
+                    <a
+                        href="https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md"
+                        className="font-semibold text-[#00685f] hover:underline"
+                    >
+                        SECURITY.md
+                    </a>
+                    .
+                </Callout>
+
                 <hr className="my-12 border-slate-200" />
 
                 <h2>IV. FDA 21 CFR Part 11 — Electronic Records</h2>

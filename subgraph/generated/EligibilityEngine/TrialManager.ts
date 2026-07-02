@@ -10,6 +10,62 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AclEpochRotated extends ethereum.Event {
+  get params(): AclEpochRotated__Params {
+    return new AclEpochRotated__Params(this);
+  }
+}
+
+export class AclEpochRotated__Params {
+  _event: AclEpochRotated;
+
+  constructor(event: AclEpochRotated) {
+    this._event = event;
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[0].value.toI32();
+  }
+
+  get newEpoch(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get newConsumer(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+}
+
+export class AclGranted extends ethereum.Event {
+  get params(): AclGranted__Params {
+    return new AclGranted__Params(this);
+  }
+}
+
+export class AclGranted__Params {
+  _event: AclGranted;
+
+  constructor(event: AclGranted) {
+    this._event = event;
+  }
+
+  get handle(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get consumer(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get epoch(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[3].value.toI32();
+  }
+}
+
 export class AutomationHookFailed extends ethereum.Event {
   get params(): AutomationHookFailed__Params {
     return new AutomationHookFailed__Params(this);
@@ -508,6 +564,52 @@ export class TrialManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  aclEpochForKind(kind: i32): BigInt {
+    let result = super.call(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_aclEpochForKind(kind: i32): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   automationContract(): Address {
     let result = super.call(
       "automationContract",
@@ -529,6 +631,29 @@ export class TrialManager extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  automationContractChangeEta(): BigInt {
+    let result = super.call(
+      "automationContractChangeEta",
+      "automationContractChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_automationContractChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "automationContractChangeEta",
+      "automationContractChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   confidentialProtocolId(): BigInt {
@@ -747,6 +872,29 @@ export class TrialManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  eligibilityEngineChangeEta(): BigInt {
+    let result = super.call(
+      "eligibilityEngineChangeEta",
+      "eligibilityEngineChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_eligibilityEngineChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "eligibilityEngineChangeEta",
+      "eligibilityEngineChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   getEncryptedCriteria(
     _trialId: BigInt,
   ): TrialManager__getEncryptedCriteriaResultValue0Struct {
@@ -862,6 +1010,52 @@ export class TrialManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  pendingAutomationContract(): Address {
+    let result = super.call(
+      "pendingAutomationContract",
+      "pendingAutomationContract():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingAutomationContract(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingAutomationContract",
+      "pendingAutomationContract():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingEligibilityEngine(): Address {
+    let result = super.call(
+      "pendingEligibilityEngine",
+      "pendingEligibilityEngine():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingEligibilityEngine(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingEligibilityEngine",
+      "pendingEligibilityEngine():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   pendingOwner(): Address {
     let result = super.call("pendingOwner", "pendingOwner():(address)", []);
 
@@ -870,6 +1064,29 @@ export class TrialManager extends ethereum.SmartContract {
 
   try_pendingOwner(): ethereum.CallResult<Address> {
     let result = super.tryCall("pendingOwner", "pendingOwner():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingSponsorRegistry(): Address {
+    let result = super.call(
+      "pendingSponsorRegistry",
+      "pendingSponsorRegistry():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingSponsorRegistry(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingSponsorRegistry",
+      "pendingSponsorRegistry():(address)",
+      [],
+    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -919,6 +1136,29 @@ export class TrialManager extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  sponsorRegistryChangeEta(): BigInt {
+    let result = super.call(
+      "sponsorRegistryChangeEta",
+      "sponsorRegistryChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_sponsorRegistryChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "sponsorRegistryChangeEta",
+      "sponsorRegistryChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   trialCounter(): BigInt {
@@ -1054,6 +1294,84 @@ export class AcceptOwnershipCall__Outputs {
   _call: AcceptOwnershipCall;
 
   constructor(call: AcceptOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyAutomationContractCall extends ethereum.Call {
+  get inputs(): ApplyAutomationContractCall__Inputs {
+    return new ApplyAutomationContractCall__Inputs(this);
+  }
+
+  get outputs(): ApplyAutomationContractCall__Outputs {
+    return new ApplyAutomationContractCall__Outputs(this);
+  }
+}
+
+export class ApplyAutomationContractCall__Inputs {
+  _call: ApplyAutomationContractCall;
+
+  constructor(call: ApplyAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyAutomationContractCall__Outputs {
+  _call: ApplyAutomationContractCall;
+
+  constructor(call: ApplyAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyEligibilityEngineCall extends ethereum.Call {
+  get inputs(): ApplyEligibilityEngineCall__Inputs {
+    return new ApplyEligibilityEngineCall__Inputs(this);
+  }
+
+  get outputs(): ApplyEligibilityEngineCall__Outputs {
+    return new ApplyEligibilityEngineCall__Outputs(this);
+  }
+}
+
+export class ApplyEligibilityEngineCall__Inputs {
+  _call: ApplyEligibilityEngineCall;
+
+  constructor(call: ApplyEligibilityEngineCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyEligibilityEngineCall__Outputs {
+  _call: ApplyEligibilityEngineCall;
+
+  constructor(call: ApplyEligibilityEngineCall) {
+    this._call = call;
+  }
+}
+
+export class ApplySponsorRegistryCall extends ethereum.Call {
+  get inputs(): ApplySponsorRegistryCall__Inputs {
+    return new ApplySponsorRegistryCall__Inputs(this);
+  }
+
+  get outputs(): ApplySponsorRegistryCall__Outputs {
+    return new ApplySponsorRegistryCall__Outputs(this);
+  }
+}
+
+export class ApplySponsorRegistryCall__Inputs {
+  _call: ApplySponsorRegistryCall;
+
+  constructor(call: ApplySponsorRegistryCall) {
+    this._call = call;
+  }
+}
+
+export class ApplySponsorRegistryCall__Outputs {
+  _call: ApplySponsorRegistryCall;
+
+  constructor(call: ApplySponsorRegistryCall) {
     this._call = call;
   }
 }
@@ -1290,6 +1608,130 @@ export class ProposeOwnershipCall__Outputs {
   _call: ProposeOwnershipCall;
 
   constructor(call: ProposeOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class RotateTrustedContractCall extends ethereum.Call {
+  get inputs(): RotateTrustedContractCall__Inputs {
+    return new RotateTrustedContractCall__Inputs(this);
+  }
+
+  get outputs(): RotateTrustedContractCall__Outputs {
+    return new RotateTrustedContractCall__Outputs(this);
+  }
+}
+
+export class RotateTrustedContractCall__Inputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+
+  get kind(): i32 {
+    return this._call.inputValues[0].value.toI32();
+  }
+
+  get newConsumer(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+}
+
+export class RotateTrustedContractCall__Outputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleAutomationContractCall extends ethereum.Call {
+  get inputs(): ScheduleAutomationContractCall__Inputs {
+    return new ScheduleAutomationContractCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleAutomationContractCall__Outputs {
+    return new ScheduleAutomationContractCall__Outputs(this);
+  }
+}
+
+export class ScheduleAutomationContractCall__Inputs {
+  _call: ScheduleAutomationContractCall;
+
+  constructor(call: ScheduleAutomationContractCall) {
+    this._call = call;
+  }
+
+  get _automation(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleAutomationContractCall__Outputs {
+  _call: ScheduleAutomationContractCall;
+
+  constructor(call: ScheduleAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleEligibilityEngineCall extends ethereum.Call {
+  get inputs(): ScheduleEligibilityEngineCall__Inputs {
+    return new ScheduleEligibilityEngineCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleEligibilityEngineCall__Outputs {
+    return new ScheduleEligibilityEngineCall__Outputs(this);
+  }
+}
+
+export class ScheduleEligibilityEngineCall__Inputs {
+  _call: ScheduleEligibilityEngineCall;
+
+  constructor(call: ScheduleEligibilityEngineCall) {
+    this._call = call;
+  }
+
+  get _engine(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleEligibilityEngineCall__Outputs {
+  _call: ScheduleEligibilityEngineCall;
+
+  constructor(call: ScheduleEligibilityEngineCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleSponsorRegistryCall extends ethereum.Call {
+  get inputs(): ScheduleSponsorRegistryCall__Inputs {
+    return new ScheduleSponsorRegistryCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleSponsorRegistryCall__Outputs {
+    return new ScheduleSponsorRegistryCall__Outputs(this);
+  }
+}
+
+export class ScheduleSponsorRegistryCall__Inputs {
+  _call: ScheduleSponsorRegistryCall;
+
+  constructor(call: ScheduleSponsorRegistryCall) {
+    this._call = call;
+  }
+
+  get _registry(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleSponsorRegistryCall__Outputs {
+  _call: ScheduleSponsorRegistryCall;
+
+  constructor(call: ScheduleSponsorRegistryCall) {
     this._call = call;
   }
 }

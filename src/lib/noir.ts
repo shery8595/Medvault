@@ -1,6 +1,6 @@
 /**
 
- * MedVault Noir integration — browser UltraHonk proofs for HonkVerifier.sol (EVM / Keccak).
+ * MedVault Noir integration — browser UltraHonk proofs for HonkVerifier.sol / HonkVerifierEncrypted.sol (EVM / Keccak).
 
  * Noir is the public attestation seal; Zama FHE remains the compute authority.
 
@@ -15,7 +15,7 @@ import { Noir } from "@noir-lang/noir_js";
 
 import { Identity } from "@semaphore-protocol/identity";
 
-import { poseidon3 } from "poseidon-lite";
+import { poseidon2, poseidon3 } from "poseidon-lite";
 
 import { fieldFromBytes32, parseFieldElement } from "./field";
 
@@ -23,13 +23,16 @@ import { ensureNoirWasmInitialized } from "./noirInit";
 
 import { computeProfileCommitment, type PatientProfilePlain } from "./profileCommitment";
 
+import { getStoredProfileSalt } from "./profileStorage";
+
 import { getAnonymousNullifier, semaphoreScopeField } from "./semaphore";
 
-import { criteriaSchemaHashField, fheStageHandleToField, normalizeFheHandle, BN254_FIELD_ORDER } from "./criteriaSchema";
+import { criteriaSchemaHashField, docSchemaHashField, fheStageHandleToField, normalizeFheHandle, BN254_FIELD_ORDER } from "./criteriaSchema";
 
 
 
-export const ELIGIBILITY_PUBLIC_INPUT_COUNT = 17;
+export const ELIGIBILITY_PUBLIC_INPUT_COUNT = 25;
+export const ELIGIBILITY_ENCRYPTED_PUBLIC_INPUT_COUNT = 15;
 
 
 
@@ -63,6 +66,13 @@ export type TrialCriteriaPlain = {
 
 
 
+export type DocumentBindingInputs = {
+    hasDocument: boolean;
+    docCidHash?: bigint;
+    aesKeyCtHash?: bigint;
+    aesKeyFheHandleHashes?: [bigint, bigint, bigint, bigint];
+};
+
 export interface EligibilityProofInputs {
 
     secret: bigint;
@@ -79,6 +89,8 @@ export interface EligibilityProofInputs {
 
     profileCommitment: bigint;
 
+    profileSalt: bigint;
+
     resultHash: bigint;
 
     fheStageHandleHash: bigint;
@@ -90,6 +102,8 @@ export interface EligibilityProofInputs {
     criteriaMode: 0 | 1;
 
     encryptedCriteriaBindingHash?: bigint;
+
+    documentBinding?: DocumentBindingInputs;
 
 }
 
@@ -111,26 +125,27 @@ type CompiledCircuit = { bytecode: string };
 
 
 
-let _compiledCircuit: CompiledCircuit | null = null;
+let _compiledPlaintextCircuit: CompiledCircuit | null = null;
+let _compiledEncryptedCircuit: CompiledCircuit | null = null;
 
-
-
-export async function loadCircuit(): Promise<CompiledCircuit> {
-
-    if (_compiledCircuit) return _compiledCircuit;
-
-    const circuit = await import("./circuits/eligibility_proof.json");
-
-    _compiledCircuit = (circuit.default ?? circuit) as CompiledCircuit;
-
-    if (!_compiledCircuit.bytecode) {
-
-        throw new Error("Circuit artifact missing bytecode. Run `npm run build:circuit`.");
-
+export async function loadCircuit(criteriaMode: 0 | 1 = 0): Promise<CompiledCircuit> {
+    if (criteriaMode === 1) {
+        if (_compiledEncryptedCircuit) return _compiledEncryptedCircuit;
+        const circuit = await import("./circuits/eligibility_encrypted.json");
+        _compiledEncryptedCircuit = (circuit.default ?? circuit) as CompiledCircuit;
+        if (!_compiledEncryptedCircuit.bytecode) {
+            throw new Error("Encrypted circuit artifact missing bytecode. Run `npm run build:circuit`.");
+        }
+        return _compiledEncryptedCircuit;
     }
 
-    return _compiledCircuit;
-
+    if (_compiledPlaintextCircuit) return _compiledPlaintextCircuit;
+    const circuit = await import("./circuits/eligibility_plaintext.json");
+    _compiledPlaintextCircuit = (circuit.default ?? circuit) as CompiledCircuit;
+    if (!_compiledPlaintextCircuit.bytecode) {
+        throw new Error("Plaintext circuit artifact missing bytecode. Run `npm run build:circuit`.");
+    }
+    return _compiledPlaintextCircuit;
 }
 
 
@@ -157,6 +172,8 @@ export function deriveProofInputs(
 
         encryptedCriteriaBindingHash?: bigint;
 
+        documentBinding?: DocumentBindingInputs;
+
     }
 
 ): EligibilityProofInputs {
@@ -169,11 +186,21 @@ export function deriveProofInputs(
 
     const nullifier = getAnonymousNullifier(trialId) ?? 0n;
 
-    const profileCommitment = computeProfileCommitment(commitment, profile);
+    const profileSalt = getStoredProfileSalt();
+    if (profileSalt === null) {
+        throw new Error(
+            "No stored profile salt. Re-register your health vault (production registration requires random profileSalt)."
+        );
+    }
 
+    const profileCommitment = computeProfileCommitment(commitment, profile, profileSalt);
+
+    const criteriaMode = options?.criteriaMode ?? 0;
     const eligibleField = eligible ? 1n : 0n;
-
-    const resultHash = poseidon3([eligibleField, scope, secret]);
+    const resultHash =
+        criteriaMode === 1
+            ? poseidon2([scope, secret])
+            : poseidon3([eligibleField, scope, secret]);
 
     return {
 
@@ -191,6 +218,8 @@ export function deriveProofInputs(
 
         profileCommitment,
 
+        profileSalt,
+
         resultHash,
 
         fheStageHandleHash: fheStageHandleToField(fheStageHandle),
@@ -199,9 +228,11 @@ export function deriveProofInputs(
 
         criteria,
 
-        criteriaMode: options?.criteriaMode ?? 0,
+        criteriaMode,
 
         encryptedCriteriaBindingHash: options?.encryptedCriteriaBindingHash,
+
+        documentBinding: options?.documentBinding,
 
     };
 
@@ -231,6 +262,8 @@ export async function generateEligibilityProof(
 
         encryptedCriteriaBindingHash?: bigint;
 
+        documentBinding?: DocumentBindingInputs;
+
     }
 
 ): Promise<EligibilityProofData> {
@@ -253,113 +286,130 @@ export async function generateEligibilityProof(
 
 
 
-    const compiledCircuit = await loadCircuit();
-
+    const criteriaMode = options?.criteriaMode ?? 0;
+    const compiledCircuit = await loadCircuit(criteriaMode);
     const inputs = deriveProofInputs(
-
         identity,
-
         commitment,
-
         trialId,
-
         profile,
-
         criteria,
-
         eligibleResult,
-
         fheStageHandle,
-
         options
-
     );
 
-
-
     if (inputs.nullifier !== storedNullifier) {
-
         throw new Error(
-
             "Stored Semaphore nullifier does not match witness inputs. Re-apply anonymously first."
-
         );
-
     }
 
-
-
-    const criteriaMode = inputs.criteriaMode;
     const bindingHash =
         criteriaMode === 1
             ? (inputs.encryptedCriteriaBindingHash ?? 0n) % BN254_FIELD_ORDER
             : 0n;
 
-    const noirInputs: Record<string, string | boolean | number> = {
+    const docBinding = inputs.documentBinding;
+    const docChunkFields: [bigint, bigint, bigint, bigint] = docBinding?.hasDocument
+        ? (docBinding.aesKeyFheHandleHashes ?? [0n, 0n, 0n, 0n]).map((h) => h % BN254_FIELD_ORDER) as [
+              bigint,
+              bigint,
+              bigint,
+              bigint,
+          ]
+        : [0n, 0n, 0n, 0n];
 
-        secret: inputs.secret.toString(),
-
-        scope_internal: inputs.scopeInternal.toString(),
-
-        commitment: inputs.commitment.toString(),
-
-        age: profile.age,
-
-        gender: profile.gender,
-
-        weight: profile.weight,
-
-        height: profile.height,
-
-        has_diabetes: profile.hasDiabetes,
-
-        hb_level: profile.hbLevel,
-
-        is_smoker: profile.isSmoker,
-
-        has_hypertension: profile.hasHypertension,
-
-        staged_fhe_handle: inputs.fheStageHandleHash.toString(),
-
-        decrypted_eligible: eligibleResult ? "1" : "0",
-
-        criteria_binding_hash: bindingHash.toString(),
-
-        scope: inputs.scope.toString(),
-
-        nullifier: inputs.nullifier.toString(),
-
-        profile_commitment: inputs.profileCommitment.toString(),
-
-        result_hash: inputs.resultHash.toString(),
-
-        eligible: eligibleResult ? "1" : "0",
-
-        fhe_stage_handle_hash: inputs.fheStageHandleHash.toString(),
-
-        criteria_schema_hash: inputs.criteriaSchemaHash.toString(),
-
-        min_age: criteriaMode === 1 ? bindingHash.toString() : criteria.minAge,
-
-        max_age: criteriaMode === 1 ? 0 : criteria.maxAge,
-
-        requires_diabetes: criteriaMode === 1 ? "0" : criteria.requiresDiabetes ? "1" : "0",
-
-        min_hb: criteriaMode === 1 ? 0 : criteria.minHb,
-
-        gender_requirement: criteriaMode === 1 ? 0 : criteria.genderRequirement,
-
-        min_height: criteriaMode === 1 ? 0 : criteria.minHeight,
-
-        max_weight: criteriaMode === 1 ? 0 : criteria.maxWeight,
-
-        requires_non_smoker: criteriaMode === 1 ? "0" : criteria.requiresNonSmoker ? "1" : "0",
-
-        requires_normal_bp: criteriaMode === 1 ? "0" : criteria.requiresNormalBP ? "1" : "0",
-
-        criteria_mode: criteriaMode,
-
-    };
+    const noirInputs: Record<string, string | boolean | number> =
+        criteriaMode === 1
+            ? {
+                  secret: inputs.secret.toString(),
+                  scope_internal: inputs.scopeInternal.toString(),
+                  staged_fhe_handle: inputs.fheStageHandleHash.toString(),
+                  staged_aes_key_chunk_0: docChunkFields[0].toString(),
+                  staged_aes_key_chunk_1: docChunkFields[1].toString(),
+                  staged_aes_key_chunk_2: docChunkFields[2].toString(),
+                  staged_aes_key_chunk_3: docChunkFields[3].toString(),
+                  doc_cid_hash_witness: docBinding?.hasDocument
+                      ? ((docBinding.docCidHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_ct_hash_witness: docBinding?.hasDocument
+                      ? ((docBinding.aesKeyCtHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  scope: inputs.scope.toString(),
+                  nullifier: inputs.nullifier.toString(),
+                  result_hash: inputs.resultHash.toString(),
+                  fhe_stage_handle_hash: inputs.fheStageHandleHash.toString(),
+                  criteria_schema_hash: inputs.criteriaSchemaHash.toString(),
+                  criteria_binding_hash: bindingHash.toString(),
+                  criteria_mode: 1,
+                  doc_cid_hash: docBinding?.hasDocument
+                      ? ((docBinding.docCidHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_ct_hash: docBinding?.hasDocument
+                      ? ((docBinding.aesKeyCtHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_fhe_handle_hash_0: docChunkFields[0].toString(),
+                  aes_key_fhe_handle_hash_1: docChunkFields[1].toString(),
+                  aes_key_fhe_handle_hash_2: docChunkFields[2].toString(),
+                  aes_key_fhe_handle_hash_3: docChunkFields[3].toString(),
+                  doc_schema_hash: docBinding?.hasDocument ? docSchemaHashField().toString() : "0",
+                  has_document: docBinding?.hasDocument ? "1" : "0",
+              }
+            : {
+                  secret: inputs.secret.toString(),
+                  scope_internal: inputs.scopeInternal.toString(),
+                  commitment: inputs.commitment.toString(),
+                  age: profile.age,
+                  gender: profile.gender,
+                  weight: profile.weight,
+                  height: profile.height,
+                  has_diabetes: profile.hasDiabetes,
+                  hb_level: profile.hbLevel,
+                  is_smoker: profile.isSmoker,
+                  has_hypertension: profile.hasHypertension,
+                  profile_salt: inputs.profileSalt.toString(),
+                  staged_fhe_handle: inputs.fheStageHandleHash.toString(),
+                  staged_aes_key_chunk_0: docChunkFields[0].toString(),
+                  staged_aes_key_chunk_1: docChunkFields[1].toString(),
+                  staged_aes_key_chunk_2: docChunkFields[2].toString(),
+                  staged_aes_key_chunk_3: docChunkFields[3].toString(),
+                  doc_cid_hash_witness: docBinding?.hasDocument
+                      ? ((docBinding.docCidHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_ct_hash_witness: docBinding?.hasDocument
+                      ? ((docBinding.aesKeyCtHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  scope: inputs.scope.toString(),
+                  nullifier: inputs.nullifier.toString(),
+                  profile_commitment: inputs.profileCommitment.toString(),
+                  result_hash: inputs.resultHash.toString(),
+                  eligible: eligibleResult ? "1" : "0",
+                  fhe_stage_handle_hash: inputs.fheStageHandleHash.toString(),
+                  criteria_schema_hash: inputs.criteriaSchemaHash.toString(),
+                  min_age: criteria.minAge,
+                  max_age: criteria.maxAge,
+                  requires_diabetes: criteria.requiresDiabetes ? "1" : "0",
+                  min_hb: criteria.minHb,
+                  gender_requirement: criteria.genderRequirement,
+                  min_height: criteria.minHeight,
+                  max_weight: criteria.maxWeight,
+                  requires_non_smoker: criteria.requiresNonSmoker ? "1" : "0",
+                  requires_normal_bp: criteria.requiresNormalBP ? "1" : "0",
+                  criteria_mode: 0,
+                  doc_cid_hash: docBinding?.hasDocument
+                      ? ((docBinding.docCidHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_ct_hash: docBinding?.hasDocument
+                      ? ((docBinding.aesKeyCtHash ?? 0n) % BN254_FIELD_ORDER).toString()
+                      : "0",
+                  aes_key_fhe_handle_hash_0: docChunkFields[0].toString(),
+                  aes_key_fhe_handle_hash_1: docChunkFields[1].toString(),
+                  aes_key_fhe_handle_hash_2: docChunkFields[2].toString(),
+                  aes_key_fhe_handle_hash_3: docChunkFields[3].toString(),
+                  doc_schema_hash: docBinding?.hasDocument ? docSchemaHashField().toString() : "0",
+                  has_document: docBinding?.hasDocument ? "1" : "0",
+              };
 
 
 
@@ -383,7 +433,10 @@ export async function generateEligibilityProof(
 
 
 
-    const solidityPublicInputs = buildContractPublicInputs(inputs);
+    const solidityPublicInputs =
+        criteriaMode === 1
+            ? buildEncryptedContractPublicInputs(inputs)
+            : buildContractPublicInputs(inputs);
 
     assertProofPublicInputsMatchRaw(rawPublicInputs, inputs);
 
@@ -508,6 +561,39 @@ export function assertSolidityProofMetadata(proofBytes: `0x${string}`): void {
 
 
 
+export function buildDocumentBindingPublicInputs(
+    binding?: DocumentBindingInputs
+): `0x${string}`[] {
+    if (!binding?.hasDocument) {
+        return Array.from({ length: 8 }, () => fieldToBytes32(0n));
+    }
+    const handles = binding.aesKeyFheHandleHashes ?? [0n, 0n, 0n, 0n];
+    return [
+        fieldToBytes32((binding.docCidHash ?? 0n) % BN254_FIELD_ORDER),
+        fieldToBytes32((binding.aesKeyCtHash ?? 0n) % BN254_FIELD_ORDER),
+        fieldToBytes32(handles[0] % BN254_FIELD_ORDER),
+        fieldToBytes32(handles[1] % BN254_FIELD_ORDER),
+        fieldToBytes32(handles[2] % BN254_FIELD_ORDER),
+        fieldToBytes32(handles[3] % BN254_FIELD_ORDER),
+        fieldToBytes32(docSchemaHashField()),
+        fieldToBytes32(1n),
+    ];
+}
+
+export function buildEncryptedContractPublicInputs(inputs: EligibilityProofInputs): `0x${string}`[] {
+    const bindingHash = (inputs.encryptedCriteriaBindingHash ?? 0n) % BN254_FIELD_ORDER;
+    return [
+        fieldToBytes32(inputs.scope),
+        fieldToBytes32(inputs.nullifier),
+        fieldToBytes32(inputs.resultHash),
+        fieldToBytes32(inputs.fheStageHandleHash),
+        fieldToBytes32(inputs.criteriaSchemaHash),
+        fieldToBytes32(bindingHash),
+        fieldToBytes32(1n),
+        ...buildDocumentBindingPublicInputs(inputs.documentBinding),
+    ];
+}
+
 export function buildContractPublicInputs(inputs: EligibilityProofInputs): `0x${string}`[] {
 
     const c = inputs.criteria;
@@ -555,6 +641,8 @@ export function buildContractPublicInputs(inputs: EligibilityProofInputs): `0x${
 
         fieldToBytes32(BigInt(inputs.criteriaMode)),
 
+        ...buildDocumentBindingPublicInputs(inputs.documentBinding),
+
     ];
 
 }
@@ -591,18 +679,22 @@ function assertProofPublicInputsMatchRaw(
 
 ): void {
 
-    const expected = buildContractPublicInputs(inputs).map((pi) => parseFieldElement(pi));
+    const expected =
+        inputs.criteriaMode === 1
+            ? buildEncryptedContractPublicInputs(inputs).map((pi) => parseFieldElement(pi))
+            : buildContractPublicInputs(inputs).map((pi) => parseFieldElement(pi));
 
     const actual = rawPublicInputs.map((pi) => parseFieldElement(pi));
 
-    if (actual.length !== ELIGIBILITY_PUBLIC_INPUT_COUNT) {
+    const expectedCount =
+        inputs.criteriaMode === 1
+            ? ELIGIBILITY_ENCRYPTED_PUBLIC_INPUT_COUNT
+            : ELIGIBILITY_PUBLIC_INPUT_COUNT;
 
+    if (actual.length !== expectedCount) {
         throw new Error(
-
-            `Expected ${ELIGIBILITY_PUBLIC_INPUT_COUNT} public inputs, got ${actual.length}.`
-
+            `Expected ${expectedCount} public inputs, got ${actual.length}.`
         );
-
     }
 
     for (let i = 0; i < expected.length; i++) {

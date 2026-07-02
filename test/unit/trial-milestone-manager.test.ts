@@ -53,7 +53,7 @@ describe("Unit: TrialMilestoneManager", function () {
         await expectRevert(
             stack.trialMilestoneManager
                 .connect(stack.sponsor)
-                .completeMilestone(trialId, stack.patient.address, 0),
+                .completeMilestone(trialId, stack.patient.address, 0, (await time.latest()) + 3600, "0x"),
             "revert"
         );
     });

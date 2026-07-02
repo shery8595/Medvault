@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import type { ElementType } from "react";
 import {
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useWeb3 } from "../../lib/Web3Context";
+import { getContract } from "../../lib/contracts";
 import brandLogoUrl from "../../../logo/logo.png";
 
 const patientNavItems = [
@@ -45,6 +47,11 @@ const patientSecondaryNavItems = [
   { title: "Settings", href: "/patient/settings", icon: Settings },
 ];
 
+const adminNavItems = [
+  { title: "Sponsors", href: "/admin/sponsors", icon: Users },
+  { title: "Protocol wiring", href: "/admin/wiring", icon: ShieldCheck },
+];
+
 interface SidebarProps {
   role: "patient" | "sponsor";
   collapsed?: boolean;
@@ -53,11 +60,34 @@ interface SidebarProps {
 export function Sidebar({ role, collapsed = false }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useWeb3();
+  const { logout, account, readOnlyProvider } = useWeb3();
+  const [isProtocolOwner, setIsProtocolOwner] = useState(false);
   const navItems = role === "patient" ? patientNavItems : sponsorNavItems;
   const homeLink = role === "patient" ? "/patient/dashboard" : "/sponsor/dashboard";
   const portalName = role === "patient" ? "Patient" : "Sponsor";
   const isPatient = role === "patient";
+
+  useEffect(() => {
+    if (!account || !readOnlyProvider) {
+      setIsProtocolOwner(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const registry = getContract("SponsorRegistry", readOnlyProvider);
+        const owner = (await registry.owner()) as string;
+        if (!cancelled) {
+          setIsProtocolOwner(owner.toLowerCase() === account.toLowerCase());
+        }
+      } catch {
+        if (!cancelled) setIsProtocolOwner(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, readOnlyProvider]);
 
   const isItemActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(`${href}/`);
@@ -174,6 +204,27 @@ export function Sidebar({ role, collapsed = false }: SidebarProps) {
       ) : (
         <div className="min-h-0 flex-1" aria-hidden />
       )}
+
+      {isProtocolOwner ? (
+        <div
+          className={cn(
+            "shrink-0",
+            !collapsed && "border-t border-slate-200 px-3 pt-3 pb-2",
+            collapsed && "px-2 pt-2"
+          )}
+        >
+          {!collapsed ? (
+            <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Admin
+            </p>
+          ) : null}
+          <div className="space-y-1">
+            {adminNavItems.map((item) => (
+              <NavItem key={item.href} title={item.title} href={item.href} icon={item.icon} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(

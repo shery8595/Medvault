@@ -11,6 +11,7 @@ export type AttestationAuditBundle = {
     criteriaSchemaHash: string;
     fheStageHash: string;
     honkVerifier: string;
+    honkVerifierEncrypted?: string;
     eligibilityEngine: string;
     exportedAt: string;
 };
@@ -30,6 +31,7 @@ export async function fetchAttestationAuditBundle(
 ): Promise<AttestationAuditBundle | null> {
     const engineAddress = getContractAddressForChain("EligibilityEngine", chainId);
     const honkVerifier = getContractAddressForChain("HonkVerifier", chainId);
+    const honkVerifierEncrypted = getContractAddressForChain("HonkVerifierEncrypted", chainId);
     if (!engineAddress) return null;
 
     const engine = new ethers.Contract(engineAddress, engineAbi(), provider);
@@ -37,6 +39,7 @@ export async function fetchAttestationAuditBundle(
     if (!receipt?.verified) return null;
 
     const onChainVerifier = (await engine.eligibilityVerifier()) as string;
+    const onChainVerifierEncrypted = (await engine.eligibilityVerifierEncrypted()) as string;
 
     return {
         trialId: trialId.toString(),
@@ -47,6 +50,10 @@ export async function fetchAttestationAuditBundle(
         criteriaSchemaHash: String(receipt.criteriaSchemaHash),
         fheStageHash: String(receipt.fheStageHash),
         honkVerifier: onChainVerifier || honkVerifier || "",
+        honkVerifierEncrypted:
+            onChainVerifierEncrypted !== ethers.ZeroAddress
+                ? onChainVerifierEncrypted
+                : honkVerifierEncrypted || undefined,
         eligibilityEngine: engineAddress,
         exportedAt: new Date().toISOString(),
     };

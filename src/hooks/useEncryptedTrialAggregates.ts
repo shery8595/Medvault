@@ -18,7 +18,8 @@ function handleToHex(value: unknown): `0x${string}` {
 }
 
 export function useEncryptedTrialAggregates(trialIds: string[]) {
-    const { readProvider, signer } = useWeb3();
+    const { readOnlyProvider, signer } = useWeb3();
+    const readProvider = readOnlyProvider;
     const [aggregates, setAggregates] = useState<EncryptedTrialAggregate[]>([]);
     const [loading, setLoading] = useState(false);
     const [decryptError, setDecryptError] = useState<string | null>(null);

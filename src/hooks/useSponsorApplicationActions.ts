@@ -63,6 +63,11 @@ export function useSponsorApplicationActions(): UseSponsorApplicationActionsResu
     [signer]
   );
 
+  /**
+   * Updates anonymous application status on EligibilityEngine.
+   * On Accepted (status 2), does **not** vault-register — MED-3 requires the permit holder
+   * to call `registerAnonymousParticipant` (patient UI: Applied Trials / `registerAnonymousParticipantByNullifier`).
+   */
   const updateAnonymousApplicationStatus = useCallback(
     async (trialId: string, nullifier: string, status: number) => {
       if (!signer) return false;
@@ -74,12 +79,6 @@ export function useSponsorApplicationActions(): UseSponsorApplicationActionsResu
         const engine = getEligibilityEngine(signer);
         const tx = await engine.updateAnonymousApplicationStatus(BigInt(trialId), BigInt(nullifier), status);
         await tx.wait();
-
-        if (status === 2) {
-          const vault = getSponsorIncentiveVault(signer);
-          const regTx = await vault.registerAnonymousParticipant(BigInt(trialId), BigInt(nullifier));
-          await regTx.wait();
-        }
 
         return true;
       } catch (err: any) {

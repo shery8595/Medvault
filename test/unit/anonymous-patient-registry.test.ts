@@ -29,8 +29,14 @@ describe("Unit: AnonymousPatientRegistry", function () {
             stack.stranger.address,
             ELIGIBLE_PROFILE
         );
-        const { computeProfileCommitment } = await import("../../test-support/profileCommitment");
-        const profileCommitment = `0x${computeProfileCommitment(1n, ELIGIBLE_PROFILE).toString(16).padStart(64, "0")}`;
+        const { computeProfileCommitment, defaultProfileSalt, profileSaltCommitment } = await import("../../test-support/profileCommitment");
+        const salt = await defaultProfileSalt(1n);
+        const profileCommitment = `0x${computeProfileCommitment(
+            1n,
+            ELIGIBLE_PROFILE,
+            salt
+        ).toString(16).padStart(64, "0")}`;
+        const saltCommitment = profileSaltCommitment(salt);
         await expectRevert(
             stack.anonymousPatientRegistry
                 .connect(stack.stranger)
@@ -38,6 +44,7 @@ describe("Unit: AnonymousPatientRegistry", function () {
                     1n,
                     stack.stranger.address,
                     profileCommitment,
+                    saltCommitment,
                     inputs.age.handle,
                     inputs.gender.handle,
                     inputs.weight.handle,

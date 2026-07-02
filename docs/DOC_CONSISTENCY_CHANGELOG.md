@@ -1,0 +1,167 @@
+# Documentation consistency changelog (post–Phase 5)
+
+**Date:** 2026-07-02  
+**Trigger:** Medium findings closeout (M-AUDIT-1 / M-SILENT-1 / M-REGCON-1) + full `npm test` re-run (483 passing).
+
+## 2026-07-02 — Medium findings closeout + test counts
+
+| Surface | Update |
+|---------|--------|
+| `docs/MEDIUM_FINDINGS_CLOSEOUT.md` | Canonical closeout for 3 open Medium rows |
+| `contracts/SponsorRegistry.sol` | `scheduleAuditor` zero-address guard + natspec |
+| `test/unit/sponsor-registry-auditor.test.ts` | SRA-01–05 |
+| `internal-docs/threat-model.md` | Rows 36/37/47 + residual footer |
+| `SECURITY.md` | RegConsistency → Low/closed; closeout cross-link |
+| `src/lib/docsStats.ts` | **483** default (395+85+3); 96 test files; ~2,020 registered |
+| `docs/TEST_MATRIX.md`, `TESTING_GUIDE.md`, `VERIFICATION_SNAPSHOT.md` | Suite breakdown synced |
+| `src/pages/docs/SmartContractsDoc.tsx`, `SecurityModelDoc.tsx` | Auditor + silent reject + RegConsistency |
+| `README.md`, `VISION.md`, `LIGHTPAPER.md`, `PITCH_DECK.md` | Badge + narrative counts |
+
+```bash
+npm run test:unit          # 395 passing, 6 pending
+npm run test:integration   # 85 passing
+npm test                   # 483 passing (default)
+```
+
+---
+
+**Date:** 2026-07-02  
+**Trigger:** Vault P0-1 pull-claim (`confirmReceipt` before cETH credit) shipped with frontend confirm flow and `sponsor-incentive-vault-claim-prune` tests.
+
+## 2026-07-02 — Vault P0-1 pull-claim
+
+| Surface | Update |
+|---------|--------|
+| `contracts/SponsorIncentiveVault.sol` | Stage-only distribute; `prepareEntitlementProof`, `confirmReceipt`, `pruneUnconfirmedSlots`; `confirmedDistributedWei` |
+| `src/lib/confirmReceiptFlow.ts`, `claimFlow.ts` | Patient confirm before claim; `ClaimModal` / `ClaimWizard` |
+| `docs/ZERO_REVELATION_REWARDS.md` | Canonical pull-claim lifecycle |
+| `docs/PRIVATE_WITHDRAWALS.md`, `ATOMIC_FLOWS.md` | Confirm step in claim + multi-tx tables |
+| In-app docs | Private withdrawals, user guide, sponsor system, changelog, client encryption |
+| `SECURITY.md` | Mitigation #10 pull-claim receipt |
+| Tests | `test-support/claimReceipt.ts`, P01-01..05 |
+
+**Naming:** **Vault P0-1** = pull-claim receipt confirmation. **Vault P2** = sponsor-removed abandoned reclaim. **Crypto P2** = `FHE.select` payout gating.
+
+---
+
+**Date:** 2026-07-02  
+**Trigger:** Vault P2 abandoned pool recovery (sponsor removed mid-trial) shipped with frontend admin UI, SDK/MCP adapters, and `vault-security-fixes` tests.
+
+## 2026-07-02 — Vault P2 abandoned pool recovery
+
+| Surface | Update |
+|---------|--------|
+| `contracts/SponsorIncentiveVault.sol` | `_requireAbandonedReclaimReady` for `reclaimAbandonedToOwner`; verified path unchanged |
+| `src/lib/contracts/sponsorAdapters.ts` | `reclaimAbandonedToOwnerPool`, `canAbandonedReclaim` on pool status |
+| `src/pages/AdminSponsorsPage.tsx` | Abandoned pool recovery card |
+| `src/pages/SponsorTrialDetailsPage.tsx` | Unverified-sponsor blocked messaging |
+| `@medvault/core`, `@medvault/sdk`, MCP | `reclaimAbandonedToOwnerPool`, `medvault_reclaim_abandoned_pool`, `medvault_claim_reclaimed_pool` |
+| Docs | Changelog, Sponsor system, Security model, MCP (33 tools), SDK, TIMELOCK_WIRING, SECURITY.md #10 |
+
+**Naming:** **Vault P2** = sponsor-removed reclaim (`reclaimAbandonedToOwner`). **Crypto P2** = `FHE.select` payout gating — distinct workstreams; do not conflate in prose.
+
+---
+
+**Date:** 2026-07-01  
+**Trigger:** Trust-gap remediation Phase 2 (`FHE.select` payout gating) and Phase 5 (formal verification + differential testing) are **shipped and passing**. This document is the single source of truth for the post-Phase-5 documentation reframe.
+
+## 2026-07-01 — EIP-170 shrink + Sepolia redeploy sync
+
+| Surface | Update |
+|---------|--------|
+| `src/lib/docsStats.ts` | Suite breakdown: 341 unit + 84 integration + 3 crypto = **428**; 6 unit pending; test helpers **8**; `SUBGRAPH_STUDIO_VERSION` / `SUBGRAPH_QUERY_URL` |
+| `src/pages/docs/testing/testSuiteData.ts` | `SUITE_STATS` pulls unit/integration/crypto from `docsStats` (no hardcoded drift) |
+| `docs/SUBGRAPH_SYNC.md`, `README.md`, `docker-compose.yml`, deployment docs | Canonical subgraph **v0.2.0** |
+| `docs/VERIFICATION_SNAPSHOT.md` | Row 15 (library extraction + redeploy); unit count **341** |
+| Integration tests | Custom-error regex for vault (`AppNotAccepted`, `PatientNotRegistered`) |
+
+**Verify:**
+
+```bash
+npm run test:unit          # 341 passing, 6 pending
+npm run test:integration   # 84 passing
+npm test                   # 428 passing (default)
+```
+
+## Shipped state summary
+
+| Workstream | Status | Evidence |
+|------------|--------|----------|
+| **P2 — `FHE.select` payout gating** | Shipped | `SponsorIncentiveVault._gatedRewardUnits`; tests P2-01..04, P5-SELECT-01/02 |
+| **P0.2 — Relayer re-decrypt** | Shipped (defense-in-depth) | `relayer/eligibility-decrypt.mjs`; tests RDV-01..05 |
+| **P5 — Formal / differential** | Shipped (differential fallbacks) | [certora-halmos-results.md](./formal-verification/certora-halmos-results.md); tests P1–P3 PROP, DIFF-03, BIND-01 |
+| **P3.2 — Open finalize** | Shipped | Patient EOAs may finalize directly; payout integrity is ciphertext-gated |
+
+## Canonical reframe language
+
+Use this wording consistently across README, SECURITY, VISION, LIGHTPAPER, in-app docs, and audit surfaces:
+
+- **P2 `FHE.select` payout gating (SHIPPED):** Payout integrity is independent of relayer honesty. `FHE.select(eligible, units, 0)` — decrypted payout delta is zero iff decrypted eligibility is false (screening milestone 0 and milestone > 0). Tests: `P5-SELECT-01`, `P5-SELECT-02`, `P2-01`..`P2-04`.
+- **P0.2 relayer re-decrypt (defense-in-depth):** Remains an interim relayer-trust mitigation — relayer user-decrypts staged `finalCt` and ignores client `eligible` before authorizing finalize. It is **not** the payout-integrity anchor; do not describe it as "the structural fix" or "in flight."
+- **Phase 5 formal verification:** Certora/Halmos are **blocked** on fhEVM `FHE.*` types. Differential fallbacks **PASS** on the Hardhat mock network. Evidence: [certora-halmos-results.md](./formal-verification/certora-halmos-results.md).
+- **Milestone > 0:** Ciphertext-gated via `FHE.select` on `anonymousResults` (not plaintext eligibility).
+
+## Residual honest limitations (unchanged)
+
+- **Noir–FHE `checkSignatures` binding** — still deferred (Zama SDK exposes KMS proof only via public decrypt, which would re-leak the eligibility bit).
+- **StakingManager formal verification** — not done (EligibilityEngine has Phase 5 differential evidence only).
+- **P3.3 threshold decrypt committee** — deferred until institutional pilot.
+- **Not HIPAA-compliant today** — off-chain PHI handling remains out of scope.
+
+## Link inventory — `certora-halmos-results.md`
+
+Every index/audit surface should link to [formal-verification/certora-halmos-results.md](./formal-verification/certora-halmos-results.md):
+
+| Surface | Section |
+|---------|---------|
+| [docs/README.md](./README.md) | Formal verification & internal specs |
+| [docs/AUDIT.md](./AUDIT.md) | Markdown inventory + contracts table |
+| [docs/VERIFICATION_SNAPSHOT.md](./VERIFICATION_SNAPSHOT.md) | Workstream audit log row 14 |
+| [docs/EXTERNAL_AUDIT_SCOPE.md](./EXTERNAL_AUDIT_SCOPE.md) | Pre-audit checklist |
+| [docs/EXTERNAL_AUDIT_SUMMARY.md](./EXTERNAL_AUDIT_SUMMARY.md) | Reproduce commands |
+| [src/lib/docsNav.ts](../src/lib/docsNav.ts) | Security tab — Formal verification |
+| [src/pages/docs/SmartContractsDoc.tsx](../src/pages/docs/SmartContractsDoc.tsx) | Formal spec links |
+| [relayer/README.md](../relayer/README.md) | P0.2 / P2 section |
+| [internal-docs/threat-model.md](../internal-docs/threat-model.md) | Noir–FHE integrity gap row |
+
+## Per-file edit log
+
+| File | Change |
+|------|--------|
+| `docs/VERIFICATION_SNAPSHOT.md` | Row 12: P2 shipped pointer; rows 13–14 added (P2 payout, P5 formal/differential) |
+| `docs/EXTERNAL_AUDIT_SCOPE.md` | P2 checklist → shipped; formal spec + results doc; P5-SELECT test refs |
+| `docs/EXTERNAL_AUDIT_SUMMARY.md` | "in flight" removed; P3.2/P2 shipped; Phase 5 test commands |
+| `docs/AUDIT.md` | Added `certora-halmos-results.md` rows |
+| `README.md` | Trust table + Noir–FHE mitigation line |
+| `SECURITY.md` | Trust table + structural fix reframed to shipped |
+| `VISION.md` | Relayer row reframed |
+| `docs/LIGHTPAPER.md` | Trust table + honest limitations P2 pointer |
+| `docs/REGULATORY_POSTURE.md` | P2 shipped; roadmap step 2 done |
+| `internal-docs/threat-model.md` | Noir–FHE row reframed |
+| `relayer/README.md` | Structural fix → shipped + results doc link |
+| `relayer/server.js` | GET `/transparency` — P2 shipped label |
+| `docs/FHE_AUDIT_README.md` | P2 payout + Phase 5 differential pointer |
+| `docs/ATOMIC_FLOWS.md` | P5 LOW-2: cETH vault funding path disabled + `ConfidentialFundingDisabled` guard |
+| `SECURITY.md` | P5 LOW-2 confidential cETH trial funding section |
+| `src/lib/protocolContracts.ts` | SponsorIncentiveVault LOW-2 quirk |
+| `src/pages/docs/ZamaFheDoc.tsx` | Vault funding callback disabled note |
+| `src/pages/docs/ChangelogDoc.tsx` | Vault P5 LOW-2 entry |
+| `docs/ZERO_REVELATION_REWARDS.md` | Milestone > 0 ciphertext-gated |
+| `docs/README.md` | Formal verification table + results doc |
+| `src/lib/docsNav.ts` | Spec description + results nav entry |
+| `src/pages/docs/SmartContractsDoc.tsx` | Spec + results links |
+| `src/pages/docs/SecurityModelDoc.tsx` | Noir–FHE row + trust table |
+| `docs/TEST_MATRIX.md` | Phase 5 file catalog (P1–P3 PROP, DIFF-03, P2/P5-SELECT, RDV); default suite **428** |
+| `docs/TESTING_GUIDE.md` | Trust-gap & Phase 5 section + canonical counts |
+| `src/pages/docs/testing/testSuiteData.ts` | In-app test catalog + audit traceability rows |
+| `src/lib/docsStats.ts` | `testSuiteDefaultPassing = 428` (369 + trust-gap rows 12–14 + stale-test sweep) |
+
+## Verification commands
+
+```bash
+# Residual stale-token grep (expect zero hits outside clinical-trial false positives)
+rg "P2 in flight|Phase 2 in flight|tracked separately|until then, relayer|specification draft" --glob "!**/Sponsor*Page*" --glob "!**/semaphore.ts"
+
+# Phase 5 differential tests
+npx hardhat test test/unit/formal-eligibility-properties.test.ts test/unit/encrypted-criteria.test.ts test/unit/sponsor-incentive-vault-payout.test.ts test/integration/relayer-decrypt-verify.test.ts --grep "DIFF-03|P2-PROP|P1-PROP|P3-PROP|P5-SELECT|RDV-"
+```

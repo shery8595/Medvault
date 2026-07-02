@@ -26,7 +26,20 @@ export function createBatchExitQueue({
             clearTimeout(flushTimer);
             flushTimer = null;
         }
-        await onFlush(batch);
+
+        const failed = [];
+        for (const item of batch) {
+            try {
+                await onFlush(item);
+            } catch (err) {
+                console.error("Batch exit item failed, re-enqueueing:", err?.message || err);
+                failed.push(item);
+            }
+        }
+        if (failed.length > 0) {
+            queue.unshift(...failed);
+            scheduleFlush();
+        }
     }
 
     return {

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { deployMedVaultStack } from "../../test-support/deployments";
+import { authorizeCethContract } from "../../test-support/timelock";
 import { CET_MIN_DEPOSIT_WEI, AWETH_SEPOLIA, WETH_GATEWAY_SEPOLIA, AAVE_POOL_SEPOLIA } from "../../test-support/constants";
 import { expectRevert } from "../../test-support/assertions";
 import { coerceFheHandle } from "../../test-support/fhe";
@@ -22,14 +23,19 @@ describe("Staking: StakingManager", function () {
             AWETH_SEPOLIA
         );
         await stakingManager.waitForDeployment();
-        await stack.confidentialETH.authorizeContract(await stakingManager.getAddress());
+        await authorizeCethContract(
+            stack.confidentialETH,
+            stack.owner,
+            await stakingManager.getAddress(),
+            true
+        );
         return { ...stack, stakingManager, mockAave };
     }
 
     it("STK-01: stake increases encrypted total", async function () {
         const { stakingManager, patient, confidentialETH } = await deployStakingStack();
         await stakingManager.connect(patient).stake({ value: CET_MIN_DEPOSIT_WEI * 2n });
-        const total = await stakingManager.getEncryptedTotalStaked(patient.address);
+        const total = await stakingManager.connect(patient).getEncryptedTotalStaked(patient.address);
         expect(coerceFheHandle(total)).to.be.gt(0n);
     });
 
@@ -60,8 +66,8 @@ describe("Staking: StakingManager", function () {
         const { stakingManager, patient } = await deployStakingStack();
         await stakingManager.connect(patient).stake({ value: CET_MIN_DEPOSIT_WEI * 3n });
         await stakingManager.connect(patient).stake({ value: CET_MIN_DEPOSIT_WEI * 3n });
-        const total = await stakingManager.getEncryptedTotalStaked(patient.address);
-        expect(total).to.not.equal(0n);
+        const total = await stakingManager.connect(patient).getEncryptedTotalStaked(patient.address);
+        expect(coerceFheHandle(total)).to.be.gt(0n);
     });
 
     it("STK-06: stake zero value reverts", async function () {
@@ -72,7 +78,7 @@ describe("Staking: StakingManager", function () {
     it("STK-07: getEncryptedTotalStaked readable", async function () {
         const { stakingManager, patient } = await deployStakingStack();
         await stakingManager.connect(patient).stake({ value: CET_MIN_DEPOSIT_WEI * 2n });
-        const total = await stakingManager.getEncryptedTotalStaked(patient.address);
+        const total = await stakingManager.connect(patient).getEncryptedTotalStaked(patient.address);
         expect(total).to.not.equal(undefined);
     });
 

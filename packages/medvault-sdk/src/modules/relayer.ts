@@ -1,5 +1,6 @@
 import type { MedVaultConfig } from "@medvault/core";
 import type {
+  RelayerClaimParams,
   RelayerFinalizeApplyParams,
   RelayerHealthResponse,
   RelayerSemaphoreProof,
@@ -36,7 +37,13 @@ async function postRelay(
   if (!response.ok) {
     let errorMsg = "Relayer request failed";
     try {
-      const data = (await response.json()) as { error?: string; code?: string };
+      const text = await response.text();
+      let data: { error?: string; code?: string } = {};
+      try {
+        data = JSON.parse(text) as { error?: string; code?: string };
+      } catch {
+        if (text) errorMsg = text;
+      }
       if (data.error) errorMsg = data.error;
       if (data.code === "NOT_ELIGIBLE") {
         throw new Error(NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE);
@@ -74,6 +81,8 @@ export function createRelayerModule(config: MedVaultConfig) {
         proof: serializeProofForRelay(params.proof),
         commitment: params.commitment.toString(),
         permitRecipient: params.permitRecipient,
+        deadline: params.deadline.toString(),
+        permitSignature: params.permitSignature,
       });
     },
 
@@ -84,7 +93,35 @@ export function createRelayerModule(config: MedVaultConfig) {
         proof: serializeProofForRelay(params.proof),
         commitment: params.commitment.toString(),
         permitRecipient: params.permitRecipient,
+        consentWallet: params.consentWallet,
+        deadline: params.deadline.toString(),
+        permitSignature: params.permitSignature,
+        consentWalletSignature: params.consentWalletSignature,
+        noirProof: params.noirProof,
+        publicInputs: params.publicInputs,
+        eligible: params.eligible,
         stageTxHash: params.stageTxHash,
+      });
+    },
+
+    async relayClaim(params: RelayerClaimParams): Promise<string> {
+      const base = getBase();
+      return postRelay(base, "/relay/claim", {
+        trialId: params.trialId.toString(),
+        nullifier: params.nullifier.toString(),
+        permitHolder: params.permitHolder,
+        destination: params.destination,
+        units: params.units.toString(),
+        encryptedAmountCommitment: params.encryptedAmountCommitment,
+        encryptedUnitsHandle: params.encryptedUnitsHandle,
+        inputProof: params.inputProof,
+        nonce: params.nonce.toString(),
+        deadline: params.deadline.toString(),
+        signature: params.signature,
+        withdrawToNonce: params.withdrawToNonce.toString(),
+        withdrawToDeadline: params.withdrawToDeadline.toString(),
+        withdrawToSignature: params.withdrawToSignature,
+        vaultAddress: params.vaultAddress,
       });
     },
   };

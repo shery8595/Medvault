@@ -252,13 +252,74 @@ useEffect(() => {
 
                 <hr className="my-12 border-slate-200" />
 
+                <h2>V. Hybrid document encryption (AES-256-GCM)</h2>
+                <p>
+                    Large trial documents (PDFs, imaging summaries) use a <strong>hybrid</strong> model separate from
+                    vitals FHE: <code>src/lib/EncryptionService.ts</code> encrypts file bytes with <strong>AES-256-GCM</strong>,
+                    then FHE-wraps the 256-bit AES key as <strong>4×euint64</strong> via <code>wrapKeyForFhe</code> for
+                    on-chain storage in <code>PatientDocumentStore</code>.
+                </p>
+                <CodeBlock
+                    filename="src/lib/EncryptionService.ts — document + key wrap"
+                    language="typescript"
+                    code={`// 1. Generate fresh AES key, encrypt document locally
+const key = generateKey();
+const payload = await encryptDocument(fileBytes, key); // AES-256-GCM, 12-byte IV
+
+// 2. FHE-wrap key as 4×euint64 for PatientDocumentStore
+const { chunks, inputProof } = await wrapKeyForFhe(
+  key,
+  PATIENT_DOCUMENT_STORE_ADDRESS,
+  patientAddress
+);
+
+// 3. Upload encrypted payload to IPFS; bind in Noir attestation (indices 17–24)
+const plaintext = await fetchAndDecryptDocument(cid, aesKey);`}
+                />
+                <p>
+                    <strong>Crypto backend:</strong> <code>src/lib/crypto-fallback.ts</code> probes WebCrypto AES-GCM at
+                    runtime; restricted WebViews (Capacitor Android) fall back to <code>@noble/ciphers</code> with the
+                    same wire format. See <code>CryptoFallbackBanner</code> in the mobile shell.
+                </p>
+
+                <h3>Revocation &amp; key rotation (forward-only)</h3>
+                <p>
+                    fhEVM <code>FHE.allow</code> grants are <strong>irreversible</strong>. A sponsor who already decrypted
+                    the AES key may retain plaintext off-chain even after revocation.
+                </p>
+                <ul>
+                    <li>
+                        <code>PatientDocumentStore.revokeAccess(nullifier, trialId)</code> bumps{" "}
+                        <code>documentEpoch</code> and blocks sponsor <code>getDocumentRecord</code> reads when{" "}
+                        <code>sponsorGrantEpoch != documentEpoch</code>.
+                    </li>
+                    <li>
+                        <code>rotateDocument</code> (patient-only, after revoke) re-wraps the AES key and rotates the IPFS CID; emits{" "}
+                        <code>DocumentLegacyHandleRevoked</code> for indexer unpin hooks.{" "}
+                        <code>updateDocumentKey</code> is deprecated (reverts <code>Use rotateDocument</code>).
+                    </li>
+                    <li>
+                        Re-authorization requires a new Accepted flow via{" "}
+                        <code>authorizeSponsorOnAccept</code>.
+                    </li>
+                </ul>
+                <Callout type="warning" title="Honest limit">
+                    MedVault does <strong>not</strong> cryptographically revoke data a sponsor already decrypted.
+                    Forward-only revocation blocks new contract-gated reads and rotates keys for future access only.
+                </Callout>
+
+                <hr className="my-12 border-slate-200" />
+
                 <h2>VI. Encrypted withdrawal &amp; claim amounts</h2>
                 <p>
-                    v0.9 routes withdraw and claim amounts through <code>externalEuint64</code> + <code>inputProof</code>.
-                    The proof account must match the on-chain caller at the FHE verification site:
+                    Withdraw and claim amounts use <code>externalEuint64</code> + <code>inputProof</code>. Sufficiency is
+                    computed homomorphically via <code>FHE.select</code> — only the transferable amount is KMS-decrypted at
+                    single-step completion (no public sufficiency boolean at request). The proof account must match the
+                    on-chain caller at the FHE verification site:
                 </p>
                 <ul>
                     <li><code>requestWithdraw</code> — proof account = patient EOA; contract = ConfidentialETH</li>
+                    <li><code>confirmReceipt</code> — KMS public decrypt of staged entitlement ebool (permit holder calls vault)</li>
                     <li><code>claimParticipantRewards</code> → <code>requestWithdrawTo</code> — proof account = SponsorIncentiveVault address</li>
                     <li><code>stakeFromConfidential</code> / <code>requestPrivateUnstake</code> — proof account = patient; contract = StakingManager</li>
                 </ul>

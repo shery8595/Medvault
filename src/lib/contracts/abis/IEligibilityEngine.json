@@ -93,6 +93,11 @@
           "type": "address"
         },
         {
+          "internalType": "ebool",
+          "name": "_consent",
+          "type": "bytes32"
+        },
+        {
           "internalType": "bytes",
           "name": "_proof",
           "type": "bytes"
@@ -101,11 +106,55 @@
           "internalType": "bytes32[]",
           "name": "_publicInputs",
           "type": "bytes32[]"
+        }
+      ],
+      "name": "finalizeAnonymousEligibilityWithConsent",
+      "outputs": [
+        {
+          "internalType": "ebool",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_commitment",
+          "type": "uint256"
         },
         {
-          "internalType": "bool",
-          "name": "_eligible",
-          "type": "bool"
+          "internalType": "uint256",
+          "name": "_nullifier",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_trialId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_permitRecipient",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_consentWallet",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_proof",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_publicInputs",
+          "type": "bytes32[]"
         }
       ],
       "name": "finalizeAnonymousEligibilityWithProof",
@@ -117,6 +166,30 @@
         }
       ],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_nullifier",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_trialId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getAnonymousApplicationStatus",
+      "outputs": [
+        {
+          "internalType": "enum IEligibilityEngine.ApplicationStatus",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {

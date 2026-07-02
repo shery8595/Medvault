@@ -31,10 +31,17 @@ export interface RelayerStageApplyParams {
   proof: RelayerSemaphoreProof;
   commitment: number | string;
   permitRecipient: string;
+  deadline: number | string | bigint;
+  permitSignature: string;
 }
 
 export interface RelayerFinalizeApplyParams extends RelayerStageApplyParams {
-  stageTxHash: string;
+  consentWallet: string;
+  consentWalletSignature: string;
+  noirProof: string;
+  publicInputs: string[];
+  eligible: boolean;
+  stageTxHash?: string;
 }
 
 export interface RelayerHealthResponse {
@@ -46,4 +53,22 @@ export interface RelayerTxResponse {
   success: boolean;
   txHash?: string;
   error?: string;
+}
+
+export interface RelayerClaimParams {
+  trialId: number | string;
+  nullifier: number | string;
+  permitHolder: string;
+  destination: string;
+  units: number | string;
+  encryptedAmountCommitment: string;
+  encryptedUnitsHandle: string;
+  inputProof: string;
+  nonce: number | string;
+  deadline: number | string;
+  signature: string;
+  withdrawToNonce: number | string;
+  withdrawToDeadline: number | string;
+  withdrawToSignature: string;
+  vaultAddress?: string;
 }

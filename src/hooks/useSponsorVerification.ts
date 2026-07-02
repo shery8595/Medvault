@@ -54,8 +54,12 @@ export function useSponsorVerification(): UseSponsorVerificationResult {
                 
                 if (!cancelled) {
                     setIsAdmin(owner.toLowerCase() === account.toLowerCase());
-                    setIsVerified(verified);
-                    setSponsorName(verified && sponsorData.name ? sponsorData.name : null);
+                    const hasRecord =
+                        sponsorData.name &&
+                        sponsorData.name.length > 0 &&
+                        sponsorData.addedAt > 0n;
+                    setIsVerified(verified && hasRecord);
+                    setSponsorName(verified && hasRecord ? sponsorData.name : null);
                 }
             } catch (err: any) {
                 if (!cancelled) {

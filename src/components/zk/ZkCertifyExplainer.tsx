@@ -32,9 +32,9 @@ export function ZkCertifyExplainer({ chainId, className }: Props) {
           <p className="text-sm text-slate-600 leading-relaxed">
             <strong className="text-teal-800">Zama FHE</strong> is the authoritative layer: encrypted profile
             storage, eligibility, propensity scoring, and sponsor ranking all run on ciphertext. After you decrypt
-            locally, you can generate a <strong className="text-slate-800">compliance seal</strong> — a Noir
-            attestation that binds your Semaphore identity and profile commitment to the exact Zama FHE stage being
-            finalized, without revealing PHI.
+            locally, you can generate an optional <strong className="text-slate-800">identity and policy attestation</strong> (Noir
+            compliance seal) that binds your Semaphore identity and profile commitment to the exact Zama FHE stage being
+            finalized — not a proof that fhEVM executed correctly.
           </p>
           <ol className="text-xs text-slate-500 space-y-1 list-decimal list-inside">
             <li>
@@ -44,7 +44,7 @@ export function ZkCertifyExplainer({ chainId, className }: Props) {
               <strong className="text-slate-700">Decrypt</strong> — your key reveals the match only on your device.
             </li>
             <li>
-              <strong className="text-slate-700">Compliance seal</strong> — optional Noir receipt for sponsor audit
+              <strong className="text-slate-700">Compliance seal</strong> — optional Noir identity/policy receipt for sponsor audit
               (may take 1–2 minutes in your browser).
             </li>
             <li>

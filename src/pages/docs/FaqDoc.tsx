@@ -163,9 +163,10 @@ const faqs: { q: string; a: ReactNode }[] = [
         q: "Where are Noir / Semaphore documented?",
         a: (
             <>
-                Semaphore flows live in <code>src/lib/semaphore.ts</code>; Noir attestation circuits live under{" "}
-                <code>circuits/eligibility_proof</code> with frontend <code>sealResult()</code> in{" "}
-                <code>useEligibilityProof.ts</code> / <code>src/lib/noir.ts</code>. Zama FHE computes; Noir seals. Overview:{" "}
+                Semaphore flows live in <code>src/lib/semaphore.ts</code>; Noir attestation uses{" "}
+                <code>circuits/eligibility_plaintext</code> and <code>circuits/eligibility_encrypted</code> with frontend{" "}
+                <code>sealResult()</code> in <code>useEligibilityProof.ts</code> / <code>src/lib/noir.ts</code>. Zama FHE
+                computes; Noir seals. Overview:{" "}
                 <Link to="/docs/identity-privacy" className="text-blue-600 font-semibold">
                     Identity &amp; privacy
                 </Link>

@@ -99,6 +99,14 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         pageDescription: "What MedVault is, how FHE matching works, and how the system is organized.",
     },
     {
+        title: "Documentation index",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/README.md",
+        tabId: "getting-started",
+        section: "Overview",
+        keywords: ["docs", "index", "readme", "markdown", "github"],
+        pageDescription: "Central index for all repository markdown documentation.",
+    },
+    {
         title: "User workflows",
         href: "/docs/guides",
         tabId: "getting-started",
@@ -113,8 +121,24 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/faq",
         tabId: "getting-started",
         section: "First steps",
-        keywords: ["questions", "wallet", "testnet", "latency", "help", "privy", "faucet", "relayer", "Ethereum Sepolia", "noir", "semaphore", "chainlink", "ephemeral"],
+        keywords: ["questions", "wallet", "testnet", "latency", "help", "privy", "faucet", "relayer", "Ethereum Sepolia", "noir", "semaphore", "chainlink", "ephemeral", "docker", "compose"],
         pageDescription: "Short answers to common questions about wallets, testnet, FHE latency, and consent.",
+    },
+    {
+        title: "Local development & Docker",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/LOCAL_DEVELOPMENT.md",
+        tabId: "getting-started",
+        section: "First steps",
+        keywords: ["docker", "compose", "local", "dev", "setup", "npm", "smoke", "sepolia"],
+        pageDescription: "One-command docker compose up --build, optional relayer/graph profiles, and legacy npm workflow.",
+    },
+    {
+        title: "Docker Compose guide",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/DOCKER.md",
+        tabId: "getting-started",
+        section: "First steps",
+        keywords: ["docker", "dockerfile", "compose", "profile", "graph", "relayer", "troubleshooting", "production"],
+        pageDescription: "Docker architecture, env vars, production build target, smoke test, and troubleshooting.",
     },
     {
         title: "Architecture",
@@ -159,7 +183,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/semaphore",
         tabId: "semaphore",
         section: "Identity",
-        keywords: ["semaphore", "anonymous", "nullifier", "commitment", "ephemeral", "group", "zk"],
+        keywords: ["semaphore", "anonymous", "nullifier", "commitment", "ephemeral", "group", "zk", "profileSaltCommitment", "onlyTrustedRelayer"],
         pageTitle: "Semaphore anonymous identity",
         pageDescription:
             "Identity commitments, anonymous apply, nullifiers, ephemeral permit wallet, and relayer stage/finalize.",
@@ -179,7 +203,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/engine",
         tabId: "noir",
         section: "Proofs",
-        keywords: ["verifyEligibilityProof", "score", "fhe"],
+        keywords: ["finalizeAnonymousApplyWithProof", "onlyTrustedRelayer", "score", "fhe", "relayer"],
         pageTitle: "Eligibility engine mechanics",
         pageDescription: "FHE scoring authority plus finalizeWithProof attestation binding and attestationReceipt.",
     },
@@ -192,6 +216,60 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         pageTitle: "Core logic contracts",
         pageDescription:
             "Reference for the main MedVault contracts: trials, engine, consent, vaults, and automation.",
+    },
+    {
+        title: "IERC7984 confidential token",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ERC7984_CONFIDENTIAL_TOKEN.md",
+        tabId: "protocol",
+        section: "Smart contracts",
+        keywords: ["erc7984", "ierc7984", "confidential", "ceth", "openzeppelin", "7984", "confidentialTransfer"],
+        pageTitle: "ConfidentialETH7984 (IERC7984)",
+        pageDescription: "OpenZeppelin ERC7984 implementation with MedVault native-ETH deposit, withdraw-to, and lock extensions.",
+    },
+    {
+        title: "Hybrid document storage",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/HYBRID_STORAGE.md",
+        tabId: "protocol",
+        section: "Smart contracts",
+        keywords: ["ipfs", "pinata", "patientdocumentstore", "aes", "document", "hybrid", "cid", "rotateDocument", "DocumentLegacyHandleRevoked"],
+        pageTitle: "Hybrid storage (IPFS + FHE)",
+        pageDescription: "PatientDocumentStore: IPFS ciphertext + FHE-wrapped AES keys bound into Noir attestation.",
+    },
+    {
+        title: "Atomic flows",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ATOMIC_FLOWS.md",
+        tabId: "protocol",
+        section: "Smart contracts",
+        keywords: ["atomic", "stage", "finalize", "consent", "fundTrialAndSetMilestones", "stakeAndLock", "onlyTrustedRelayer", "cancelAnonymousApplyStage"],
+        pageTitle: "Atomic wallet-visible flows",
+        pageDescription: "Single-tx sponsor funding, staking, and consent-at-finalize vs canonical 2-tx anonymous apply.",
+    },
+    {
+        title: "Zero-revelation rewards",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md",
+        tabId: "protocol",
+        section: "Smart contracts",
+        keywords: ["rewards", "screening", "fhe", "milestone", "confidentialtransfer", "zero revelation", "distributePartialPaginated", "confirmReceipt", "prepareEntitlementProof", "pruneUnconfirmedSlots", "pull claim"],
+        pageTitle: "Zero-revelation screening rewards",
+        pageDescription: "FHE-gated staging; patients confirmReceipt before cETH; sponsor prune after challenge window.",
+    },
+    {
+        title: "EligibilityEngine formal spec",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/eligibility-engine.spec.md",
+        tabId: "security",
+        section: "Formal verification",
+        keywords: ["certora", "halmos", "formal", "verification", "spec", "properties"],
+        pageTitle: "EligibilityEngine formal specification",
+        pageDescription: "Property specification for homomorphic eligibility logic (_computeEligibility, score bounds, attestation binding).",
+    },
+    {
+        title: "Certora / Halmos results (Phase 5)",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/certora-halmos-results.md",
+        tabId: "security",
+        section: "Formal verification",
+        keywords: ["certora", "halmos", "formal", "verification", "differential", "phase 5", "diff-03", "p5-select"],
+        pageTitle: "Formal verification results (Phase 5)",
+        pageDescription: "Certora/Halmos blocked on fhEVM FHE.* types; differential fallbacks PASS on mock network.",
     },
     {
         title: "Sponsor system",
@@ -286,6 +364,8 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
             "public exit",
             "batch",
             "claim",
+            "claimFailedWithdraw",
+            "pendingFailedWithdrawWei",
         ],
         pageTitle: "Private withdrawals & public exit modes",
         pageDescription:
@@ -306,10 +386,10 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/testing",
         tabId: "testing",
         section: "Suite",
-        keywords: ["hardhat", "tests", "ci", "verify", "265", "mocha"],
+        keywords: ["hardhat", "tests", "ci", "verify", "483", "mocha", "timelock", "docker", "smoke"],
         pageTitle: "Contract test suite overview",
         pageDescription:
-            "258+ Hardhat tests with Zama FHE mocks: suite breakdown, pillars, and quick start commands.",
+            "483 Hardhat tests with Zama FHE mocks: suite breakdown, pillars, trust-gap payout gating, Phase 5 differential, timelock wiring, IERC7984 CET-13/14, and CI.",
     },
     {
         title: "Test matrix",
@@ -347,6 +427,25 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         keywords: ["deploy", "subgraph", "script", "network", "relayer", "faucet", "chainlink"],
         pageDescription:
             "Deploying contracts, subgraph, and production frontend at med-vault.xyz (Vercel + relayer CORS).",
+    },
+    {
+        title: "Timelock wiring",
+        href: "/docs/timelock-wiring",
+        tabId: "operations",
+        section: "Runbooks",
+        keywords: [
+            "timelock",
+            "schedule",
+            "apply",
+            "wiring",
+            "finish-wiring",
+            "deploy:wire:sepolia",
+            "READER_CHANGE_DELAY",
+            "authorizeContract",
+        ],
+        pageTitle: "Timelock wiring (schedule / apply)",
+        pageDescription:
+            "2-day admin delay for cross-contract wiring: deploy flow, finish-wiring, FHEVM init, and TL-* tests.",
     },
     {
         title: "Android APK",
@@ -446,12 +545,58 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         pageDescription: "All medvault_* read and sponsor write tools exposed by the local MCP server (v1).",
     },
     {
+        title: "Subgraph deploy & sync",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/SUBGRAPH_SYNC.md",
+        tabId: "operations",
+        section: "Runbooks",
+        keywords: ["subgraph", "the graph", "studio", "deploy", "version", "medvault", "v0.2.0", "sync"],
+        pageTitle: "Subgraph deploy & version sync",
+        pageDescription:
+            "Graph Studio slug medvault/v0.2.0, deploy commands, reconcile scripts, and manifest baseline.",
+    },
+    {
+        title: "AI service",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/ai-service/README.md",
+        tabId: "operations",
+        section: "Backend services",
+        keywords: ["ai", "openai", "phi", "redaction", "criteria", "extract", "3200", "ai-service"],
+        pageTitle: "AI service (@medvault/ai)",
+        pageDescription: "PHI-safe criteria extraction and audit-log summarization (port 3200).",
+    },
+    {
+        title: "Hybrid indexer",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/indexer/README.md",
+        tabId: "clients",
+        section: "Integration",
+        keywords: ["indexer", "mongodb", "redis", "3300", "hybrid", "rpc", "alerts", "desync"],
+        pageTitle: "Hybrid indexer API",
+        pageDescription: "Subgraph + RPC indexer with MongoDB, Redis cache, and desync alerts.",
+    },
+    {
+        title: "Archived design proposals",
+        href: "https://github.com/shery8595/Med-Vault/tree/main/docs/archive",
+        tabId: "protocol",
+        section: "Smart contracts",
+        keywords: ["archive", "historical", "new contracts", "upgrade", "v1.1", "milestone", "dataaccesslog"],
+        pageDescription: "Historical milestone/audit trail design notes — contracts now shipped in production.",
+    },
+    {
         title: "Changelog",
         href: "/docs/changelog",
         tabId: "operations",
         section: "Runbooks",
         keywords: ["release", "version", "notes", "updates"],
         pageDescription: "High-level release notes for the documentation and major contract or app milestones.",
+    },
+    {
+        title: "Security notes (Noir–FHE gap)",
+        href: "https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md",
+        tabId: "security",
+        section: "Assurance",
+        keywords: ["noir", "fhe", "integrity", "attestation", "criteria", "createTrial", "encrypted criteria"],
+        pageTitle: "Security notes",
+        pageDescription:
+            "Repository SECURITY.md: Noir–FHE integrity gap, encrypted vs legacy trial criteria paths, and operational guidance.",
     },
     {
         title: "Security model",
@@ -470,6 +615,14 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         keywords: ["hipaa", "gdpr", "audit", "log"],
         pageTitle: "Regulatory compliance & audit trail",
         pageDescription: "How audit logs, consent, and data minimization relate to common compliance frameworks.",
+    },
+    {
+        title: "Internal docs (SRS, DFD)",
+        href: "https://github.com/shery8595/Med-Vault/tree/main/internal-docs",
+        tabId: "security",
+        section: "Assurance",
+        keywords: ["srs", "dfd", "threat model", "zama integration", "internal-docs"],
+        pageDescription: "Formal SRS, data-flow diagrams, threat model, and Zama integration guide (repository markdown).",
     },
 ];
 
@@ -561,4 +714,4 @@ export function searchDocsNav(query: string, limit = 12): SearchHit[] {
 export const DOCS_PAGE_COUNT = DOCS_NAV_ITEMS.length;
 
 /** Production Solidity contracts (exclude test mocks) — update when the set changes */
-export const DOCS_CONTRACT_COUNT = 14;
+export const DOCS_CONTRACT_COUNT = 15;

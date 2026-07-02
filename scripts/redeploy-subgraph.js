@@ -1,66 +1,90 @@
-// Subgraph Redeployment Script
-// Run this from the project root:
-// node scripts/redeploy-subgraph.js [version]
+// Fast subgraph deploy — single graph build, Studio IPFS (avoids public IPFS hangs).
+// Usage:
+//   node scripts/redeploy-subgraph.js [version] [--sync-abis]
+//   node scripts/redeploy-subgraph.js           # auto version v0.2.<epoch-seconds>
+//   node scripts/redeploy-subgraph.js 0.2.2     # explicit version
 
 const path = require("path");
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const { execSync } = require("child_process");
 
-const rawVersion = process.argv[2] || "0.1.4";
-const VERSION = rawVersion.startsWith("v") ? rawVersion : `v${rawVersion}`;
 const STUDIO_DEPLOY_NODE =
     process.env.GRAPH_STUDIO_DEPLOY_NODE || "https://api.studio.thegraph.com/deploy/";
-/** Subgraph name/slug shown in Studio “Deploy” command (often medvault-1, not npm package name). */
+/** Default Graph IPFS API (graph-cli default); Studio /ipfs/ URL returns 404 on this CLI version. */
+const GRAPH_IPFS_NODE =
+    process.env.GRAPH_IPFS_NODE || "https://api.thegraph.com/ipfs/api/v0";
 const SUBGRAPH_SLUG = process.env.GRAPH_SUBGRAPH_SLUG || "medvault";
 const SUBGRAPH_NETWORK = process.env.GRAPH_SUBGRAPH_NETWORK || "sepolia";
 
-async function main() {
-    console.log(`Starting Subgraph redeployment ${VERSION}...`);
-    console.log(`Target network: ${SUBGRAPH_NETWORK} | slug: ${SUBGRAPH_SLUG}\n`);
+const args = process.argv.slice(2).filter((a) => a !== "--sync-abis");
+const syncAbis = process.argv.includes("--sync-abis");
 
-    try {
-        const rootDir = path.join(__dirname, "..");
-        console.log("0. Syncing ABIs (Hardhat artifacts → frontend + subgraph)...");
-        execSync("node scripts/sync-abis.js", { cwd: rootDir, stdio: "inherit" });
-
-        console.log(`0b. Applying ${SUBGRAPH_NETWORK} addresses + start blocks to subgraph.yaml...`);
-        execSync(`node scripts/update-subgraph-yaml.js ${SUBGRAPH_NETWORK}`, { cwd: rootDir, stdio: "inherit" });
-
-        const subgraphDir = path.join(__dirname, "../subgraph");
-
-        const deployKey = process.env.GRAPH_STUDIO_DEPLOY_KEY || process.env.GRAPH_DEPLOY_KEY;
-        if (!deployKey) {
-            console.error(
-                "Missing GRAPH_STUDIO_DEPLOY_KEY (or GRAPH_DEPLOY_KEY) in environment. Add it to .env — same value as Graph Studio deploy key."
-            );
-            process.exit(1);
-        }
-        console.log("1. Authenticating with Graph Studio...");
-        execSync(`npx graph auth ${deployKey}`, {
-            cwd: subgraphDir,
-            stdio: "inherit"
-        });
-
-        console.log("\n2. Generating AssemblyScript types...");
-        execSync("npm run codegen", { cwd: subgraphDir, stdio: "inherit" });
-
-        console.log("\n3. Building subgraph...");
-        execSync("npm run build", { cwd: subgraphDir, stdio: "inherit" });
-
-        console.log(`\n4. Deploying to Graph Studio (${SUBGRAPH_SLUG} @ ${VERSION})...`);
-        execSync(
-            `npx graph deploy --node "${STUDIO_DEPLOY_NODE}" ${SUBGRAPH_SLUG} --version-label ${VERSION}`,
-            {
-                cwd: subgraphDir,
-                stdio: "inherit",
-            }
-        );
-
-        console.log(`\n✅ Subgraph deployed: ${SUBGRAPH_SLUG} (${VERSION})`);
-    } catch (error) {
-        console.error("❌ Subgraph deployment failed:", error);
-        process.exit(1);
-    }
+function resolveVersion() {
+    const raw = args[0];
+    if (raw) return raw.startsWith("v") ? raw : `v${raw}`;
+    // Short unique label — avoids "version already exists" without huge timestamps.
+    const d = new Date();
+    const stamp = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}-${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}`;
+    return `v0.2.${stamp}`;
 }
 
-main();
+function run(cmd, cwd) {
+    console.log(`> ${cmd}`);
+    execSync(cmd, { cwd, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || "" } });
+}
+
+async function main() {
+    const VERSION = resolveVersion();
+    const rootDir = path.join(__dirname, "..");
+    const subgraphDir = path.join(rootDir, "subgraph");
+
+    console.log(`Subgraph deploy ${VERSION} → ${SUBGRAPH_SLUG} (${SUBGRAPH_NETWORK})\n`);
+
+    const deployKey = process.env.GRAPH_STUDIO_DEPLOY_KEY || process.env.GRAPH_DEPLOY_KEY;
+    if (!deployKey) {
+        console.error("Missing GRAPH_STUDIO_DEPLOY_KEY (or GRAPH_DEPLOY_KEY) in .env");
+        process.exit(1);
+    }
+
+    if (syncAbis) {
+        console.log("1. Syncing ABIs...");
+        run("node scripts/sync-abis.js", rootDir);
+    } else {
+        console.log("1. Skipping ABI sync (pass --sync-abis to refresh from artifacts)");
+    }
+
+    console.log("2. Patching subgraph.yaml from addresses.json...");
+    run(`node scripts/update-subgraph-yaml.js ${SUBGRAPH_NETWORK}`, rootDir);
+
+    console.log("3. Graph Studio auth...");
+    run(`npx graph auth ${deployKey}`, subgraphDir);
+
+    console.log("4. Codegen...");
+    run("npm run codegen", subgraphDir);
+
+    const deployCmd = `npx graph deploy -g "${STUDIO_DEPLOY_NODE}" -i "${GRAPH_IPFS_NODE}" ${SUBGRAPH_SLUG} --version-label ${VERSION}`;
+    let lastErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            console.log(`5. Deploy attempt ${attempt}/3 (${VERSION})...`);
+            run(deployCmd, subgraphDir);
+            lastErr = null;
+            break;
+        } catch (e) {
+            lastErr = e;
+            if (attempt < 3) console.warn(`   Retry in 5s (IPFS/network flake)...`);
+            if (attempt < 3) execSync("powershell -Command Start-Sleep -Seconds 5");
+        }
+    }
+    if (lastErr) throw lastErr;
+
+    console.log(`\n✅ Subgraph deployed: ${SUBGRAPH_SLUG} (${VERSION})`);
+    console.log(
+        `   Query URL pattern: https://api.studio.thegraph.com/query/<id>/${SUBGRAPH_SLUG}/${VERSION}`
+    );
+}
+
+main().catch((error) => {
+    console.error("❌ Subgraph deployment failed:", error.message || error);
+    process.exit(1);
+});

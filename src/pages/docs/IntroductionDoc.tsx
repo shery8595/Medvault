@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { DOCS_CONTRACT_COUNT, PRODUCTION_APP_URL } from "../../lib/docsNav";
+import { REPO_STATS } from "../../lib/docsStats";
 
 const INTRO_STAT_TONE: Record<string, string> = {
     teal: "bg-teal-500 text-white",
@@ -470,7 +471,7 @@ export function IntroductionDoc() {
                                         to="/docs/testing"
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 text-xs font-bold border border-emerald-200 hover:bg-emerald-100 transition-colors"
                                     >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Tests (265)
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Tests ({REPO_STATS.testSuiteDefaultPassing})
                                     </Link>
                                     <Link
                                         to="/docs/security-model"
@@ -508,7 +509,7 @@ export function IntroductionDoc() {
                         icon={<FileCode2 className="w-5 h-5" />}
                         color="teal"
                     />
-                    <AnimatedStat value="265" label="Hardhat tests" icon={<CheckCircle2 className="w-5 h-5" />} color="emerald" />
+                    <AnimatedStat value={String(REPO_STATS.testSuiteDefaultPassing)} label="Hardhat tests" icon={<CheckCircle2 className="w-5 h-5" />} color="emerald" />
                     <AnimatedStat value="3" label="DeFi Protocols" icon={<TrendingUp className="w-5 h-5" />} color="purple" />
                     <AnimatedStat value="0" label="Data Exposed" icon={<Shield className="w-5 h-5" />} color="blue" />
                     <AnimatedStat value="4" label="FHE Type System" icon={<Lock className="w-5 h-5" />} color="amber" />
@@ -588,7 +589,7 @@ export function IntroductionDoc() {
                         { step: "2", title: "Sponsor Publishes Encrypted Trial Criteria", desc: "A verified pharmaceutical sponsor defines their trial eligibility criteria (e.g., Age 18-65, HbA1c < 7.0). These requirements are also encrypted as euint32 ciphertext values and stored on-chain in the TrialManager contract. The trial's structural metadata (name, phase, location) remains public.", icon: <Building2 className="w-6 h-6" />, color: "purple" },
                         { step: "3", title: "EligibilityEngine Computes on Encrypted Data", desc: "The EligibilityEngine smart contract performs FHE homomorphic operations (FHE.ge(), FHE.le(), FHE.cmux()) to compare encrypted patient values against encrypted trial bounds. The result is an encrypted eligibility score (0-100) stored on-chain. The network computes the match without decrypting any inputs.", icon: <Activity className="w-6 h-6" />, color: "teal" },
                         { step: "4", title: "Patient Decrypts Their Own Score", desc: "The encrypted score can only be decrypted by the patient. They sign an EIP-712 message in MetaMask to generate a cryptographic viewing key. The Zama KMS threshold decryption service verifies this signature and returns the decrypted score exclusively to the patient.", icon: <Key className="w-6 h-6" />, color: "amber" },
-                        { step: "5", title: "Optional Consent & Enrollment", desc: "If the score is 100 (perfect match), the patient may optionally grant identity access to the sponsor through ConsentManager. Upon approval, the patient is registered in the SponsorIncentiveVault reward pool. Chainlink Automation handles milestone payouts. The patient earns yield via Aave V3.", icon: <CheckCircle2 className="w-6 h-6" />, color: "emerald" },
+                        { step: "5", title: "Optional Consent & Enrollment", desc: "If the score is 100 (perfect match), the patient may optionally grant identity access to the sponsor through ConsentManager. After sponsor accepts, the patient self-enrolls in the SponsorIncentiveVault reward pool (permit-holder-only — sponsor cannot call registerAnonymousParticipant). Chainlink Automation handles milestone payouts.", icon: <CheckCircle2 className="w-6 h-6" />, color: "emerald" },
                     ].map((s, i) => (
                         <motion.div
                             key={s.step}
@@ -804,9 +805,9 @@ export function IntroductionDoc() {
                         { id: "S1", title: "Core Concepts", desc: "Architecture overviews, Zama integration deep-dive, and guide to FHE.sol encrypted types.", color: "teal", links: [{ label: "Architecture", href: "/docs/architecture" }, { label: "FHE Primitives", href: "/docs/fhe-primitives" }] },
                         { id: "S2", title: "Smart Contracts", desc: `Reference for ${DOCS_CONTRACT_COUNT} production contracts, EligibilityEngine scoring mechanics, Chainlink Automation, and consent-gated decryption.`, color: "purple", links: [{ label: "Engine", href: "/docs/engine" }, { label: "Contracts", href: "/docs/contracts" }, { label: "Sponsors", href: "/docs/sponsor-system" }, { label: "Chainlink Automation", href: "/docs/automation" }] },
                         { id: "S3", title: "Integration & Frontend", desc: "Client-side encryption with @zama-fhe/sdk, subgraph indexing, React architecture, Semaphore / relayer / faucet tooling.", color: "blue", links: [{ label: "Encryption", href: "/docs/client-encryption" }, { label: "Subgraph", href: "/docs/subgraph" }, { label: "Frontend", href: "/docs/frontend" }, { label: "Identity & tooling", href: "/docs/identity-privacy" }] },
-                        { id: "S4", title: "Operations", desc: "User workflows, private yield staking, deployment, and release notes.", color: "amber", links: [{ label: "Workflows", href: "/docs/guides" }, { label: "Staking", href: "/docs/staking" }, { label: "Deploy", href: "/docs/deployment" }, { label: "Changelog", href: "/docs/changelog" }] },
+                        { id: "S4", title: "Operations", desc: "User workflows, private yield staking, deployment, timelock wiring, and release notes.", color: "amber", links: [{ label: "Workflows", href: "/docs/guides" }, { label: "Staking", href: "/docs/staking" }, { label: "Deploy", href: "/docs/deployment" }, { label: "Timelock", href: "/docs/timelock-wiring" }, { label: "Changelog", href: "/docs/changelog" }] },
                         { id: "S7", title: "MCP & SDK", desc: "TypeScript SDK for integrators plus local MCP for Cursor, Codex, and sponsor automation — not hosted in production.", color: "cyan", links: [{ label: "SDK", href: "/docs/mcp/sdk" }, { label: "MCP", href: "/docs/mcp" }, { label: "Setup", href: "/docs/mcp/setup" }, { label: "Tools", href: "/docs/mcp/tools" }] },
-                        { id: "S6", title: "Tests & verification", desc: "265 Hardhat cases: unit, integration, Zama FHE mocks, matrix IDs, and CI.", color: "emerald", links: [{ label: "Overview", href: "/docs/testing" }, { label: "Matrix", href: "/docs/testing/matrix" }, { label: "Fixtures", href: "/docs/testing/infrastructure" }, { label: "CI", href: "/docs/testing/ci" }] },
+                        { id: "S6", title: "Tests & verification", desc: `${REPO_STATS.testSuiteDefaultPassing} Hardhat cases: unit, integration, timelock wiring (TL-*), IERC7984 (CET-13/14), Zama FHE mocks, matrix IDs, and CI.`, color: "emerald", links: [{ label: "Overview", href: "/docs/testing" }, { label: "Matrix", href: "/docs/testing/matrix" }, { label: "Fixtures", href: "/docs/testing/infrastructure" }, { label: "CI", href: "/docs/testing/ci" }] },
                         { id: "S5", title: "Security & Compliance", desc: "Threat model, FHE security guarantees, HIPAA/GDPR compliance, and immutable audit trail.", color: "rose", links: [{ label: "Security Model", href: "/docs/security-model" }, { label: "Compliance", href: "/docs/compliance" }, { label: "FAQ", href: "/docs/faq" }] },
                     ].map(section => (
                         <div key={section.id} className="p-5 border border-slate-200 rounded-2xl group hover:bg-slate-50 transition-colors">

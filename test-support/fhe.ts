@@ -175,6 +175,30 @@ export async function buildSponsorCriteriaInputs(
     };
 }
 
+export async function buildAesKeyChunksForTest(
+    proofAccount: string,
+    signerAddress: string,
+    keyBytes: Uint8Array
+): Promise<{ chunks: ZamaEncryptedField[]; inputProof: `0x${string}` }> {
+    if (keyBytes.length !== 32) {
+        throw new Error("AES key must be 32 bytes");
+    }
+    const values: bigint[] = [];
+    for (let i = 0; i < 4; i++) {
+        let v = 0n;
+        for (let j = 0; j < 8; j++) {
+            v = (v << 8n) | BigInt(keyBytes[i * 8 + j]!);
+        }
+        values.push(v);
+    }
+    const { fields, inputProof } = await encryptBatch(proofAccount, signerAddress, (input) => {
+        for (const v of values) {
+            input.add64(v);
+        }
+    });
+    return { chunks: fields, inputProof };
+}
+
 export function coerceFheHandle(value: unknown): bigint {
     if (value == null) {
         throw new Error("Cannot coerce null FHE handle");

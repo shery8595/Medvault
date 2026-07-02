@@ -23,11 +23,28 @@ export function useStaking() {
         if (!signer || !account) return null;
         try {
             const contract = getStakingManager(signer);
-            const handle = await contract.getEncryptedTotalStaked(account);
-            return handle.toString();
+            try {
+                const [publicHandle, privateHandle] = await Promise.all([
+                    contract.getEncryptedPublicStaked(account),
+                    contract.getEncryptedPrivateStaked(account),
+                ]);
+                const pub = BigInt(publicHandle.toString());
+                const priv = BigInt(privateHandle.toString());
+                if (pub > 0n && priv > 0n) {
+                    throw new Error(
+                        "Mixed public and private stake detected. Reveal public and private balances separately."
+                    );
+                }
+                const combined = pub + priv;
+                if (combined > 0n) return combined.toString();
+            } catch (splitErr) {
+                const msg = splitErr instanceof Error ? splitErr.message : "";
+                if (msg.includes("Mixed public and private")) throw splitErr;
+            }
+            return null;
         } catch (err) {
             console.error("Failed to fetch encrypted staking balance:", err);
-            return null;
+            throw err;
         }
     }, [signer, account]);
 
@@ -70,7 +87,10 @@ export function useStaking() {
             if (isZamaUserRejection(err)) {
                 setError("You cancelled the signature request.");
             } else {
-                setError((err as Error).message || "Failed to reveal staking balance");
+                const msg = err instanceof Error ? err.message : "Failed to reveal staking balance";
+                setError(msg.includes("Mixed public and private")
+                    ? "You have both public and private stake — contact support or unstake one type first."
+                    : msg);
             }
         } finally {
             setLoading(false);
@@ -132,20 +152,20 @@ export function useStaking() {
             const receipt = await tx.wait();
             if (!receipt) throw new Error("Unstake request receipt missing");
 
-            const sufficientHandle = parseEventArg(
+            const transferableHandle = parseEventArg(
                 receipt,
                 contract.interface,
                 contractAddress,
                 "PrivateUnstakeRequested",
-                "sufficientHandle"
+                "transferableHandle"
             );
-            const decrypted = await publicDecrypt(sufficientHandle);
-            if (decrypted.value === 0n) {
-                throw new Error("Insufficient staked balance for this unstake");
-            }
+            const decrypted = await publicDecrypt(transferableHandle);
 
             const completeTx = await contract.completePrivateUnstake(decrypted.cleartexts, decrypted.proof);
             await completeTx.wait();
+            if (decrypted.value === 0n) {
+                throw new Error("Insufficient staked balance for this unstake");
+            }
             setIsRevealed(false);
         } catch (err: unknown) {
             console.error("Private unstaking failed:", err);
@@ -171,20 +191,20 @@ export function useStaking() {
             const receipt = await tx.wait();
             if (!receipt) throw new Error("Unstake request receipt missing");
 
-            const sufficientHandle = parseEventArg(
+            const transferableHandle = parseEventArg(
                 receipt,
                 contract.interface,
                 contractAddress,
                 "PublicUnstakeRequested",
-                "sufficientHandle"
+                "transferableHandle"
             );
-            const decrypted = await publicDecrypt(sufficientHandle);
-            if (decrypted.value === 0n) {
-                throw new Error("Insufficient staked balance for this unstake");
-            }
+            const decrypted = await publicDecrypt(transferableHandle);
 
             const completeTx = await contract.completePublicUnstake(decrypted.cleartexts, decrypted.proof);
             await completeTx.wait();
+            if (decrypted.value === 0n) {
+                throw new Error("Insufficient staked balance for this unstake");
+            }
             setIsRevealed(false);
         } catch (err: unknown) {
             console.error("Public unstaking failed:", err);

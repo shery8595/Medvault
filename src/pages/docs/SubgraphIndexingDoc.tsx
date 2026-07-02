@@ -20,13 +20,14 @@ graph LR
 `;
 
 const events = [
-  { contract: "TrialManager", event: "TrialCreated", fields: "trialId, sponsor, name, phase", entity: "Trial" },
-  { contract: "TrialManager", event: "TrialHalted", fields: "trialId", entity: "Trial (update active=false)" },
-  { contract: "TrialManager", event: "TrialActivated", fields: "trialId", entity: "Trial (update active=true)" },
-  { contract: "EligibilityEng", event: "ApplicationStatusUpdated", fields: "patientAddress, trialId, status", entity: "EligibilityResult" },
-  { contract: "EligibilityEng", event: "EligibilityProofVerified", fields: "nullifier, trialId, resultHash, fheStageHash, criteriaSchemaHash, eligible", entity: "AnonymousSubmission (attestation fields)" },
-  { contract: "SponsorRegistry", event: "SponsorAdded", fields: "sponsor, name", entity: "Sponsor" },
-  { contract: "SponsorRegistry", event: "SponsorRemoved", fields: "sponsor", entity: "Sponsor (delete)" },
+  { contract: "TrialManager", event: "TrialCreated", fields: "trialId, sponsor, name, endTime, encryptedCriteria", entity: "Trial" },
+  { contract: "TrialManager", event: "TrialDeactivated", fields: "trialId", entity: "Trial (active=false)" },
+  { contract: "EligibilityEngine", event: "EligibilityProofVerified", fields: "nullifier, trialId, attestation hashes, eligible", entity: "AnonymousSubmission" },
+  { contract: "EligibilityEngine", event: "AnonymousApplicationStatusUpdated", fields: "nullifier, trialId, status", entity: "AnonymousSubmission" },
+  { contract: "SponsorIncentiveVault", event: "RewardsDistributed", fields: "trialId", entity: "IncentivePool / audit" },
+  { contract: "MedVaultRegistry", event: "AnonymousApplyStaged", fields: "trialId, nullifierHash, blindedRef, finalCt", entity: "AnonymousSubmission" },
+  { contract: "ConfidentialETH", event: "WithdrawRequested", fields: "user, transferableHandle", entity: "WithdrawRequest" },
+  { contract: "DataAccessLog", event: "ActionLogged", fields: "actionType, trialId, patientHash", entity: "AuditLog" },
 ];
 
 export function SubgraphIndexingDoc() {
@@ -38,10 +39,10 @@ export function SubgraphIndexingDoc() {
         {/* Stat Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-10 not-prose">
           {[
-            { label: "Indexed Contracts", value: "3", icon: <Database className="w-4 h-4" />, color: "blue" },
-            { label: "Entity Types", value: "4", icon: <GitMerge className="w-4 h-4" />, color: "teal" },
-            { label: "Event Handlers", value: "6+", icon: <Zap className="w-4 h-4" />, color: "purple" },
-            { label: "Query Latency", value: "<100ms", icon: <RefreshCcw className="w-4 h-4" />, color: "emerald" },
+            { label: "Data Sources", value: "14", icon: <Database className="w-4 h-4" />, color: "blue" },
+            { label: "Entity Types", value: "26", icon: <GitMerge className="w-4 h-4" />, color: "teal" },
+            { label: "Event Handlers", value: "38", icon: <Zap className="w-4 h-4" />, color: "purple" },
+            { label: "Mapping Files", value: "15", icon: <RefreshCcw className="w-4 h-4" />, color: "emerald" },
           ].map(s => {
             const statTone: Record<string, string> = {
               blue: "bg-blue-100 text-blue-600",
@@ -90,6 +91,18 @@ export function SubgraphIndexingDoc() {
           <code>EligibilityProofVerified</code> updates <code>AnonymousSubmission</code> with{" "}
           <code>attestationResultHash</code>, <code>attestationFheStageHash</code>, and{" "}
           <code>attestationCriteriaSchemaHash</code> — sponsor-audit metadata only, no PHI or wallet linkage.
+        </Callout>
+
+        <Callout type="warning" title="RPC-only events (hybrid indexer)">
+          <code>EligibilityEngine.SilentApply</code> and <code>PatientDocumentStore.DocumentRecorded</code> are{" "}
+          <strong>not</strong> in the hosted subgraph. The <code>@medvault/indexer</code> service indexes them via RPC{" "}
+          <code>getLogs</code>. See <code>indexer/README.md</code> and <code>docs/SUBGRAPH_SYNC.md</code>.
+        </Callout>
+
+        <Callout type="info" title="Orphan patient-registry mapping">
+          <code>subgraph/src/mappings/patient-registry.ts</code> and <code>PatientRegistry.json</code> exist but have no
+          data source in <code>subgraph.yaml</code>. Live patient indexing uses <code>AnonymousPatientRegistry</code> /{" "}
+          <code>MedVaultRegistry</code>.
         </Callout>
 
         <hr className="my-12 border-slate-200" />

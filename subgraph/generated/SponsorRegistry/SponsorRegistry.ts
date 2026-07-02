@@ -216,6 +216,29 @@ export class SponsorRegistry extends ethereum.SmartContract {
     return new SponsorRegistry("SponsorRegistry", address);
   }
 
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   auditor(): Address {
     let result = super.call("auditor", "auditor():(address)", []);
 
@@ -229,6 +252,29 @@ export class SponsorRegistry extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  auditorChangeEta(): BigInt {
+    let result = super.call(
+      "auditorChangeEta",
+      "auditorChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_auditorChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "auditorChangeEta",
+      "auditorChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   confidentialProtocolId(): BigInt {
@@ -331,6 +377,25 @@ export class SponsorRegistry extends ethereum.SmartContract {
 
   try_owner(): ethereum.CallResult<Address> {
     let result = super.tryCall("owner", "owner():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingAuditor(): Address {
+    let result = super.call("pendingAuditor", "pendingAuditor():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_pendingAuditor(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingAuditor",
+      "pendingAuditor():(address)",
+      [],
+    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -514,6 +579,32 @@ export class AddSponsorCall__Outputs {
   }
 }
 
+export class ApplyAuditorCall extends ethereum.Call {
+  get inputs(): ApplyAuditorCall__Inputs {
+    return new ApplyAuditorCall__Inputs(this);
+  }
+
+  get outputs(): ApplyAuditorCall__Outputs {
+    return new ApplyAuditorCall__Outputs(this);
+  }
+}
+
+export class ApplyAuditorCall__Inputs {
+  _call: ApplyAuditorCall;
+
+  constructor(call: ApplyAuditorCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyAuditorCall__Outputs {
+  _call: ApplyAuditorCall;
+
+  constructor(call: ApplyAuditorCall) {
+    this._call = call;
+  }
+}
+
 export class ProposeOwnershipCall extends ethereum.Call {
   get inputs(): ProposeOwnershipCall__Inputs {
     return new ProposeOwnershipCall__Inputs(this);
@@ -634,6 +725,36 @@ export class RequestSponsorshipCall__Outputs {
   _call: RequestSponsorshipCall;
 
   constructor(call: RequestSponsorshipCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleAuditorCall extends ethereum.Call {
+  get inputs(): ScheduleAuditorCall__Inputs {
+    return new ScheduleAuditorCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleAuditorCall__Outputs {
+    return new ScheduleAuditorCall__Outputs(this);
+  }
+}
+
+export class ScheduleAuditorCall__Inputs {
+  _call: ScheduleAuditorCall;
+
+  constructor(call: ScheduleAuditorCall) {
+    this._call = call;
+  }
+
+  get _auditor(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleAuditorCall__Outputs {
+  _call: ScheduleAuditorCall;
+
+  constructor(call: ScheduleAuditorCall) {
     this._call = call;
   }
 }

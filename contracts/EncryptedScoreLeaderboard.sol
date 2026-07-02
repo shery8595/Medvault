@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import {FHE, euint8, euint32, euint64, ebool} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./EligibilityEngine.sol";
+import {FheAclEpochLib} from "./lib/FheAclEpochLib.sol";
 
 /**
  * @title EncryptedScoreLeaderboard
@@ -47,6 +48,8 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
     // Trial ID => sponsor address
     mapping(uint256 => address) public trialSponsor;
 
+    FheAclEpochLib.EpochState private _aclEpoch;
+
     /// @notice Homomorphic aggregate score sum per trial (sponsor decrypt only).
     mapping(uint256 => euint64) private aggregateScoreSum;
 
@@ -69,6 +72,11 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+  modifier onlyEligibilityEngine() {
+        require(msg.sender == address(eligibilityEngine), "Only eligibility engine");
         _;
     }
 
@@ -124,12 +132,14 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
 
     /**
      * @notice Deauthorize a sponsor
+     * @dev FHE.allow on existing comparison handles is irrevocable on fhEVM; this blocks future grants only.
      */
     function deauthorizeSponsor(address _sponsor) external onlyOwner {
         globalAuthorizedSponsors[_sponsor] = false;
         emit SponsorDeauthorized(_sponsor);
     }
 
+    /// @dev FHE.allow on existing comparison handles is irrevocable on fhEVM; this blocks future grants only.
     function deauthorizeSponsorForTrial(uint256 _trialId, address _sponsor) external onlyOwner {
         authorizedSponsorsForTrial[_trialId][_sponsor] = false;
         emit SponsorDeauthorized(_sponsor);
@@ -165,13 +175,9 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
      * @notice M-5: Add an applicant to the leaderboard for a trial
      * @param _trialId The trial ID
      * @param _nullifier The applicant's per-trial nullifier (Poseidon([trialId, secret]))
-     * @dev Can be called by owner or authorized callers (e.g., EligibilityEngine)
+     * @dev CRIT-4: Callable only by EligibilityEngine during finalize.
      */
-    function addApplicant(uint256 _trialId, uint256 _nullifier) external {
-        require(
-            msg.sender == owner || authorizedCallers[msg.sender],
-            "Not authorized"
-        );
+    function addApplicant(uint256 _trialId, uint256 _nullifier) external onlyEligibilityEngine {
         require(!isApplicantAdded[_trialId][_nullifier], "Applicant already added");
         require(
             trialApplicants[_trialId].length < MAX_APPLICANTS_PER_TRIAL,
@@ -188,6 +194,54 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
      * @notice Internal function to compute encrypted comparison between two applicants
      * @dev Scores are keyed by nullifier, which encodes both identity and trial.
      */
+    function _grantComparisonDecryptAcl(ebool handle, uint256 _trialId) private {
+        FHE.allowThis(handle);
+        FHE.allow(handle, owner);
+        FheAclEpochLib.recordGrant(
+            _aclEpoch,
+            ebool.unwrap(handle),
+            owner,
+            uint8(FheAclEpochLib.GrantKind.ScoreLeaderboard)
+        );
+        address sponsor = trialSponsor[_trialId];
+        if (sponsor != address(0)) {
+            FHE.allow(handle, sponsor);
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                ebool.unwrap(handle),
+                sponsor,
+                uint8(FheAclEpochLib.GrantKind.ScoreLeaderboard)
+            );
+        }
+        if (globalAuthorizedSponsors[msg.sender]) {
+            FHE.allow(handle, msg.sender);
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                ebool.unwrap(handle),
+                msg.sender,
+                uint8(FheAclEpochLib.GrantKind.ScoreLeaderboard)
+            );
+        }
+        if (authorizedSponsorsForTrial[_trialId][msg.sender]) {
+            FHE.allow(handle, msg.sender);
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                ebool.unwrap(handle),
+                msg.sender,
+                uint8(FheAclEpochLib.GrantKind.ScoreLeaderboard)
+            );
+        }
+    }
+
+    function rotateTrustedContract(uint8 kind, address newConsumer) external onlyOwner {
+        require(newConsumer != address(0), "Zero address");
+        FheAclEpochLib.rotateKind(_aclEpoch, kind, newConsumer);
+    }
+
+    function aclEpochForKind(uint8 kind) external view returns (uint40) {
+        return FheAclEpochLib.currentEpoch(_aclEpoch, kind);
+    }
+
     function _compareApplicants(
         uint256 _trialId,
         uint256 _nullifierA,
@@ -201,15 +255,12 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
         ebool aGreaterThanB = FHE.gt(scoreA, scoreB);
 
         // Store the encrypted comparison result
-        FHE.allowThis(aGreaterThanB);
-        if (trialSponsor[_trialId] != address(0)) {
-            FHE.allow(aGreaterThanB, trialSponsor[_trialId]);
-        }
-        if (authorizedSponsorsForTrial[_trialId][msg.sender]) {
-            FHE.allow(aGreaterThanB, msg.sender);
-        }
+        _grantComparisonDecryptAcl(aGreaterThanB, _trialId);
 
         comparisonResults[_trialId][_nullifierA][_nullifierB] = aGreaterThanB;
+        ebool bGreaterThanA = FHE.gt(scoreB, scoreA);
+        _grantComparisonDecryptAcl(bGreaterThanA, _trialId);
+        comparisonResults[_trialId][_nullifierB][_nullifierA] = bGreaterThanA;
 
         emit ComparisonComputed(_trialId, _nullifierA, _nullifierB, aGreaterThanB);
 
@@ -237,22 +288,29 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
         return _compareApplicants(_trialId, _nullifierA, _nullifierB);
     }
 
+    uint256 public constant MAX_BATCH_COMPARE = 15;
+
     /**
-     * @notice Zama FHE: Batch compare an applicant against all others
-     * @param _trialId The trial ID
-     * @param _nullifier The applicant's nullifier to compare
-     * @return comparisons Array of encrypted boolean results (true if applicant > other)
-     * @return otherNullifiers Array of nullifiers that were compared against
+     * @notice Zama FHE: Batch compare an applicant against others (paginated).
+     * @param _startIdx First index in trialApplicants to compare against (inclusive).
+     * @param _endIdx End index (exclusive); max range MAX_BATCH_COMPARE.
      */
     function batchCompare(
         uint256 _trialId,
-        uint256 _nullifier
+        uint256 _nullifier,
+        uint256 _startIdx,
+        uint256 _endIdx
     ) external onlyAuthorizedSponsor(_trialId) returns (ebool[] memory, uint256[] memory) {
         require(isApplicantAdded[_trialId][_nullifier], "Applicant not found");
 
         uint256[] storage allApplicants = trialApplicants[_trialId];
+        require(_startIdx < allApplicants.length, "Invalid start");
+        require(_endIdx > _startIdx, "Invalid range");
+        require(_endIdx <= allApplicants.length, "End out of bounds");
+        require(_endIdx - _startIdx <= MAX_BATCH_COMPARE, "Batch too large");
+
         uint256 count = 0;
-        for (uint256 i = 0; i < allApplicants.length; i++) {
+        for (uint256 i = _startIdx; i < _endIdx; i++) {
             if (allApplicants[i] != _nullifier) count++;
         }
 
@@ -260,7 +318,7 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
         uint256[] memory others = new uint256[](count);
 
         uint256 idx = 0;
-        for (uint256 i = 0; i < allApplicants.length; i++) {
+        for (uint256 i = _startIdx; i < _endIdx; i++) {
             if (allApplicants[i] == _nullifier) continue;
 
             others[idx] = allApplicants[i];
@@ -311,19 +369,18 @@ contract EncryptedScoreLeaderboard is ZamaEthereumConfig {
 
     /**
      * @notice Zama FHE: homomorphically add an applicant score to trial aggregates.
-     * @dev Called by EligibilityEngine after finalize; sponsors decrypt aggregates only.
+     * @dev CRIT-4: Pulls the canonical score from EligibilityEngine; only the engine may call.
      */
-    function addToAggregate(uint256 _trialId, uint256 _nullifier, euint8 _score) external {
-        require(
-            msg.sender == owner || authorizedCallers[msg.sender],
-            "Not authorized"
-        );
+    function addToAggregate(uint256 _trialId, uint256 _nullifier) external onlyEligibilityEngine {
         require(isApplicantAdded[_trialId][_nullifier], "Applicant not on leaderboard");
         require(!hasBeenAggregated[_trialId][_nullifier], "Already aggregated");
         hasBeenAggregated[_trialId][_nullifier] = true;
-        FHE.allowThis(_score);
 
-        euint64 score64 = FHE.asEuint64(_score);
+        euint8 score = eligibilityEngine.getAnonymousScore(_nullifier, _trialId);
+        require(FHE.isInitialized(score), "No score");
+        FHE.allowThis(score);
+
+        euint64 score64 = FHE.asEuint64(score);
         euint64 currentSum = aggregateScoreSum[_trialId];
         if (!FHE.isInitialized(currentSum)) {
             aggregateScoreSum[_trialId] = score64;

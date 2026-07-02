@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { getSubgraphQueryPath } from '../lib/subgraph';
+import { fetchFromIndexer, mapQueryToIndexerRoute } from '../lib/indexerClient';
 
 const SUBGRAPH_URL = import.meta.env.VITE_SUBGRAPH_URL;
 
@@ -59,6 +60,21 @@ export function useSubgraph<T = any>(query: string, variables?: any, options?: {
             try {
                 if (!isRefresh && !subgraphCache[cacheKey]) {
                     setLoading(true);
+                }
+
+                const indexerRoute = mapQueryToIndexerRoute(query, variables);
+                if (indexerRoute) {
+                    const indexerData = await fetchFromIndexer<T>(indexerRoute);
+                    if (indexerData != null) {
+                        if (latestRequestKeyRef.current !== cacheKey) {
+                            return null;
+                        }
+                        subgraphCache[cacheKey] = indexerData;
+                        setData(indexerData);
+                        setError(null);
+                        setLoading(false);
+                        return indexerData;
+                    }
                 }
 
                 const response = await fetch(SUBGRAPH_URL, {

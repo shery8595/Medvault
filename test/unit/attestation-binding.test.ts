@@ -20,7 +20,7 @@ import {
     CRITERIA_SCHEMA_HASH,
 } from "../../test-support/noirProof";
 import { poseidon3 } from "poseidon-lite";
-import { computeProfileCommitment } from "../../test-support/profileCommitment";
+import { computeProfileCommitment, defaultProfileSalt } from "../../test-support/profileCommitment";
 import { semaphoreScopeField } from "../../test-support/semaphore";
 
 describe("Unit: Zama FHE vs Noir attestation differential", function () {
@@ -114,7 +114,7 @@ describe("Unit: attestation anti-replay binding", function () {
 
     async function stageEligible(stack: Awaited<ReturnType<typeof deployMedVaultStack>>) {
         const id = new Identity();
-        await registerPatientOnRegistry(
+        const { profileSalt } = await registerPatientOnRegistry(
             stack,
             stack.patient,
             id.commitment,
@@ -139,7 +139,7 @@ describe("Unit: attestation anti-replay binding", function () {
             "AnonymousEligibilityStaged",
             "finalCt"
         );
-        return { id, trialId, nullifier, finalCt, registrySigner, commitment: id.commitment };
+        return { id, trialId, nullifier, finalCt, registrySigner, commitment: id.commitment, profileSalt };
     }
 
     it("BIND-01: wrong FHE stage hash reverts finalize", async function () {
@@ -158,7 +158,11 @@ describe("Unit: attestation anti-replay binding", function () {
 
         const scope = trialId;
         const secret = id.secretScalar;
-        const profileCommitment = computeProfileCommitment(commitment, ELIGIBLE_PROFILE);
+        const profileCommitment = computeProfileCommitment(
+            commitment,
+            ELIGIBLE_PROFILE,
+            await defaultProfileSalt(commitment)
+        );
         const resultHash = poseidon3([1n, scope, secret]);
         const criteria = trialCriteriaFromDefaults();
         const wrongStageInputs = buildEligibilityPublicInputs(
@@ -181,8 +185,7 @@ describe("Unit: attestation anti-replay binding", function () {
                     stack.patient.address,
                     stack.patient.address,
                     proofBytes,
-                    wrongStageInputs,
-                    true
+                    wrongStageInputs
                 ),
             /FHE stage mismatch/
         );
@@ -212,16 +215,15 @@ describe("Unit: attestation anti-replay binding", function () {
                     stack.patient.address,
                     stack.patient.address,
                     proofBytes,
-                    publicInputs,
-                    true
-                ),
+                    publicInputs
+            ),
             /Scope mismatch|FHE stage mismatch/
         );
     });
 
     it("BIND-03: attestationReceipt stores seal metadata after finalize", async function () {
         const stack = await deployMedVaultStack();
-        const { trialId, nullifier, finalCt, registrySigner, commitment, id } =
+        const { trialId, nullifier, finalCt, registrySigner, commitment, id, profileSalt } =
             await stageEligible(stack);
 
         const { proofBytes, publicInputs } = await generateTestEligibilityProof({
@@ -229,6 +231,7 @@ describe("Unit: attestation anti-replay binding", function () {
             commitment,
             trialId,
             profile: ELIGIBLE_PROFILE,
+            profileSalt,
             eligible: true,
             fheStageHandle: finalCt,
         });
@@ -242,8 +245,7 @@ describe("Unit: attestation anti-replay binding", function () {
                 stack.patient.address,
                 stack.patient.address,
                 proofBytes,
-                publicInputs,
-                true
+                publicInputs
             );
 
         const receipt = await stack.eligibilityEngine.attestationReceipt(nullifier, trialId);

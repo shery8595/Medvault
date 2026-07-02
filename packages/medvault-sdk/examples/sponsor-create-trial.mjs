@@ -1,11 +1,17 @@
 /**
  * Create a test trial as a verified sponsor (testnet).
  *
+ * Prerequisites:
+ *   npm run sdk:build          # builds @medvault/core + @medvault/sdk
+ *   peer: ethers@6.16.0        # required for Wallet signer
+ *
  * Usage:
  *   MEDVAULT_SUBGRAPH_URL=https://...
  *   PRIVATE_KEY=0x...
  *   MEDVAULT_SPONSOR_OPEN_ACCESS=true   # optional testnet bypass
  *   node packages/medvault-sdk/examples/sponsor-create-trial.mjs
+ *
+ * On-chain writes use Sepolia addresses from packages/medvault-core/data/addresses.json.
  */
 import { ethers } from "ethers";
 import { MedVaultSDK } from "../dist/index.js";
@@ -27,7 +33,7 @@ const sdk = MedVaultSDK.create({
 });
 
 async function main() {
-  const result = await sdk.sponsor.createTrial({
+  const result = await sdk.sponsor.createTrialEncrypted({
     name: `SDK Trial ${Date.now()}`,
     phase: "Phase 1",
     location: "Remote",

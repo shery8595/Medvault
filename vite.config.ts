@@ -122,11 +122,20 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
         },
+        '/ai-service': {
+          target: 'http://127.0.0.1:3200',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/ai-service/, ''),
+        },
       },
     },
     worker: {
       format: 'es',
     },
     assetsInclude: ['**/*.wasm'],
+    test: {
+      environment: 'node',
+      include: ['src/lib/__tests__/**/*.test.ts'],
+    },
   };
 });

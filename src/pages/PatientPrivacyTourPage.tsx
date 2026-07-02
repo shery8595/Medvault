@@ -20,7 +20,9 @@ const steps = [
   {
     n: 1,
     title: "Medical vault",
-    detail: "Register once with Semaphore — your commitment replaces your name.",
+    persona: "Alex, 54, Type 2 diabetes",
+    detail:
+      "Alex registers once with Semaphore — a cryptographic commitment replaces his name on-chain. His wallet is not linked to trial applications.",
     icon: ShieldCheck,
     tint: "teal",
     to: "/patient/medical-vault",
@@ -29,7 +31,9 @@ const steps = [
   {
     n: 2,
     title: "Encrypted profile",
-    detail: "@zama-fhe/sdk encrypts vitals locally; ciphertext is what hits the RPC.",
+    persona: "Local encryption",
+    detail:
+      "@zama-fhe/sdk encrypts Alex's vitals in the browser; only ciphertext handles and proofs reach Ethereum Sepolia — never plaintext PHI.",
     icon: Lock,
     tint: "violet",
     to: "/patient/medical-vault",
@@ -38,7 +42,9 @@ const steps = [
   {
     n: 3,
     title: "Find & apply",
-    detail: "Eligibility runs on ciphertext (FHE). Sponsors define criteria — not plaintext.",
+    persona: "Dr. Chen's trial criteria",
+    detail:
+      "EligibilityEngine compares Alex's encrypted profile against Dr. Chen's encrypted inclusion bounds homomorphically. Sponsors never see Alex's vitals.",
     icon: Telescope,
     tint: "indigo",
     to: "/patient/find-trials",
@@ -47,7 +53,9 @@ const steps = [
   {
     n: 4,
     title: "Results + compliance seal",
-    detail: "Decrypt locally with Zama, then optionally generate a Noir attestation — HonkVerifier records the seal on-chain.",
+    persona: "Auditor Sam",
+    detail:
+      "Alex decrypts his match locally with Zama FHE. Optionally, a Noir attestation seals the FHE stage handle for Auditor Sam — without exposing vitals.",
     icon: Fingerprint,
     tint: "violet",
     to: "/patient/results",
@@ -110,8 +118,10 @@ export function PatientPrivacyTourPage() {
             How MedVault keeps your clinic data&nbsp;shielded
           </h1>
           <p className="max-w-xl text-sm text-slate-600 leading-relaxed">
-            Designed for demos and onboarding: tap each step below. No PHI ever appears on-chain in plaintext — eligibility
-            and scores stay inside FHE and permissioned decrypt flows.
+            Follow <strong className="text-slate-800">Alex</strong> (patient),{" "}
+            <strong className="text-slate-800">Dr. Chen</strong> (sponsor), and{" "}
+            <strong className="text-slate-800">Auditor Sam</strong> through four steps. No PHI ever
+            appears on-chain in plaintext — eligibility stays inside FHE and permissioned decrypt flows.
           </p>
           <Link to="/docs/introduction" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-700 hover:text-indigo-900">
             Read full docs
@@ -156,6 +166,11 @@ export function PatientPrivacyTourPage() {
                   </span>
                   <h2 className={cn("text-base font-bold", Tint.iconText)}>{s.title}</h2>
                 </div>
+                <p className="text-sm text-slate-600 leading-relaxed mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    {s.persona}
+                  </span>
+                </p>
                 <p className="text-sm text-slate-600 leading-relaxed mb-4">{s.detail}</p>
                 <Link to={s.to}>
                   <Button

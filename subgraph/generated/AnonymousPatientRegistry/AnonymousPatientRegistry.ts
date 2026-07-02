@@ -10,6 +10,62 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AclEpochRotated extends ethereum.Event {
+  get params(): AclEpochRotated__Params {
+    return new AclEpochRotated__Params(this);
+  }
+}
+
+export class AclEpochRotated__Params {
+  _event: AclEpochRotated;
+
+  constructor(event: AclEpochRotated) {
+    this._event = event;
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[0].value.toI32();
+  }
+
+  get newEpoch(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get newConsumer(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+}
+
+export class AclGranted extends ethereum.Event {
+  get params(): AclGranted__Params {
+    return new AclGranted__Params(this);
+  }
+}
+
+export class AclGranted__Params {
+  _event: AclGranted;
+
+  constructor(event: AclGranted) {
+    this._event = event;
+  }
+
+  get handle(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get consumer(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get epoch(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[3].value.toI32();
+  }
+}
+
 export class OwnershipAccepted extends ethereum.Event {
   get params(): OwnershipAccepted__Params {
     return new OwnershipAccepted__Params(this);
@@ -59,8 +115,8 @@ export class PatientRegistered__Params {
     this._event = event;
   }
 
-  get commitment(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
+  get blindedCommitment(): Bytes {
+    return this._event.parameters[0].value.toBytes();
   }
 
   get timestamp(): BigInt {
@@ -87,6 +143,48 @@ export class ProfileAccessed__Params {
 
   get timestamp(): BigInt {
     return this._event.parameters[1].value.toBigInt();
+  }
+}
+
+export class AnonymousPatientRegistry__getCachedPatientFieldsResultValue0Struct extends ethereum.Tuple {
+  get age(): Bytes {
+    return this[0].toBytes();
+  }
+
+  get gender(): Bytes {
+    return this[1].toBytes();
+  }
+
+  get weight(): Bytes {
+    return this[2].toBytes();
+  }
+
+  get height(): Bytes {
+    return this[3].toBytes();
+  }
+
+  get hasDiabetes(): Bytes {
+    return this[4].toBytes();
+  }
+
+  get hbLevel(): Bytes {
+    return this[5].toBytes();
+  }
+
+  get isSmoker(): Bytes {
+    return this[6].toBytes();
+  }
+
+  get hasHypertension(): Bytes {
+    return this[7].toBytes();
+  }
+
+  get profileCommitment(): Bytes {
+    return this[8].toBytes();
+  }
+
+  get exists(): boolean {
+    return this[9].toBoolean();
   }
 }
 
@@ -177,6 +275,52 @@ export class AnonymousPatientRegistry__getPatientProfileResultValue0Struct exten
 export class AnonymousPatientRegistry extends ethereum.SmartContract {
   static bind(address: Address): AnonymousPatientRegistry {
     return new AnonymousPatientRegistry("AnonymousPatientRegistry", address);
+  }
+
+  TEST_HELPERS_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "TEST_HELPERS_CHANGE_DELAY",
+      "TEST_HELPERS_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_TEST_HELPERS_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "TEST_HELPERS_CHANGE_DELAY",
+      "TEST_HELPERS_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  aclEpochForKind(kind: i32): BigInt {
+    let result = super.call(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_aclEpochForKind(kind: i32): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   authorizedEngine(): Address {
@@ -288,6 +432,39 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  getCachedPatientFields(
+    _commitment: BigInt,
+  ): AnonymousPatientRegistry__getCachedPatientFieldsResultValue0Struct {
+    let result = super.call(
+      "getCachedPatientFields",
+      "getCachedPatientFields(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+
+    return changetype<AnonymousPatientRegistry__getCachedPatientFieldsResultValue0Struct>(
+      result[0].toTuple(),
+    );
+  }
+
+  try_getCachedPatientFields(
+    _commitment: BigInt,
+  ): ethereum.CallResult<AnonymousPatientRegistry__getCachedPatientFieldsResultValue0Struct> {
+    let result = super.tryCall(
+      "getCachedPatientFields",
+      "getCachedPatientFields(uint256):((bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bytes32,bool))",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      changetype<AnonymousPatientRegistry__getCachedPatientFieldsResultValue0Struct>(
+        value[0].toTuple(),
+      ),
+    );
   }
 
   getPatient(
@@ -402,6 +579,31 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
+  isPatientHandlesCached(_commitment: BigInt): boolean {
+    let result = super.call(
+      "isPatientHandlesCached",
+      "isPatientHandlesCached(uint256):(bool)",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_isPatientHandlesCached(
+    _commitment: BigInt,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "isPatientHandlesCached",
+      "isPatientHandlesCached(uint256):(bool)",
+      [ethereum.Value.fromUnsignedBigInt(_commitment)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
   owner(): Address {
     let result = super.call("owner", "owner():(address)", []);
 
@@ -430,6 +632,98 @@ export class AnonymousPatientRegistry extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingTestHelpersValue(): boolean {
+    let result = super.call(
+      "pendingTestHelpersValue",
+      "pendingTestHelpersValue():(bool)",
+      [],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_pendingTestHelpersValue(): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "pendingTestHelpersValue",
+      "pendingTestHelpersValue():(bool)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  profileSaltCommitments(param0: BigInt): Bytes {
+    let result = super.call(
+      "profileSaltCommitments",
+      "profileSaltCommitments(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_profileSaltCommitments(param0: BigInt): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "profileSaltCommitments",
+      "profileSaltCommitments(uint256):(bytes32)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  testHelpersChangeEta(): BigInt {
+    let result = super.call(
+      "testHelpersChangeEta",
+      "testHelpersChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_testHelpersChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "testHelpersChangeEta",
+      "testHelpersChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  testHelpersEnabled(): boolean {
+    let result = super.call(
+      "testHelpersEnabled",
+      "testHelpersEnabled():(bool)",
+      [],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_testHelpersEnabled(): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "testHelpersEnabled",
+      "testHelpersEnabled():(bool)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 }
 
@@ -482,6 +776,110 @@ export class AcceptOwnershipCall__Outputs {
 
   constructor(call: AcceptOwnershipCall) {
     this._call = call;
+  }
+}
+
+export class ApplyTestHelpersEnabledCall extends ethereum.Call {
+  get inputs(): ApplyTestHelpersEnabledCall__Inputs {
+    return new ApplyTestHelpersEnabledCall__Inputs(this);
+  }
+
+  get outputs(): ApplyTestHelpersEnabledCall__Outputs {
+    return new ApplyTestHelpersEnabledCall__Outputs(this);
+  }
+}
+
+export class ApplyTestHelpersEnabledCall__Inputs {
+  _call: ApplyTestHelpersEnabledCall;
+
+  constructor(call: ApplyTestHelpersEnabledCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyTestHelpersEnabledCall__Outputs {
+  _call: ApplyTestHelpersEnabledCall;
+
+  constructor(call: ApplyTestHelpersEnabledCall) {
+    this._call = call;
+  }
+}
+
+export class GetCachedPatientFieldsCall extends ethereum.Call {
+  get inputs(): GetCachedPatientFieldsCall__Inputs {
+    return new GetCachedPatientFieldsCall__Inputs(this);
+  }
+
+  get outputs(): GetCachedPatientFieldsCall__Outputs {
+    return new GetCachedPatientFieldsCall__Outputs(this);
+  }
+}
+
+export class GetCachedPatientFieldsCall__Inputs {
+  _call: GetCachedPatientFieldsCall;
+
+  constructor(call: GetCachedPatientFieldsCall) {
+    this._call = call;
+  }
+
+  get _commitment(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class GetCachedPatientFieldsCall__Outputs {
+  _call: GetCachedPatientFieldsCall;
+
+  constructor(call: GetCachedPatientFieldsCall) {
+    this._call = call;
+  }
+
+  get value0(): GetCachedPatientFieldsCallValue0OutputStruct {
+    return changetype<GetCachedPatientFieldsCallValue0OutputStruct>(
+      this._call.outputValues[0].value.toTuple(),
+    );
+  }
+}
+
+export class GetCachedPatientFieldsCallValue0OutputStruct extends ethereum.Tuple {
+  get age(): Bytes {
+    return this[0].toBytes();
+  }
+
+  get gender(): Bytes {
+    return this[1].toBytes();
+  }
+
+  get weight(): Bytes {
+    return this[2].toBytes();
+  }
+
+  get height(): Bytes {
+    return this[3].toBytes();
+  }
+
+  get hasDiabetes(): Bytes {
+    return this[4].toBytes();
+  }
+
+  get hbLevel(): Bytes {
+    return this[5].toBytes();
+  }
+
+  get isSmoker(): Bytes {
+    return this[6].toBytes();
+  }
+
+  get hasHypertension(): Bytes {
+    return this[7].toBytes();
+  }
+
+  get profileCommitment(): Bytes {
+    return this[8].toBytes();
+  }
+
+  get exists(): boolean {
+    return this[9].toBoolean();
   }
 }
 
@@ -622,40 +1020,44 @@ export class RegisterPatientCall__Inputs {
     return this._call.inputValues[2].value.toBytes();
   }
 
-  get _age(): Bytes {
+  get _profileSaltCommitment(): Bytes {
     return this._call.inputValues[3].value.toBytes();
   }
 
-  get _gender(): Bytes {
+  get _age(): Bytes {
     return this._call.inputValues[4].value.toBytes();
   }
 
-  get _weight(): Bytes {
+  get _gender(): Bytes {
     return this._call.inputValues[5].value.toBytes();
   }
 
-  get _height(): Bytes {
+  get _weight(): Bytes {
     return this._call.inputValues[6].value.toBytes();
   }
 
-  get _hasDiabetes(): Bytes {
+  get _height(): Bytes {
     return this._call.inputValues[7].value.toBytes();
   }
 
-  get _hbLevel(): Bytes {
+  get _hasDiabetes(): Bytes {
     return this._call.inputValues[8].value.toBytes();
   }
 
-  get _isSmoker(): Bytes {
+  get _hbLevel(): Bytes {
     return this._call.inputValues[9].value.toBytes();
   }
 
-  get _hasHypertension(): Bytes {
+  get _isSmoker(): Bytes {
     return this._call.inputValues[10].value.toBytes();
   }
 
-  get inputProof(): Bytes {
+  get _hasHypertension(): Bytes {
     return this._call.inputValues[11].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[12].value.toBytes();
   }
 }
 
@@ -663,6 +1065,70 @@ export class RegisterPatientCall__Outputs {
   _call: RegisterPatientCall;
 
   constructor(call: RegisterPatientCall) {
+    this._call = call;
+  }
+}
+
+export class RotateTrustedContractCall extends ethereum.Call {
+  get inputs(): RotateTrustedContractCall__Inputs {
+    return new RotateTrustedContractCall__Inputs(this);
+  }
+
+  get outputs(): RotateTrustedContractCall__Outputs {
+    return new RotateTrustedContractCall__Outputs(this);
+  }
+}
+
+export class RotateTrustedContractCall__Inputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+
+  get kind(): i32 {
+    return this._call.inputValues[0].value.toI32();
+  }
+
+  get newConsumer(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+}
+
+export class RotateTrustedContractCall__Outputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleTestHelpersEnabledCall extends ethereum.Call {
+  get inputs(): ScheduleTestHelpersEnabledCall__Inputs {
+    return new ScheduleTestHelpersEnabledCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleTestHelpersEnabledCall__Outputs {
+    return new ScheduleTestHelpersEnabledCall__Outputs(this);
+  }
+}
+
+export class ScheduleTestHelpersEnabledCall__Inputs {
+  _call: ScheduleTestHelpersEnabledCall;
+
+  constructor(call: ScheduleTestHelpersEnabledCall) {
+    this._call = call;
+  }
+
+  get enabled(): boolean {
+    return this._call.inputValues[0].value.toBoolean();
+  }
+}
+
+export class ScheduleTestHelpersEnabledCall__Outputs {
+  _call: ScheduleTestHelpersEnabledCall;
+
+  constructor(call: ScheduleTestHelpersEnabledCall) {
     this._call = call;
   }
 }

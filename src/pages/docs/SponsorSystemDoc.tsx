@@ -102,6 +102,67 @@ contract SponsorRegistry is Ownable {
 
                 <hr className="my-12 border-slate-200" />
 
+                <h2>Sponsor UI workflows</h2>
+                <h3>Open-access flag</h3>
+                <p>
+                    By default <code>VITE_SPONSOR_OPEN_ACCESS</code> is enabled (any value except the string{" "}
+                    <code>false</code>). <code>useSponsorVerification</code> then treats every connected wallet as verified
+                    for trial creation — suitable for testnet demos. Set <code>VITE_SPONSOR_OPEN_ACCESS=false</code> to
+                    enforce <code>SponsorRegistry.isVerifiedSponsor</code> on-chain.
+                </p>
+                <h3>AI-assisted trial creation</h3>
+                <p>
+                    On <code>/sponsor/trials/create</code>, sponsors can upload a protocol PDF. When{" "}
+                    <code>VITE_AI_SERVICE_URL</code> is configured (dev: Vite proxy <code>/ai-service</code>),{" "}
+                    <code>extractCriteriaFromProtocolPdf</code> returns structured criteria that prefill{" "}
+                    <code>CriteriaBuilder</code>. The sponsor reviews and edits before{" "}
+                    <code>useSponsorTrialCreation.submitTrial</code> encrypts requirements on-chain.
+                </p>
+                <h3>Blind ranking &amp; encrypted aggregates</h3>
+                <p>
+                    <code>BlindRankingPanel</code> shows anonymized applicant pool size from{" "}
+                    <code>EncryptedScoreLeaderboard</code> without revealing individual scores. Sponsors can decrypt
+                    aggregate applicant count and average score via <code>useEncryptedTrialAggregates</code> after granting
+                    themselves FHE permits on the leaderboard contract.
+                </p>
+                <h3>Sponsor document decrypt</h3>
+                <p>
+                    For <strong>accepted</strong> anonymous matches with an on-chain document CID,{" "}
+                    <code>SponsorDocumentPanel</code> lets the sponsor decrypt supporting files: read 4 FHE AES-key chunks
+                    from <code>PatientDocumentStore</code>, unwrap with Zama SDK, fetch IPFS ciphertext, decrypt locally in
+                    the browser.
+                </p>
+                <h3>Admin sponsors page (public application)</h3>
+                <p>
+                    <code>/admin/sponsors</code> is intentionally outside <code>SponsorGuard</code>. Any wallet can submit
+                    an encrypted sponsor application to the subgraph; the protocol owner reviews pending requests and
+                    executes <code>addSponsor</code> / <code>removeSponsor</code> on <code>SponsorRegistry</code>.
+                    When a sponsor is revoked mid-trial, the owner card <strong>Abandoned pool recovery (P2)</strong> lets
+                    the vault owner schedule <code>reclaimAbandonedToOwner</code> and claim via{" "}
+                    <code>claimReclaimed</code> after trial end + 90-day grace (distribution gates do not apply on this
+                    path).
+                </p>
+                <h3>Sponsor reclaim (verified path)</h3>
+                <p>
+                    On <code>SponsorTrialDetailsPage</code>, verified sponsors use a two-step pull pattern:{" "}
+                    <code>reclaimUndistributed</code> schedules, then <code>claimReclaimed</code> delivers ETH. Requires
+                    screening distributed (or zero participants), all milestones confirmed or pruned, and no open challenge
+                    windows with unconfirmed entitlements. If the sponsor is no longer verified, the UI explains that only
+                    protocol-owner abandoned recovery is available.
+                </p>
+                <h3>Phased payout staging (P0-1)</h3>
+                <p>
+                    <strong>Release Funds</strong> on each milestone now <em>stages</em> entitlements — it does not push cETH
+                    immediately. The sponsor UI shows <strong>Staged</strong> vs <strong>Confirmed</strong> per participant.
+                    After <code>CHALLENGE_WINDOW</code> (7 days), sponsors may <code>pruneUnconfirmedSlots</code> for patients
+                    who never called <code>confirmReceipt</code>. See{" "}
+                    <a href="https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md" className="font-semibold text-[#00685f]">
+                        zero-revelation rewards
+                    </a>.
+                </p>
+
+                <hr className="my-12 border-slate-200" />
+
                 <h2>Consent Architecture Deep Dive</h2>
                 <p>
                     The consent flow in MedVault is not a simple boolean toggle. It is a <strong>cryptographic re-encryption protocol</strong> that ensures the sponsor can only view the patient's profile if the patient explicitly authorizes it via a signed Ethereum transaction. Here is the detailed flow:
@@ -127,7 +188,8 @@ contract SponsorRegistry is Ownable {
                 </p>
 
                 <ul>
-                    <li><strong>Sponsor Key Compromise:</strong> If a sponsor's private key is compromised, the protocol admin can immediately call <code>emergencyRemoveSponsor(address)</code> on the <code>SponsorRegistry</code>. This revokes the sponsor's verified status, preventing them from creating new trials. Existing trials remain viewable but new applications are frozen.</li>
+                    <li><strong>Sponsor Key Compromise:</strong> If a sponsor's private key is compromised, the protocol admin can immediately call <code>emergencyRemoveSponsor(address)</code> on the <code>SponsorRegistry</code>. This revokes the sponsor's verified status, preventing them from creating new trials or distributing rewards. Existing trials remain viewable but new applications are frozen.</li>
+                    <li><strong>Abandoned pool recovery (vault P2):</strong> If a sponsor is removed while a funded trial still has undistributed ETH, sponsor reclaim and distribution paths revert. After <code>endTime + RECLAIM_GRACE_PERIOD</code> (90 days when participants exist), the <code>SponsorIncentiveVault</code> owner calls <code>reclaimAbandonedToOwner(trialId)</code> then <code>claimReclaimed(trialId)</code> to route residual funds to the protocol owner wallet.</li>
                     <li><strong>Trial Halt:</strong> Any active trial can be deactivated by its owning sponsor or the protocol admin via <code>TrialManager.deactivateTrial(trialId)</code>. This sets the trial's <code>active</code> flag to <code>false</code>, which prevents new <code>computeEligibility()</code> calls from executing.</li>
                     <li><strong>Consent Auto-Expiry (Planned):</strong> In a future upgrade, consent tokens will include time-locked expiration. After the trial period ends, consent automatically revokes without requiring patient action.</li>
                 </ul>

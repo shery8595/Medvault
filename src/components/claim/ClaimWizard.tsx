@@ -10,6 +10,7 @@ type Props = {
   destination: string;
   previewEth: string | null;
   previewLoading: boolean;
+  confirmTxHash?: string | null;
   claimTxHash?: string | null;
   completeTxHash?: string | null;
   statusMessage?: string | null;
@@ -29,13 +30,21 @@ function mapStepStatus(
   return "pending";
 }
 
-const ORDER: ClaimWizardStep[] = ["preview", "destination", "claiming", "relayer", "receipt"];
+const ORDER: ClaimWizardStep[] = [
+  "preview",
+  "destination",
+  "confirming",
+  "claiming",
+  "relayer",
+  "receipt",
+];
 
 export function ClaimWizard({
   step,
   destination,
   previewEth,
   previewLoading,
+  confirmTxHash,
   claimTxHash,
   completeTxHash,
   statusMessage,
@@ -45,11 +54,11 @@ export function ClaimWizard({
     () => [
       {
         id: "preview",
-        label: "Encrypted cETH balance",
+        label: "Reward balance",
         description: previewLoading
-          ? "Decrypting ephemeral reward balance…"
+          ? "Checking staged entitlements and cETH balance…"
           : previewEth
-            ? `${previewEth} ETH available in confidential units`
+            ? `${previewEth} ETH claimable`
             : "Connect Semaphore identity to preview",
         status: mapStepStatus(step, "preview", ORDER),
       },
@@ -58,6 +67,12 @@ export function ClaimWizard({
         label: "Payout destination",
         description: destination ? `${destination.slice(0, 10)}…${destination.slice(-6)}` : "Main wallet",
         status: mapStepStatus(step, "destination", ORDER),
+      },
+      {
+        id: "confirming",
+        label: "confirmReceipt",
+        description: "Prove staged entitlement and receive confidential cETH",
+        status: mapStepStatus(step, "confirming", ORDER),
       },
       {
         id: "claiming",
@@ -84,8 +99,18 @@ export function ClaimWizard({
   return (
     <div className={cn("space-y-3", className)}>
       <StepProgress steps={steps} compact />
-      {(claimTxHash || completeTxHash) && (
+      {(confirmTxHash || claimTxHash || completeTxHash) && (
         <div className="flex flex-wrap gap-3 text-[10px] font-semibold">
+          {confirmTxHash && (
+            <a
+              href={txExplorerUrl(confirmTxHash)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-teal-700 hover:text-teal-900"
+            >
+              Confirm tx <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
           {claimTxHash && (
             <a
               href={txExplorerUrl(claimTxHash)}

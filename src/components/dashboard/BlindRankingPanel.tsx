@@ -96,7 +96,8 @@ export function BlindRankingPanel({ trialId, readProvider, sponsorAccount, fallb
             {comparisonReady && (
               <p className="text-xs text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
                 <strong>Encrypted comparison complete</strong> — cohort size supports pairwise FHE.gt ranking on-chain.
-                Use authorized sponsor flows to batch-compare without decrypting PHI.
+                One <code className="font-mono text-[10px]">compareApplicants(A,B)</code> call now stores symmetric results
+                (query <code className="font-mono text-[10px]">getComparisonResult(B,A)</code> without a second tx).
               </p>
             )}
           </div>

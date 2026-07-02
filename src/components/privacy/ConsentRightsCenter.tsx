@@ -18,6 +18,7 @@ const CONTRACT_DECRYPT_GUIDE = [
   { name: "EligibilityEngine", scope: "FHE scores and anonymous application status" },
   { name: "ConfidentialETH", scope: "Reward balances (ephemeral permit holder)" },
   { name: "ConsentManager", scope: "Consent epoch and per-trial grants" },
+  { name: "PatientDocumentStore", scope: "Hybrid IPFS + FHE AES key (per-access sponsor pull)" },
 ];
 
 export function ConsentRightsCenter({
@@ -47,6 +48,8 @@ export function ConsentRightsCenter({
         <h3 className="text-sm font-bold text-slate-900">Consent rights center</h3>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
           Grant or revoke trial access, export your consent log, and see which contracts may decrypt which handles.
+          Hybrid documents use atomic revoke+rotate; old IPFS CIDs must be unpinned off-chain — contracts cannot
+          revoke already-decrypted files.
         </p>
       </div>
 

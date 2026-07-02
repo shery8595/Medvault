@@ -106,7 +106,7 @@ describe("Unit: consent wallet binding (M-2)", function () {
 
         await expectRevert(
             stack.medVaultRegistry
-                .connect(stack.patient)
+                .connect(stack.relayer)
                 .finalizeAnonymousApplyWithProof(
                     trialId,
                     proofFresh,
@@ -117,9 +117,8 @@ describe("Unit: consent wallet binding (M-2)", function () {
                     permitSignature,
                     badSig,
                     proofBytes,
-                    publicInputs,
-                    true
-                ),
+                    publicInputs
+            ),
             /Invalid consent wallet signature/
         );
     });

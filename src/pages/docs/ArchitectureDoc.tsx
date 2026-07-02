@@ -8,7 +8,7 @@ const ProtocolFlowDiagram = lazy(() =>
 );
 import { DocsPageHeaderForRoute } from "../../components/docs/DocsPageHeader";
 import { CONTRACT_INTERACTION_ROWS, PROTOCOL_CONTRACTS } from "../../lib/protocolContracts";
-import { DOCS_CONTRACT_COUNT } from "../../lib/docsNav";
+import { REPO_STATS } from "../../lib/docsStats";
 import { motion } from "framer-motion";
 import { Database, Shield, Activity, Users, Server, Fingerprint, Layers, Coins } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -44,7 +44,7 @@ const layers = [
         color: "amber",
         icon: <Coins className="h-4 w-4" />,
         title: "DeFi & automation layer",
-        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH (encrypted withdraw + EIP-712 public exit), MedVaultAutomation (Chainlink Keepers).",
+        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH7984 (IERC7984 encrypted withdraw + EIP-712 public exit), MedVaultAutomation (Chainlink Keepers).",
     },
     {
         color: "rose",
@@ -64,8 +64,9 @@ export function ArchitectureDoc() {
                     <p className="text-sm text-slate-700 m-0 leading-relaxed">
                         MedVault on <strong>Ethereum Sepolia</strong> combines{" "}
                         <strong>Semaphore</strong> identity, <strong>Zama FHE</strong> homomorphic eligibility (authoritative compute), optional{" "}
-                        <strong>Noir/Honk</strong> compliance attestation seals, and <strong>{DOCS_CONTRACT_COUNT}</strong> production Solidity
-                        contracts. Addresses: <code>src/lib/contracts/addresses.json</code>.
+                        <strong>Noir/Honk</strong> compliance attestation seals, and{" "}
+                        <strong>{REPO_STATS.productionContracts}</strong> production Solidity contracts. Addresses:{" "}
+                        <code>src/lib/contracts/addresses.json</code>.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
                         <Link
@@ -90,7 +91,7 @@ export function ArchitectureDoc() {
                             to="/docs/testing"
                             className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full hover:bg-emerald-100"
                         >
-                            Test suite (265)
+                            Test suite ({REPO_STATS.testSuiteDefaultPassing})
                         </Link>
                     </div>
                 </div>
@@ -219,6 +220,39 @@ export function ArchitectureDoc() {
                     </Link>
                     .
                 </Callout>
+
+                <h2>Documentation &amp; asset sync</h2>
+                <p className="text-sm">
+                    MedVault uses a <strong>dual-doc model</strong>: in-app pages under <code>src/pages/docs/</code> mirror
+                    repo markdown in <code>docs/</code> and <code>internal-docs/</code>. Canonical counts import from{" "}
+                    <code>src/lib/docsStats.ts</code> (methodology in repo{" "}
+                    <code>docs/AUDIT.md</code>).
+                </p>
+                <ul className="text-sm space-y-1.5 max-w-prose">
+                    <li>
+                        <code>npm run sync-abis</code> — compile artifacts → <code>src/lib/contracts/abis/</code> and{" "}
+                        <code>subgraph/abis/</code>
+                    </li>
+                    <li>
+                        <code>npm run sync-sdk-assets</code> — addresses + ABIs → <code>packages/medvault-core/data/</code>
+                    </li>
+                    <li>
+                        <code>node scripts/update-subgraph-yaml.js</code> — subgraph contract addresses / start blocks
+                    </li>
+                    <li>
+                        Circuit compile — dual Noir artifacts → <code>HonkVerifier.sol</code> +{" "}
+                        <code>HonkVerifierEncrypted.sol</code>
+                    </li>
+                </ul>
+                <p className="text-sm">
+                    Off-chain surface: <strong>{REPO_STATS.httpRoutes}</strong> HTTP routes across relayer, ai-service,
+                    indexer, and MCP; <strong>{REPO_STATS.backgroundJobs}</strong> background jobs (relayer watcher, batch
+                    exit queue, indexer sync/reconcile, Chainlink upkeep). See{" "}
+                    <Link to="/docs/frontend" className="font-semibold underline">
+                        frontend architecture
+                    </Link>{" "}
+                    for provider nesting and routing.
+                </p>
             </Prose>
         </motion.div>
     );

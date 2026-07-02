@@ -2,44 +2,36 @@ import { ethers } from "ethers";
 
 import { getConfidentialETH, getEligibilityEngine, getSponsorIncentiveVault } from "./contracts";
 
-import { fetchCompletionProof } from "./relayer";
+import { fetchCompletionProof, signCompletionProofRequest } from "./relayer";
 
-import { encryptUint64, ensureZamaConnected, publicDecrypt } from "./fhe";
+import { encryptUint64, ensureZamaConnected, reencryptUint64WithEphemeral } from "./fhe";
 
 import { parseEventArg } from "./contractEvents";
 
 import { txExplorerUrl } from "./network";
 
-import { signClaimAuthorization } from "./semaphore";
+import { signClaimAuthorization, getEphemeralSigner } from "./semaphore";
 
 import { resolveChainIdFrom } from "./contracts";
 
+import { buildWithdrawToAuthorization, computeEncryptedAmountCommitment } from "./withdrawFlow";
+import { confirmAllPendingReceipts } from "./confirmReceiptFlow";
+
 export type ClaimWizardStep =
-
   | "preview"
-
   | "destination"
-
+  | "confirming"
   | "claiming"
-
   | "relayer"
-
   | "receipt"
-
   | "error";
 
-
-
 export type ClaimProgress = {
-
   step: ClaimWizardStep;
-
   message: string;
-
+  confirmTxHash?: string;
   claimTxHash?: string;
-
   completeTxHash?: string;
-
 };
 
 
@@ -48,7 +40,7 @@ function parseWithdrawToHandle(receipt: ethers.TransactionReceipt, cEthAddress: 
 
   const iface = new ethers.Interface([
 
-    "event WithdrawToRequested(address indexed user, bytes32 sufficientHandle)",
+    "event WithdrawToRequested(address indexed user, bytes32 transferableHandle)",
 
   ]);
 
@@ -62,7 +54,7 @@ function parseWithdrawToHandle(receipt: ethers.TransactionReceipt, cEthAddress: 
 
       if (parsed?.name === "WithdrawToRequested") {
 
-        return String(parsed.args.sufficientHandle);
+        return String(parsed.args.transferableHandle);
 
       }
 
@@ -111,9 +103,7 @@ async function waitForDestinationCredit(
 
 
 /**
-
- * claimParticipantRewards → relayer/watcher completeWithdrawTo → ETH at destination.
-
+ * confirmReceipt (pull) → claimParticipantRewards → relayer/watcher completeWithdrawTo → ETH at destination.
  */
 
 export async function claimRewardsWithCompletion(
@@ -137,6 +127,8 @@ export async function claimRewardsWithCompletion(
   const provider = signer.provider;
 
   if (!provider) throw new Error("Wallet provider not available");
+
+  let claimUnits = units;
 
 
 
@@ -164,14 +156,49 @@ export async function claimRewardsWithCompletion(
 
   const gasless = permitHolder.toLowerCase() !== signerAddress.toLowerCase();
 
+  if (identity) {
+    const ephemeralSigner = getEphemeralSigner(identity, provider);
+    onProgress?.({
+      step: "confirming",
+      message: "Confirming staged entitlements before claim…",
+    });
+    const confirmTxHashes = await confirmAllPendingReceipts(
+      signer,
+      ephemeralSigner,
+      trialId,
+      12,
+      (message) => onProgress?.({ step: "confirming", message })
+    );
+    if (confirmTxHashes.length > 0) {
+      onProgress?.({
+        step: "confirming",
+        message: `Receipt confirmed (${confirmTxHashes.length} milestone${confirmTxHashes.length > 1 ? "s" : ""}).`,
+        confirmTxHash: confirmTxHashes[confirmTxHashes.length - 1],
+      });
+    }
 
+    const ephemeralAddress = await ephemeralSigner.getAddress();
+    const balanceHandle = await cETH.getBalance(ephemeralAddress);
+    const balanceStr = balanceHandle.toString();
+    if (balanceStr && BigInt(balanceStr) !== 0n) {
+      const decrypted = await reencryptUint64WithEphemeral(
+        ephemeralSigner,
+        cEthAddress,
+        balanceStr
+      );
+      claimUnits = Number(decrypted);
+    }
+  }
+
+  if (claimUnits <= 0) {
+    throw new Error("No confidential balance to claim after receipt confirmation.");
+  }
 
   onProgress?.({
-
     step: "claiming",
-
-    message: gasless ? "Signing claim authorization with ephemeral key…" : "Submitting claimParticipantRewards…",
-
+    message: gasless
+      ? "Signing claim + withdraw-to authorizations with ephemeral key…"
+      : "Signing withdraw-to authorization and submitting claim…",
   });
 
 
@@ -180,7 +207,12 @@ export async function claimRewardsWithCompletion(
 
   await ensureZamaConnected(provider, signer);
 
-  const encrypted = await encryptUint64(cEthAddress, vaultAddress, units);
+  const encrypted = await encryptUint64(cEthAddress, vaultAddress, claimUnits);
+
+  const encryptedAmountCommitment = computeEncryptedAmountCommitment(
+    encrypted.handle,
+    encrypted.inputProof
+  );
 
 
 
@@ -200,6 +232,14 @@ export async function claimRewardsWithCompletion(
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
+    const ephemeralSigner = getEphemeralSigner(identity, provider);
+
+    const withdrawTo = await buildWithdrawToAuthorization(
+      ephemeralSigner,
+      destination,
+      encrypted
+    );
+
     const signature = await signClaimAuthorization(identity, provider, {
 
       vaultAddress,
@@ -214,7 +254,9 @@ export async function claimRewardsWithCompletion(
 
       destination,
 
-      units: BigInt(units),
+      units: BigInt(claimUnits),
+
+      encryptedAmountCommitment,
 
       nonce,
 
@@ -232,7 +274,9 @@ export async function claimRewardsWithCompletion(
 
       destination,
 
-      BigInt(units),
+      BigInt(claimUnits),
+
+      encryptedAmountCommitment,
 
       encrypted.handle,
 
@@ -242,11 +286,19 @@ export async function claimRewardsWithCompletion(
 
       deadline,
 
-      signature
+      signature,
+
+      withdrawTo.nonce,
+
+      withdrawTo.deadline,
+
+      withdrawTo.signature
 
     );
 
   } else {
+
+    const withdrawTo = await buildWithdrawToAuthorization(signer, destination, encrypted);
 
     claimTx = await vault.claimParticipantRewards(
 
@@ -258,7 +310,13 @@ export async function claimRewardsWithCompletion(
 
       encrypted.handle,
 
-      encrypted.inputProof
+      encrypted.inputProof,
+
+      withdrawTo.nonce,
+
+      withdrawTo.deadline,
+
+      withdrawTo.signature
 
     );
 
@@ -296,7 +354,7 @@ export async function claimRewardsWithCompletion(
 
     try {
 
-      const proof = await fetchCompletionProof({
+      const callerSignature = await signCompletionProofRequest(signer, {
 
         kind: "withdrawTo",
 
@@ -308,45 +366,27 @@ export async function claimRewardsWithCompletion(
 
       });
 
-      if (proof.eligible) {
+      const proof = await fetchCompletionProof({
 
-        const revealTx = await cETH.revealWithdrawToAmount(
+        kind: "withdrawTo",
 
-          permitHolder,
+        stageTxHash: claimTxHash,
 
-          proof.cleartexts,
+        user: permitHolder,
 
-          proof.decryptionProof
+        handle,
 
-        );
+        callerSignature,
 
-        const revealRc = await revealTx.wait();
+      });
 
-        if (revealRc) {
+      if (proof.transferable ?? proof.eligible) {
 
-          const amountHandle = parseEventArg(
+        const tx = await cETH.completeWithdrawTo(permitHolder, proof.cleartexts, proof.decryptionProof);
 
-            revealRc,
+        const rc = await tx.wait();
 
-            cETH.interface,
-
-            cEthAddress,
-
-            "WithdrawAmountRevealed",
-
-            "amountHandle"
-
-          );
-
-          const amount = await publicDecrypt(amountHandle);
-
-          const tx = await cETH.completeWithdrawTo(permitHolder, amount.cleartexts, amount.proof);
-
-          const rc = await tx.wait();
-
-          completeTxHash = rc?.hash;
-
-        }
+        completeTxHash = rc?.hash;
 
       }
 

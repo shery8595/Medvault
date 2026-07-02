@@ -9,7 +9,7 @@ export function handleWithdrawRequested(event: WithdrawRequested): void {
   const id = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
   const row = new WithdrawRequest(id)
   row.user = event.params.user
-  row.sufficientHandle = event.params.sufficientHandle
+  row.transferableHandle = event.params.transferableHandle
   row.kind = "withdraw"
   row.blockNumber = event.block.number
   row.txHash = event.transaction.hash
@@ -20,7 +20,7 @@ export function handleWithdrawToRequested(event: WithdrawToRequested): void {
   const id = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
   const row = new WithdrawRequest(id)
   row.user = event.params.user
-  row.sufficientHandle = event.params.sufficientHandle
+  row.transferableHandle = event.params.transferableHandle
   row.kind = "withdrawTo"
   row.blockNumber = event.block.number
   row.txHash = event.transaction.hash

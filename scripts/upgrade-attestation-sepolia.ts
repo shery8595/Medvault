@@ -1,9 +1,9 @@
 /**
- * Upgrade Noir attestation + gasless-claim stack on Ethereum Sepolia:
- * - New HonkVerifier (17 public inputs, encrypted-criteria echo binding)
- * - New EligibilityEngine (criteria_mode + encryptedCriteriaBindingHash)
- * - New SponsorIncentiveVault (EIP-712 gasless claim/register)
- * - Redeploy engine-dependent contracts (registry, consent gate, leaderboard)
+ * Upgrade Noir attestation stack on Ethereum Sepolia (partial redeploy):
+ * - HonkVerifier (plaintext) + HonkVerifierEncrypted (encrypted criteria)
+ * - New EligibilityEngine + dependent registry/consent/leaderboard/vault
+ *
+ * Prefer `npm run deploy:sepolia` for greenfield. This script keeps existing TrialManager, APR, etc.
  *
  * Usage:
  *   npm run build:circuit
@@ -15,6 +15,11 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { ensureDataAccessLogger } from "./data-access-log-wiring";
+import {
+    advanceTimelockIfHardhat,
+    ensureCethContractAuth,
+    wireAllContracts,
+} from "./lib/timelockWiring";
 
 const SEMAPHORE_ADDRESS = process.env.SEMAPHORE_ADDRESS || "0x8A1fd199516489B0Fb7153EB5f075cDAC83c693D";
 const VK_FINGERPRINT_FILE = path.join(__dirname, "../src/lib/circuits/vk_fingerprint.json");
@@ -28,6 +33,15 @@ async function deployBlock(contract: { deploymentTransaction: () => { hash: stri
     if (!dep) return await ethers.provider.getBlockNumber();
     const rec = await dep.wait();
     return rec ? Number(rec.blockNumber) : await ethers.provider.getBlockNumber();
+}
+
+async function deployLibrary(libName: string, libraries: Record<string, string> = {}): Promise<string> {
+    const factory = await ethers.getContractFactory(libName, { libraries });
+    const lib = await factory.deploy();
+    await lib.waitForDeployment();
+    const address = await lib.getAddress();
+    console.log(`✓ ${libName}              → ${address}`);
+    return address;
 }
 
 async function main() {
@@ -67,9 +81,21 @@ async function main() {
     await honkVerifier.waitForDeployment();
     const honkVerifierAddress = await honkVerifier.getAddress();
     const honkBlock = await deployBlock(honkVerifier);
-    console.log(`✓ HonkVerifier            → ${honkVerifierAddress} (block ${honkBlock})`);
+    console.log(`✓ HonkVerifier (plaintext)  → ${honkVerifierAddress} (block ${honkBlock})`);
 
-    const EligibilityEngine = await ethers.getContractFactory("EligibilityEngine");
+    const HonkVerifierEncrypted = await ethers.getContractFactory("HonkVerifierEncrypted");
+    const honkVerifierEncrypted = await HonkVerifierEncrypted.deploy();
+    await honkVerifierEncrypted.waitForDeployment();
+    const honkVerifierEncryptedAddress = await honkVerifierEncrypted.getAddress();
+    const honkEncBlock = await deployBlock(honkVerifierEncrypted);
+    console.log(`✓ HonkVerifierEncrypted       → ${honkVerifierEncryptedAddress} (block ${honkEncBlock})`);
+
+    const EligibilityEngine = await ethers.getContractFactory("EligibilityEngine", {
+        libraries: {
+            EligibilityComputeLib: await deployLibrary("EligibilityComputeLib"),
+            EligibilityProofLib: await deployLibrary("EligibilityProofLib"),
+        },
+    });
     const engine = await EligibilityEngine.deploy(
         KEEP.AnonymousPatientRegistry,
         KEEP.TrialManager,
@@ -130,65 +156,35 @@ async function main() {
     );
     const automation = await ethers.getContractAt("MedVaultAutomation", KEEP.MedVaultAutomation);
 
-    await (await engine.setAutomationContract(KEEP.MedVaultAutomation)).wait();
-    await (await engine.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    await (await engine.setConsentGate(consentGateAddress)).wait();
-    await (await engine.setScoreLeaderboard(leaderboardAddress)).wait();
-    await (await engine.setEligibilityVerifier(honkVerifierAddress)).wait();
-    await (await engine.setSponsorIncentiveVault(vaultAddress)).wait();
-    await (await engine.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    console.log("✓ EligibilityEngine wiring");
+    await advanceTimelockIfHardhat();
 
-    await (await trialManager.setEligibilityEngine(engineAddress)).wait();
-    console.log("✓ TrialManager.setEligibilityEngine");
-
-    try {
-        await (await consentManager.setEligibilityEngine(engineAddress)).wait();
-        console.log("✓ ConsentManager.setEligibilityEngine");
-    } catch (e) {
-        console.warn(
-            "  (skip ConsentManager.setEligibilityEngine — consents already granted on retained instance)"
-        );
-    }
-    try {
-        await (await consentManager.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    } catch {
-        console.warn("  (skip ConsentManager.setDataAccessLog)");
-    }
-    try {
-        await (await consentManager.setConsentGate(consentGateAddress)).wait();
-        console.log("✓ ConsentManager.setConsentGate");
-    } catch {
-        console.warn("  (skip ConsentManager.setConsentGate)");
-    }
-    console.log("✓ ConsentManager wiring (best-effort)");
-
-    await (await anonymousRegistry.setAuthorizedEngine(engineAddress)).wait();
-    await (await anonymousRegistry.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    console.log("✓ AnonymousPatientRegistry wiring");
-
-    await (await vault.setMilestoneManager(KEEP.TrialMilestoneManager)).wait();
-    await (await vault.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    await (await vault.setAutomationContract(KEEP.MedVaultAutomation)).wait();
-    if (KEEP.SponsorRegistry) {
-        await (await vault.setSponsorRegistry(KEEP.SponsorRegistry)).wait();
-        console.log("✓ SponsorIncentiveVault.setSponsorRegistry");
-    }
-    console.log("✓ SponsorIncentiveVault wiring");
-
-    await (await milestoneManager.setVault(vaultAddress)).wait();
-    try {
-        await (await milestoneManager.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    } catch {
-        console.warn("  (skip TrialMilestoneManager.setDataAccessLog)");
-    }
-    await (await automation.setVault(vaultAddress)).wait();
-    await (await trialManager.setAutomationContract(KEEP.MedVaultAutomation)).wait();
-    console.log("✓ Milestone manager + automation vault pointers");
+    await wireAllContracts({
+        anonymousRegistry,
+        trialManager,
+        engine,
+        consentManager,
+        vault,
+        milestoneManager,
+        automation,
+        cETH,
+        dataAccessLog,
+        leaderboard,
+        consentGate,
+        medVaultRegistry,
+        honkVerifierAddress,
+        honkVerifierEncryptedAddress,
+        sponsorRegistryAddress: KEEP.SponsorRegistry,
+        stakingManagerAddress: KEEP.StakingManager,
+        trustedRelayer:
+            process.env.TRUSTED_RELAYER_ADDRESS ||
+            (process.env.RELAYER_PRIVATE_KEY
+                ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
+                : undefined),
+    });
 
     if (OLD.SponsorIncentiveVault) {
         try {
-            await (await cETH.deauthorizeContract(OLD.SponsorIncentiveVault)).wait();
+            await ensureCethContractAuth(cETH, OLD.SponsorIncentiveVault, false);
             console.log("✓ Deauthorized old vault on cETH");
         } catch {
             console.warn("  (skip cETH deauthorize old vault)");
@@ -199,24 +195,6 @@ async function main() {
             /* ignore */
         }
     }
-    try {
-        await (await cETH.authorizeContract(vaultAddress)).wait();
-        console.log("✓ ConfidentialETH authorized new vault");
-    } catch {
-        console.warn("  (skip cETH authorize new vault)");
-    }
-
-    const trustedRelayer =
-        process.env.TRUSTED_RELAYER_ADDRESS ||
-        (process.env.RELAYER_PRIVATE_KEY
-            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
-            : "");
-    if (trustedRelayer && ethers.isAddress(trustedRelayer)) {
-        await (await medVaultRegistry.setTrustedRelayer(trustedRelayer)).wait();
-        await (await cETH.authorizeContract(trustedRelayer)).wait();
-        console.log(`✓ MedVaultRegistry.setTrustedRelayer → ${trustedRelayer}`);
-        console.log("✓ ConfidentialETH authorized relayer");
-    }
 
     if (OLD.EligibilityEngine) {
         try {
@@ -225,22 +203,17 @@ async function main() {
             /* ignore */
         }
     }
-    await ensureDataAccessLogger(dataAccessLog, engineAddress, true);
-    await ensureDataAccessLogger(dataAccessLog, KEEP.AnonymousPatientRegistry, true);
-    await ensureDataAccessLogger(dataAccessLog, vaultAddress, true);
-    console.log("✓ DataAccessLog loggers (scheduled or applied)");
-
-    await (await leaderboard.authorizeCaller(engineAddress)).wait();
-    await (await consentGate.authorizeComputer(engineAddress)).wait();
-    console.log("✓ Leaderboard + ConsentGate authorizations");
 
     const inputCount = await engine.ELIGIBILITY_PUBLIC_INPUT_COUNT();
     const schemaHash = await engine.CRITERIA_SCHEMA_HASH();
     console.log(`\nOn-chain attestation check: publicInputs=${inputCount}, schema=${schemaHash}`);
 
-    let vkFingerprint: string | undefined;
+    let vkPlainFingerprint: string | undefined;
+    let vkEncryptedFingerprint: string | undefined;
     if (fs.existsSync(VK_FINGERPRINT_FILE)) {
-        vkFingerprint = JSON.parse(fs.readFileSync(VK_FINGERPRINT_FILE, "utf8")).sha256;
+        const fp = JSON.parse(fs.readFileSync(VK_FINGERPRINT_FILE, "utf8"));
+        vkPlainFingerprint = fp.plaintext?.sha256 ?? fp.sha256;
+        vkEncryptedFingerprint = fp.encrypted?.sha256;
     }
 
     const updated = {
@@ -249,6 +222,7 @@ async function main() {
         EligibilityEngine: engineAddress,
         HonkVerifier: honkVerifierAddress,
         EligibilityVerifier: honkVerifierAddress,
+        HonkVerifierEncrypted: honkVerifierEncryptedAddress,
         EncryptedConsentGate: consentGateAddress,
         EncryptedScoreLeaderboard: leaderboardAddress,
         SponsorIncentiveVault: vaultAddress,
@@ -256,7 +230,8 @@ async function main() {
         Reclaim: current.Reclaim,
         ReclaimSemaphore: current.ReclaimSemaphore,
         SemaphoreVerifier: current.SemaphoreVerifier,
-        ...(vkFingerprint ? { HonkVerifierVkFingerprint: vkFingerprint } : {}),
+        ...(vkPlainFingerprint ? { HonkVerifierVkFingerprint: vkPlainFingerprint } : {}),
+        ...(vkEncryptedFingerprint ? { HonkVerifierEncryptedVkFingerprint: vkEncryptedFingerprint } : {}),
     };
 
     all[key] = { ...(all[key] || {}), ...updated };

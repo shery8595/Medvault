@@ -34,7 +34,7 @@ export function handlePrivateUnstakeRequested(event: PrivateUnstakeRequested): v
     const id = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
     const row = new UnstakeRequest(id)
     row.user = event.params.user
-    row.sufficientHandle = event.params.sufficientHandle
+    row.transferableHandle = event.params.transferableHandle
     row.blockNumber = event.block.number
     row.txHash = event.transaction.hash
     row.save()
@@ -44,7 +44,7 @@ export function handlePublicUnstakeRequested(event: PublicUnstakeRequested): voi
     const id = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
     const row = new UnstakeRequest(id)
     row.user = event.params.user
-    row.sufficientHandle = event.params.sufficientHandle
+    row.transferableHandle = event.params.transferableHandle
     row.blockNumber = event.block.number
     row.txHash = event.transaction.hash
     row.save()

@@ -34,12 +34,14 @@ import {
 } from "../lib/contracts";
 import { reencryptUint8, reencryptUint8WithEphemeral } from "../lib/fhe";
 import { Trial } from "../types";
-import { resolveAnonymousNullifier, getStoredIdentity, getEphemeralSigner } from "../lib/semaphore";
+import { resolveAnonymousNullifier, getStoredIdentity, getEphemeralSigner, generateEphemeralAddress } from "../lib/semaphore";
 import {
     getEncryptedScoreHandle,
     getMilestonesAndProgress,
     registerAnonymousParticipantByNullifier,
 } from "../lib/contracts/sponsorAdapters";
+import { getConfidentialETH } from "../lib/contracts";
+import { getParticipantReceiptStatus } from "../lib/confirmReceiptFlow";
 
 /* ─── Status Configuration ─── */
 const statusConfig = {
@@ -93,6 +95,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
     const [currentProgress, setCurrentProgress] = useState<number>(-1); // -1 means none
     const [milestonesLoading, setMilestonesLoading] = useState(false);
     const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+    const [hasClaimableRewards, setHasClaimableRewards] = useState(false);
     const [decryptError, setDecryptError] = useState<string | null>(null);
     const autoEnrollAttemptedRef = useRef(false);
 
@@ -102,7 +105,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
     const StatusIcon = config.icon;
 
     const hasEnded = trial.endTime && parseInt(trial.endTime) <= Math.floor(Date.now() / 1000);
-    const canCheckPayout = poolFunded && status === "Accepted" && isRegistered;
+    const canCheckPayout = poolFunded && status === "Accepted" && isRegistered && hasClaimableRewards;
 
     useEffect(() => {
         setPoolFunded(Boolean(trial.rewardPoolFunded));
@@ -236,6 +239,36 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
         };
         fetchProgress();
     }, [signer, trial.id, account, isRegistered]);
+
+    useEffect(() => {
+        const checkClaimable = async () => {
+            if (!signer || !isRegistered || status !== "Accepted") {
+                setHasClaimableRewards(false);
+                return;
+            }
+            const identity = getStoredIdentity();
+            if (!identity) {
+                setHasClaimableRewards(Boolean(trial.incentivePool?.distributed));
+                return;
+            }
+            try {
+                const ephemeralAddress = await generateEphemeralAddress(identity);
+                const receipt = await getParticipantReceiptStatus(signer, trial.id, ephemeralAddress, 0);
+                const cETH = getConfidentialETH(signer);
+                const handle = await cETH.getBalance(ephemeralAddress);
+                const hasCeth = Boolean(handle) && BigInt(handle.toString()) !== 0n;
+                setHasClaimableRewards(
+                    Boolean(trial.incentivePool?.distributed) ||
+                        receipt.entitlementStaged ||
+                        receipt.confirmedPayout ||
+                        hasCeth
+                );
+            } catch {
+                setHasClaimableRewards(Boolean(trial.incentivePool?.distributed));
+            }
+        };
+        void checkClaimable();
+    }, [signer, trial.id, trial.incentivePool?.distributed, isRegistered, status]);
 
     // Decode sponsor message (hex → text)
     const decodedMessage = (() => {

@@ -3,7 +3,7 @@ import { poseidon3 } from "poseidon-lite";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { semaphoreScopeField } from "../../test-support/semaphore";
-import { computeProfileCommitment } from "../../test-support/profileCommitment";
+import { computeProfileCommitment, defaultProfileSalt } from "../../test-support/profileCommitment";
 import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
 import {
     buildEligibilityPublicInputs,
@@ -20,7 +20,7 @@ describe("Crypto: UltraHonk pipeline", function () {
 
     it("CRYPTO-HONK-01: HonkVerifier accepts evm-no-zk proof from Noir artifact", async function () {
         const circuit = JSON.parse(
-            readFileSync(join(process.cwd(), "src/lib/circuits/eligibility_proof.json"), "utf8")
+            readFileSync(join(process.cwd(), "src/lib/circuits/eligibility_plaintext.json"), "utf8")
         );
 
         const hre = await import("hardhat");
@@ -35,8 +35,15 @@ describe("Crypto: UltraHonk pipeline", function () {
         const eligibleField = 1n;
         const { poseidon2 } = await import("poseidon-lite");
         const nullifier = poseidon2([scopeInternal, secret]);
-        const profileCommitment = computeProfileCommitment(commitment, ELIGIBLE_PROFILE);
+        const profileSalt = await defaultProfileSalt(commitment);
+        const profileCommitment = computeProfileCommitment(
+            commitment,
+            ELIGIBLE_PROFILE,
+            profileSalt
+        );
         const resultHash = poseidon3([eligibleField, scope, secret]);
+        const fheStageField = 999n;
+        const schemaField = BigInt(CRITERIA_SCHEMA_HASH) % BN254_FIELD_ORDER;
 
         const criteria = {
             minAge: 18,
@@ -62,16 +69,21 @@ describe("Crypto: UltraHonk pipeline", function () {
             hb_level: ELIGIBLE_PROFILE.hbLevel,
             is_smoker: ELIGIBLE_PROFILE.isSmoker,
             has_hypertension: ELIGIBLE_PROFILE.hasHypertension,
-            staged_fhe_handle: "999",
-            decrypted_eligible: "1",
-            criteria_binding_hash: "0",
+            profile_salt: (profileSalt % BN254_FIELD_ORDER).toString(),
+            staged_fhe_handle: fheStageField.toString(),
+            staged_aes_key_chunk_0: "0",
+            staged_aes_key_chunk_1: "0",
+            staged_aes_key_chunk_2: "0",
+            staged_aes_key_chunk_3: "0",
+            doc_cid_hash_witness: "0",
+            aes_key_ct_hash_witness: "0",
             scope: scope.toString(),
             nullifier: nullifier.toString(),
             profile_commitment: profileCommitment.toString(),
             result_hash: resultHash.toString(),
             eligible: "1",
-            fhe_stage_handle_hash: "999",
-            criteria_schema_hash: (BigInt(CRITERIA_SCHEMA_HASH) % BN254_FIELD_ORDER).toString(),
+            fhe_stage_handle_hash: fheStageField.toString(),
+            criteria_schema_hash: schemaField.toString(),
             min_age: criteria.minAge,
             max_age: criteria.maxAge,
             requires_diabetes: "0",
@@ -82,6 +94,14 @@ describe("Crypto: UltraHonk pipeline", function () {
             requires_non_smoker: "0",
             requires_normal_bp: "0",
             criteria_mode: 0,
+            doc_cid_hash: "0",
+            aes_key_ct_hash: "0",
+            aes_key_fhe_handle_hash_0: "0",
+            aes_key_fhe_handle_hash_1: "0",
+            aes_key_fhe_handle_hash_2: "0",
+            aes_key_fhe_handle_hash_3: "0",
+            doc_schema_hash: "0",
+            has_document: "0",
         };
 
         const proveOpts = { verifierTarget: "evm-no-zk" as const };
@@ -92,7 +112,7 @@ describe("Crypto: UltraHonk pipeline", function () {
         const { proof, publicInputs: rawPublicInputs } = await backend.generateProof(witness, proveOpts);
 
         expect(proof.length).to.be.greaterThan(6_000);
-        expect(rawPublicInputs).to.have.length(17);
+        expect(rawPublicInputs).to.have.length(25);
 
         const proofBytes = (`0x${Buffer.from(proof).toString("hex")}`) as `0x${string}`;
         const publicInputs = buildEligibilityPublicInputs(
@@ -101,7 +121,7 @@ describe("Crypto: UltraHonk pipeline", function () {
             profileCommitment,
             resultHash,
             true,
-            999n,
+            fheStageField,
             criteria
         );
 

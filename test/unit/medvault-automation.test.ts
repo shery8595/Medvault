@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployMedVaultStack, createTrialForSponsor } from "../../test-support/deployments";
 import { expectRevert } from "../../test-support/assertions";
+import { scheduleAndApply } from "../../test-support/timelock";
 import { DEFAULT_TRIAL_PARAMS } from "../../test-support/constants";
 
 describe("Unit: MedVaultAutomation", function () {
@@ -37,7 +38,7 @@ describe("Unit: MedVaultAutomation", function () {
         await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
         const [, data] = await stack.medVaultAutomation.checkUpkeep("0x");
         await stack.medVaultAutomation.connect(stack.owner).performUpkeep(data);
-        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(false);
+        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(true);
         const trial = await stack.trialManager.getTrial(trialId);
         expect(trial.active).to.equal(false);
     });
@@ -52,16 +53,20 @@ describe("Unit: MedVaultAutomation", function () {
         expect(needed).to.equal(false);
     });
 
-    it("MVA-06: setChainlinkForwarder and forwarder performUpkeep deactivates trial", async function () {
+    it("MVA-06: scheduleChainlinkForwarder and forwarder performUpkeep deactivates trial", async function () {
         const stack = await deployMedVaultStack();
-        await stack.medVaultAutomation
-            .connect(stack.owner)
-            .setChainlinkForwarder(stack.stranger.address);
+        await scheduleAndApply(
+            () =>
+                stack.medVaultAutomation
+                    .connect(stack.owner)
+                    .scheduleChainlinkForwarder(stack.stranger.address),
+            () => stack.medVaultAutomation.connect(stack.owner).applyChainlinkForwarder()
+        );
         const trialId = await createTrialForSponsor(stack);
         await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
         const [, data] = await stack.medVaultAutomation.checkUpkeep("0x");
         await stack.medVaultAutomation.connect(stack.stranger).performUpkeep(data);
-        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(false);
+        expect(await stack.medVaultAutomation.finalized(trialId)).to.equal(true);
         const trial = await stack.trialManager.getTrial(trialId);
         expect(trial.active).to.equal(false);
     });

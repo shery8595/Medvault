@@ -146,10 +146,10 @@ export function useConfidentialBalance() {
             const units = parseInt(unitsString, 10);
             if (units <= 0) throw new Error("Amount too low. Minimum is 0.000001 ETH");
 
-            const { sufficientHandle } = await requestEncryptedWithdraw(signer, units);
+            const { transferableHandle } = await requestEncryptedWithdraw(signer, units);
 
             if (exitMode === "wallet") {
-                await completeEncryptedWithdraw(signer, sufficientHandle);
+                await completeEncryptedWithdraw(signer, transferableHandle);
             } else {
                 const provider = signer.provider;
                 if (!provider) throw new Error("Wallet provider not available");
@@ -162,7 +162,7 @@ export function useConfidentialBalance() {
                     chainId: Number(network.chainId),
                     owner: account,
                     stealthRecipient: stealth.address,
-                    sufficientHandle,
+                    transferableHandle,
                     exitMode,
                     nonce,
                     deadline,
@@ -175,7 +175,7 @@ export function useConfidentialBalance() {
                     nonce: nonce.toString(),
                     deadline: deadline.toString(),
                     signature,
-                    sufficientHandle,
+                    transferableHandle,
                 });
             }
 

@@ -108,7 +108,7 @@ describe("Unit: EligibilityEngine", function () {
         );
     });
 
-    it("EE-11: verifyEligibilityProof invalid proof length reverts", async function () {
+    it.skip("EE-11: verifyEligibilityProof removed from public API", async function () {
         const stack = await deployMedVaultStack();
         await expectRevert(
             stack.eligibilityEngine.verifyEligibilityProof(
@@ -123,7 +123,7 @@ describe("Unit: EligibilityEngine", function () {
         );
     });
 
-    it("EE-12: verifyEligibilityProof without application reverts", async function () {
+    it.skip("EE-12: verifyEligibilityProof removed from public API", async function () {
         const stack = await deployMedVaultStack();
         const publicInputs = Array.from({ length: 17 }, (_, i) =>
             `0x${(i + 1).toString(16).padStart(64, "0")}`

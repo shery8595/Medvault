@@ -148,6 +148,12 @@ contract EncryptedConsentGate is ZamaEthereumConfig {
         uint256 _trialId,
         bytes32 _uniqueId
     ) external view returns (bool) {
+        require(
+            msg.sender == owner ||
+            msg.sender == trialSponsor[_trialId] ||
+            authorizedComputers[msg.sender],
+            "Not authorized"
+        );
         return hasGatedResult[_trialId][_uniqueId];
     }
 

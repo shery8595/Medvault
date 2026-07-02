@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import {FHE, ebool, externalEbool} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./DataAccessLog.sol";
+import {FheAclEpochLib} from "./lib/FheAclEpochLib.sol";
 
 /**
  * @title ConsentManager
@@ -20,7 +21,14 @@ contract ConsentManager is ZamaEthereumConfig {
     DataAccessLog public dataAccessLog;
     address public consentGate;
 
+    /// @notice L-6: Timelock before changing PHI reader contracts.
+    uint256 public constant READER_CHANGE_DELAY = 6 hours;
+    address public pendingConsentGate;
+    uint256 public consentGateChangeEta;
+
     uint256 private _consentGrantCount;
+
+    FheAclEpochLib.EpochState private _aclEpoch;
 
     /// @notice When true, legacy grantConsent(uint256) overload is allowed (testnets only).
     bool public immutable isTestnet;
@@ -75,17 +83,78 @@ contract ConsentManager is ZamaEthereumConfig {
     }
 
     function setDataAccessLog(address _log) external onlyOwner {
+        require(_log != address(0), "Zero address");
         dataAccessLog = DataAccessLog(_log);
     }
 
     function setConsentGate(address _gate) external onlyOwner {
-        consentGate = _gate;
+        revert("Use scheduleConsentGate + applyConsentGate");
+    }
+
+    function scheduleConsentGate(address _gate) external onlyOwner {
+        require(_gate != address(0), "Zero address");
+        pendingConsentGate = _gate;
+        consentGateChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    function applyConsentGate() external onlyOwner {
+        require(consentGateChangeEta != 0 && block.timestamp >= consentGateChangeEta, "Timelock active");
+        consentGate = pendingConsentGate;
+        consentGateChangeEta = 0;
+        pendingConsentGate = address(0);
     }
 
     function _allowConsentConsumers(ebool c) private {
         if (eligibilityEngine != address(0)) {
             FHE.allow(c, eligibilityEngine);
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                ebool.unwrap(c),
+                eligibilityEngine,
+                uint8(FheAclEpochLib.GrantKind.EligibilityEngine)
+            );
         }
+        if (consentGate != address(0)) {
+            FHE.allow(c, consentGate);
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                ebool.unwrap(c),
+                consentGate,
+                uint8(FheAclEpochLib.GrantKind.ConsentManager)
+            );
+        }
+    }
+
+    function rotateTrustedContract(uint8 kind, address newConsumer) external onlyOwner {
+        require(newConsumer != address(0), "Zero address");
+        FheAclEpochLib.rotateKind(_aclEpoch, kind, newConsumer);
+    }
+
+    function aclEpochForKind(uint8 kind) external view returns (uint40) {
+        return FheAclEpochLib.currentEpoch(_aclEpoch, kind);
+    }
+
+    /**
+     * @notice Record encrypted consent granted during finalize (engine verifies external input).
+     */
+    function recordConsentGrant(address _patient, uint256 _trialId, ebool _consent) external {
+        require(msg.sender == eligibilityEngine, "Only engine");
+        require(_patient != address(0), "Zero patient");
+        FHE.allowThis(_consent);
+        FHE.allow(_consent, _patient);
+        _allowConsentConsumers(_consent);
+        encryptedConsent[_patient][_trialId] = _consent;
+        consentExists[_patient][_trialId] = true;
+        consentGrantEpoch[_patient][_trialId] = patientConsentEpoch[_patient];
+        _consentGrantCount++;
+        if (address(dataAccessLog) != address(0)) {
+            dataAccessLog.logAction(
+                DataAccessLog.ActionType.CONSENT_GRANTED,
+                _trialId,
+                keccak256(abi.encodePacked(_patient, block.timestamp, "FINALIZE_INLINE"))
+            );
+        }
+        emit ConsentChanged();
     }
 
     /**
@@ -150,7 +219,26 @@ contract ConsentManager is ZamaEthereumConfig {
         encryptedConsent[msg.sender][_trialId] = c;
         consentExists[msg.sender][_trialId] = false;
         consentGrantEpoch[msg.sender][_trialId] = patientConsentEpoch[msg.sender];
+        _rotateConsentConsumerEpochs();
         emit ConsentChanged();
+    }
+
+    /// @dev Bump FHE ACL epochs for consent consumers so off-chain re-grant pipelines ignore stale handles.
+    function _rotateConsentConsumerEpochs() private {
+        if (eligibilityEngine != address(0)) {
+            FheAclEpochLib.rotateKind(
+                _aclEpoch,
+                uint8(FheAclEpochLib.GrantKind.EligibilityEngine),
+                eligibilityEngine
+            );
+        }
+        if (consentGate != address(0)) {
+            FheAclEpochLib.rotateKind(
+                _aclEpoch,
+                uint8(FheAclEpochLib.GrantKind.ConsentManager),
+                consentGate
+            );
+        }
     }
 
     /**
@@ -163,6 +251,11 @@ contract ConsentManager is ZamaEthereumConfig {
         require(
             msg.sender == _patient || msg.sender == eligibilityEngine,
             "Not authorized"
+        );
+        require(consentExists[_patient][_trialId], "No consent record");
+        require(
+            consentGrantEpoch[_patient][_trialId] == patientConsentEpoch[_patient],
+            "Consent revoked or superseded"
         );
         return encryptedConsent[_patient][_trialId];
     }

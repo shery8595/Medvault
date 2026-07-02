@@ -1,7 +1,8 @@
 import { Prose } from "../../../components/docs/Prose";
+import { Callout } from "../../../components/docs/Callout";
 import { DocsPageHeaderForRoute } from "../../../components/docs/DocsPageHeader";
 import { motion } from "framer-motion";
-import { TEST_FILES, AUDIT_TRACEABILITY, SUITE_STATS } from "./testSuiteData";
+import { TEST_FILES, AUDIT_TRACEABILITY, SUITE_STATS, SKIPPED_TESTS } from "./testSuiteData";
 
 const pillarColors: Record<string, string> = {
     Infra: "bg-slate-100 text-slate-700",
@@ -12,7 +13,14 @@ const pillarColors: Record<string, string> = {
     ETH: "bg-amber-100 text-amber-800",
     ZK: "bg-indigo-100 text-indigo-800",
     "ZK/FHE": "bg-indigo-100 text-indigo-800",
+    "FHE/ZR": "bg-teal-100 text-teal-800",
+    "FHE/Hybrid": "bg-cyan-100 text-cyan-800",
     E2E: "bg-rose-100 text-rose-800",
+    AI: "bg-violet-100 text-violet-800",
+    IDX: "bg-sky-100 text-sky-800",
+    ZR: "bg-emerald-100 text-emerald-800",
+    Privacy: "bg-slate-100 text-slate-700",
+    UI: "bg-slate-100 text-slate-600",
 };
 
 export function TestingMatrixDoc() {
@@ -58,11 +66,11 @@ export function TestingMatrixDoc() {
                         <tfoot className="bg-emerald-50 font-semibold text-slate-800">
                             <tr>
                                 <td className="px-4 py-3" colSpan={2}>
-                                    Total (default CI)
+                                    Default suite (<code>npm test</code>)
                                 </td>
                                 <td className="px-4 py-3">{SUITE_STATS.totalPassing}</td>
                                 <td className="px-4 py-3" colSpan={2}>
-                                    + {SUITE_STATS.honkPassing} optional Honk
+                                    + {SUITE_STATS.honkPassing} optional Honk (not in default)
                                 </td>
                             </tr>
                         </tfoot>
@@ -84,12 +92,11 @@ export function TestingMatrixDoc() {
                         automation upkeep.
                     </li>
                     <li>
-                        <strong>Consent (CM, INT-EE):</strong> Legacy and InEbool grants, epoch revoke, engine
-                        composition.
+                        <strong>Hybrid docs (PDS, HYB-01):</strong> PatientDocumentStore + IPFS E2E binding.
                     </li>
                     <li>
-                        <strong>E2E (E2E-01–08):</strong> Full patient journey including sponsor reject and consent
-                        revoke paths.
+                        <strong>E2E (E2E-01–09, FLOW-01–16):</strong> Full patient journey including sponsor reject and
+                        consent revoke paths.
                     </li>
                 </ul>
 
@@ -114,19 +121,28 @@ export function TestingMatrixDoc() {
                 </div>
 
                 <h2>Skipped / optional</h2>
-                <ul>
-                    <li>
-                        <code>TM-03</code> — Ethereum Sepolia chain-id bypass (requires{" "}
-                        <code>hardhat_setChainId</code>, not on default provider).
-                    </li>
-                    <li>
-                        <code>SIV-10</code> — Reclaim with empty pool (scenario needs funded-then-reclaim fixture).
-                    </li>
-                    <li>
-                        <code>CRYPTO-HONK-01</code> — Excluded from default <code>npm test</code>; run via{" "}
-                        <code>npm run test:honk</code> after <code>npm run build:circuit</code>.
-                    </li>
-                </ul>
+                <div className="not-prose overflow-x-auto my-4">
+                    <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left font-semibold">ID</th>
+                                <th className="px-4 py-3 text-left font-semibold">Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {SKIPPED_TESTS.map((row) => (
+                                <tr key={row.id}>
+                                    <td className="px-4 py-3 font-mono text-xs">{row.id}</td>
+                                    <td className="px-4 py-3 text-slate-600">{row.reason}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <Callout type="info" title="Honk optional">
+                    <code>CRYPTO-HONK-01</code> is excluded from <code>npm test</code>. Run via{" "}
+                    <code>npm run test:honk</code> after <code>npm run build:circuit</code> (~3–5 min; not in CI).
+                </Callout>
             </Prose>
         </motion.div>
     );

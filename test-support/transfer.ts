@@ -1,6 +1,6 @@
 import type { Contract, Signer } from "ethers";
-import { mockPublicDecryptProof, parseEventArg } from "./fhe";
 
+/** Homomorphic transferEncrypted — no public sufficiency decrypt on this path. */
 export async function transferEncryptedWithProof(
     cETH: Contract,
     caller: Signer,
@@ -8,17 +8,5 @@ export async function transferEncryptedWithProof(
     to: string,
     amount: unknown
 ) {
-    const tx = await cETH.connect(caller).previewTransferSufficiency(from, amount);
-    const rc = await tx.wait();
-    if (!rc) throw new Error("previewTransferSufficiency receipt missing");
-    const sufficientHandle = parseEventArg(
-        rc,
-        cETH.interface,
-        "TransferSufficiencyPrepared",
-        "sufficientHandle"
-    );
-    const { cleartexts, proof } = await mockPublicDecryptProof(sufficientHandle);
-    return cETH
-        .connect(caller)
-        .transferEncrypted(from, to, amount, cleartexts, proof);
+    return cETH.connect(caller).transferEncrypted(from, to, amount);
 }

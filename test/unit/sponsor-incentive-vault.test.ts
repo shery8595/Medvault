@@ -21,6 +21,7 @@ import {
     registerPatient,
 } from "../../test-support/journey";
 import { createEncryptedUint64 } from "../../test-support/fhe";
+import { dummyWithdrawToArgs } from "../../test-support/withdraw";
 
 describe("Unit: SponsorIncentiveVault", function () {
     async function setupAcceptedApplicant(stack: Awaited<ReturnType<typeof deployMedVaultStack>>) {
@@ -179,6 +180,7 @@ describe("Unit: SponsorIncentiveVault", function () {
             await stack.sponsorIncentiveVault.getAddress(),
             1
         );
+        const withdrawTo = await dummyWithdrawToArgs();
         await expectRevert(
             stack.sponsorIncentiveVault
                 .connect(stack.patient)
@@ -187,7 +189,10 @@ describe("Unit: SponsorIncentiveVault", function () {
                     1n,
                     stack.patient.address,
                     enc.handle,
-                    enc.inputProof
+                    enc.inputProof,
+                    withdrawTo.nonce,
+                    withdrawTo.deadline,
+                    withdrawTo.signature
                 ),
             /Patient not registered|reverted/
         );
@@ -248,6 +253,7 @@ describe("Unit: SponsorIncentiveVault", function () {
             await stack.sponsorIncentiveVault.getAddress(),
             1
         );
+        const withdrawTo = await dummyWithdrawToArgs();
         await expectRevert(
             stack.sponsorIncentiveVault
                 .connect(stack.patient)
@@ -256,9 +262,46 @@ describe("Unit: SponsorIncentiveVault", function () {
                     nullifier,
                     ethers.ZeroAddress,
                     enc.handle,
-                    enc.inputProof
+                    enc.inputProof,
+                    withdrawTo.nonce,
+                    withdrawTo.deadline,
+                    withdrawTo.signature
                 ),
-            /Zero destination/
+            /Zero destination|ZeroDestinationAddress/
         );
+    });
+
+    it("SIV-19: signalMilestoneDistributed emits MilestoneDistributedPublicSignaled", async function () {
+        const stack = await deployMedVaultStack();
+        const patient = await registerPatient(stack, stack.patient, ELIGIBLE_PROFILE);
+        const trialId = await createTrialForSponsor(stack);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient);
+        await sponsorAcceptApplication(stack, trialId, nullifier);
+        await stack.sponsorIncentiveVault
+            .connect(stack.sponsor)
+            .fundTrial(trialId, { value: 10n ** 18n });
+        const trial = await stack.trialManager.getTrial(trialId);
+        const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
+        await stack.trialMilestoneManager.connect(stack.sponsor).setMilestones(
+            trialId,
+            ["Screening"],
+            [10000],
+            [now + 3600n]
+        );
+        await stack.sponsorIncentiveVault
+            .connect(stack.patient)
+            .registerAnonymousParticipant(trialId, nullifier);
+        await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
+        await stack.sponsorIncentiveVault
+            .connect(stack.sponsor)
+            .distributePartialPaginated(trialId, 0, 0, 1);
+        expect(await stack.sponsorIncentiveVault.milestoneDistributed(trialId, 0)).to.equal(true);
+        await expect(
+            stack.sponsorIncentiveVault
+                .connect(stack.sponsor)
+                .signalMilestoneDistributed(trialId, 0)
+        )
+            .to.emit(stack.sponsorIncentiveVault, "MilestoneDistributedPublicSignaled")
+            .withArgs(trialId, 0);
     });
 });

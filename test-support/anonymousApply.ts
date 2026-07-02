@@ -63,6 +63,35 @@ export async function signConsentWalletBinding(
     return signer.signTypedData(domain, types, params);
 }
 
+/** H-1: Patient EIP-712 signature authorizing encrypted consent ciphertext at finalize (MedVaultRegistry domain). */
+export async function signConsentGrant(
+    signer: Signer,
+    registryAddress: string,
+    params: {
+        consentHandle: string;
+        trialId: bigint;
+        consentWallet: string;
+        deadline: bigint;
+    }
+): Promise<string> {
+    const network = await ethers.provider.getNetwork();
+    const domain = {
+        name: "MedVaultRegistry",
+        version: "1",
+        chainId: network.chainId,
+        verifyingContract: registryAddress,
+    };
+    const types = {
+        ConsentGrant: [
+            { name: "consentHandle", type: "bytes32" },
+            { name: "trialId", type: "uint256" },
+            { name: "consentWallet", type: "address" },
+            { name: "deadline", type: "uint256" },
+        ],
+    };
+    return signer.signTypedData(domain, types, params);
+}
+
 // M-4: Distinct EIP-712 cancel authorization signed by the permit recipient. Mirrors the
 // CANCEL_ANONYMOUS_APPLY_TYPEHASH in MedVaultRegistry so a captured apply permit cannot be
 // replayed to tear down a staged application.

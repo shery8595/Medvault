@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useWeb3 } from "../lib/Web3Context";
 import { fetchAuditLogsFromChain, type AuditLogEntry } from "../lib/auditLogFetch";
+import { getDataAccessLog } from "../lib/contracts";
 import { useSubgraph } from "./useSubgraph";
 
 export type { AuditLogEntry };
@@ -99,6 +100,7 @@ export function useAuditLogs() {
     );
 
     const [rawChainLogs, setRawChainLogs] = useState<AuditLogEntry[]>([]);
+    const [totalLogCount, setTotalLogCount] = useState<number | null>(null);
     const [chainLoading, setChainLoading] = useState(true);
     const [chainError, setChainError] = useState<string | null>(null);
     const fetchGen = useRef(0);
@@ -106,6 +108,7 @@ export function useAuditLogs() {
     const fetchChainLogs = useCallback(async () => {
         if (!readOnlyProvider || !account) {
             setRawChainLogs([]);
+            setTotalLogCount(null);
             setChainLoading(false);
             return;
         }
@@ -124,9 +127,17 @@ export function useAuditLogs() {
             setChainLoading(true);
             // One eth_getLogs scan; trial filter applied in useMemo when subgraph returns.
             const logs = await fetchAuditLogsFromChain(readOnlyProvider, new Set());
+            let total: number | null = null;
+            try {
+                const dal = getDataAccessLog(readOnlyProvider);
+                total = Number(await dal.getTotalLogCount());
+            } catch {
+                total = null;
+            }
             if (gen !== fetchGen.current) return;
             chainCache.set(cacheKey, { at: Date.now(), logs });
             setRawChainLogs(logs);
+            setTotalLogCount(total);
             setChainError(null);
         } catch (err: unknown) {
             if (gen !== fetchGen.current) return;
@@ -179,5 +190,7 @@ export function useAuditLogs() {
         error,
         refetch,
         trialCount: trialIds.length,
+        totalLogCount,
+        bufferedLogCount: logs.length,
     };
 }

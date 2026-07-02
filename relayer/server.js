@@ -3,6 +3,7 @@
  *
  * POST /relay/apply-stage     — stage FHE eligibility (Semaphore verified)
  * POST /relay/apply-finalize  — Noir proof finalize (client decrypts locally)
+ * POST /relay/cancel-stage    — Cancel staged anonymous apply (authorized relayer)
  * POST /relay/completion-proof — KMS proof for user-submitted completeWithdraw / completeUnstake
  *
  * Watcher: auto-completes WithdrawToRequested (claim payouts); caches proofs for withdraw/unstake.
@@ -12,8 +13,29 @@ import { ethers } from "ethers";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import { createHash } from "crypto";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { createZamaClient, ETHEREUM_SEPOLIA_CHAIN_ID, publicDecryptProof } from "./zama-client.mjs";
+import {
+    cacheStageHandle,
+    getRelayerEligible,
+    invalidateEligibilityCaches,
+    resolveStagedFinalCt,
+} from "./eligibility-decrypt.mjs";
+import { safeError, safeLog } from "./redaction.mjs";
 import { startV09Watcher } from "./watcher.mjs";
+import { createRequire } from "module";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const SERVER_JS_SHA256 = createHash("sha256")
+    .update(readFileSync(join(__dirname, "server.js")))
+    .digest("hex");
+
+const require = createRequire(import.meta.url);
+const { pinBufferToIpfs } = require("./ipfs.cjs");
 
 dotenv.config();
 
@@ -23,7 +45,13 @@ app.use(express.json());
 
 function resolveCorsOrigins() {
   const raw = process.env.FRONTEND_URL?.trim();
-  if (!raw) return "*";
+  const isProd = process.env.NODE_ENV === "production";
+  if (!raw) {
+    if (isProd) {
+      throw new Error("FRONTEND_URL is required in production (CORS fail-closed)");
+    }
+    return "*";
+  }
   const origins = raw.split(",").map((o) => o.trim()).filter(Boolean);
   if (origins.length <= 1) return origins[0] ?? "*";
   return origins;
@@ -71,14 +99,15 @@ const NOT_ELIGIBLE_MSG =
     "Not eligible for this trial. Complete local decrypt showed ineligible result.";
 
 const REGISTRY_ABI = [
-    "function stageAnonymousApply(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient) external",
+    "function stageAnonymousApply(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, uint256 deadline, bytes permitSignature) external",
     "function finalizeAnonymousApplyWithProof(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, address consentWallet, uint256 deadline, bytes permitSignature, bytes consentWalletSignature, bytes noirProof, bytes32[] publicInputs, bool eligible) external",
-    "function cancelAnonymousApplyStage(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient) external",
-    "function registerPatientViaRelayer(address patientWallet, uint256 identityCommitment, address viewPermitRecipient, bytes32 profileCommitment, bytes ageHandle, bytes genderHandle, bytes weightHandle, bytes heightHandle, bytes diabetesHandle, bytes hbHandle, bytes smokerHandle, bytes hypertensionHandle, bytes inputProof, uint256 nonce, bytes signature) external",
+    "function cancelAnonymousApplyStage(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, uint256 deadline, bytes permitSignature, bytes cancelSignature) external",
+    "function registerPatientViaRelayer(address patientWallet, uint256 identityCommitment, address viewPermitRecipient, bytes32 profileCommitment, bytes32 profileSaltCommitment, bytes ageHandle, bytes genderHandle, bytes weightHandle, bytes heightHandle, bytes diabetesHandle, bytes hbHandle, bytes smokerHandle, bytes hypertensionHandle, bytes inputProof, uint256 nonce, bytes signature) external",
     "function hasAppliedToTrial(uint256 trialId, uint256 nullifierHash) external view returns (bool)",
     "function patientGroupId() external view returns (uint256)",
     "function eligibilityEngine() external view returns (address)",
     "function semaphore() external view returns (address)",
+    "function authorizedRelayers(address relayer) external view returns (bool)",
     "event AnonymousApplyStaged(uint256 indexed trialId, uint256 indexed nullifierHash, bytes32 indexed blindedRef, bytes32 finalCt)",
 ];
 
@@ -91,7 +120,7 @@ const SEMAPHORE_ABI = [
 ];
 
 const VAULT_ABI = [
-    "function claimParticipantRewardsFor(uint256 _trialId, uint256 _nullifier, address _permitHolder, address _destination, uint256 _units, bytes encryptedUnits, bytes inputProof, uint256 _nonce, uint256 _deadline, bytes _signature) external",
+    "function claimParticipantRewardsFor(uint256 _trialId, uint256 _nullifier, address _permitHolder, address _destination, uint256 _units, bytes32 _encryptedAmountCommitment, bytes encryptedUnits, bytes inputProof, uint256 _nonce, uint256 _deadline, bytes _signature, uint256 _withdrawToNonce, uint256 _withdrawToDeadline, bytes _withdrawToSignature) external",
     "function registerAnonymousParticipantFor(uint256 _trialId, uint256 _nullifier, address _permitHolder, uint256 _nonce, uint256 _deadline, bytes _signature) external",
 ];
 
@@ -101,6 +130,8 @@ const engineIface = new ethers.Interface(ELIGIBILITY_ENGINE_ABI);
 const semaphore = new ethers.Contract(SEMAPHORE_ADDRESS, SEMAPHORE_ABI, provider);
 
 let zamaSdk = null;
+/** @type {string | null} */
+let eligibilityEngineAddress = ELIGIBILITY_ENGINE_ADDRESS ?? null;
 /** @type {ReturnType<typeof startV09Watcher> | null} */
 let watcher = null;
 
@@ -145,7 +176,7 @@ function formatContractRevert(err) {
         /* not Error(string) */
     }
     const byteLen = Math.floor((data.length - 2) / 2);
-    return `${base} | revertData=${data.slice(0, 14)}… (${byteLen} bytes)`;
+    return `${base} | revert (${byteLen} bytes)`;
 }
 
 function parseProofFromBody(rawProof) {
@@ -211,15 +242,18 @@ async function runStartupChecks() {
     if (eligibilityEngine === ethers.ZeroAddress) {
         throw new Error("registry.eligibilityEngine() is zero address");
     }
+    eligibilityEngineAddress = eligibilityEngine;
 
     zamaSdk = await createZamaClient(relayerWallet, RPC_URL, ZAMA_RELAYER_URL);
 
-    console.log(`Relayer wallet: ${relayerWallet.address}`);
-    console.log(`Registry:       ${REGISTRY_ADDRESS}`);
-    console.log(`Semaphore:      ${SEMAPHORE_ADDRESS}`);
-    console.log(`Chain:          ${network.chainId}`);
-    if (CONFIDENTIAL_ETH_ADDRESS) console.log(`ConfidentialETH: ${CONFIDENTIAL_ETH_ADDRESS}`);
-    if (STAKING_MANAGER_ADDRESS) console.log(`StakingManager:  ${STAKING_MANAGER_ADDRESS}`);
+    safeLog("Relayer wallet:", relayerWallet.address);
+    safeLog("Registry:", REGISTRY_ADDRESS);
+    safeLog("Semaphore:", SEMAPHORE_ADDRESS);
+    safeLog("EligibilityEngine:", eligibilityEngineAddress);
+    safeLog("Chain:", network.chainId.toString());
+    safeLog("server.js sha256:", SERVER_JS_SHA256);
+    if (CONFIDENTIAL_ETH_ADDRESS) safeLog("ConfidentialETH:", CONFIDENTIAL_ETH_ADDRESS);
+    if (STAKING_MANAGER_ADDRESS) safeLog("StakingManager:", STAKING_MANAGER_ADDRESS);
 }
 
 async function validateConsentAndSemaphoreProof(reqBody, preflightLabel) {
@@ -286,24 +320,32 @@ async function validateConsentAndSemaphoreProof(reqBody, preflightLabel) {
 }
 
 async function relayStage(req, res) {
-    console.log("─────────────────────────────────────────");
-    console.log("STAGE trialId:", req.body?.trialId);
+    safeLog("STAGE trialId:", req.body?.trialId);
 
     try {
+        const { deadline, permitSignature } = req.body;
+        if (deadline == null || !permitSignature) {
+            return res.status(400).json({ error: "Missing deadline or permitSignature" });
+        }
+
         const v = await validateConsentAndSemaphoreProof(req.body, "stage");
         if (v.error) return res.status(v.status).json({ error: v.error });
+
+        const deadlineBI = toBigInt(deadline, "deadline");
 
         try {
             await registry.stageAnonymousApply.staticCall(
                 v.trialIdBI,
                 v.proofForContract,
                 v.commitmentBI,
-                v.permitRecipientAddr
+                v.permitRecipientAddr,
+                deadlineBI,
+                permitSignature
             );
-            console.log("✅ stage staticCall passed");
+            safeLog("stage staticCall passed");
         } catch (staticErr) {
             const reason = formatContractRevert(staticErr);
-            console.error("❌ Stage static call revert:", reason);
+            safeError("Stage static call revert:", reason);
             return res.status(400).json({ error: "Contract would revert: " + reason });
         }
 
@@ -311,7 +353,9 @@ async function relayStage(req, res) {
             v.trialIdBI,
             v.proofForContract,
             v.commitmentBI,
-            v.permitRecipientAddr
+            v.permitRecipientAddr,
+            deadlineBI,
+            permitSignature
         );
         const gasLimit = (estimatedGas * 130n) / 100n;
 
@@ -320,23 +364,33 @@ async function relayStage(req, res) {
             v.proofForContract,
             v.commitmentBI,
             v.permitRecipientAddr,
+            deadlineBI,
+            permitSignature,
             { gasLimit }
         );
 
         const receipt = await tx.wait();
-        console.log(`✅ Stage TX confirmed: ${receipt.hash}`);
+        safeLog("Stage TX confirmed:", receipt.hash);
+
+        const finalCt = parseFinalCtFromStageReceipt(receipt);
+        const block = await provider.getBlock(receipt.blockNumber);
+        cacheStageHandle(
+            v.proofForContract.nullifier,
+            v.trialIdBI,
+            finalCt,
+            Number(block.timestamp) * 1000
+        );
 
         res.json({ success: true, txHash: receipt.hash });
     } catch (err) {
         const reason = extractErrorMessage(err);
-        console.error("❌ Stage relay error:", reason);
+        safeError("Stage relay error:", reason);
         res.status(500).json({ error: reason });
     }
 }
 
 async function relayFinalize(req, res) {
-    console.log("─────────────────────────────────────────");
-    console.log("FINALIZE trialId:", req.body?.trialId);
+    safeLog("FINALIZE trialId:", req.body?.trialId);
 
     try {
         const { noirProof, publicInputs, eligible, consentWallet, deadline, permitSignature, consentWalletSignature } =
@@ -354,15 +408,63 @@ async function relayFinalize(req, res) {
         if (!ethers.isAddress(consentWallet)) {
             return res.status(400).json({ error: "consentWallet must be a valid address" });
         }
-        if (!eligible) {
-            return res.status(400).json({
-                error: NOT_ELIGIBLE_MSG,
-                code: "NOT_ELIGIBLE",
-            });
-        }
 
         const v = await validateConsentAndSemaphoreProof(req.body, "finalize");
         if (v.error) return res.status(v.status).json({ error: v.error });
+
+        if (v.permitRecipientAddr.toLowerCase() !== relayerWallet.address.toLowerCase()) {
+            return res.status(400).json({
+                error: "permitRecipient must be the relayer wallet for relayer-side decrypt verification",
+            });
+        }
+
+        let staged;
+        try {
+            staged = resolveStagedFinalCt({
+                nullifier: v.proofForContract.nullifier,
+                trialId: v.trialIdBI,
+                publicInputs,
+            });
+        } catch (resolveErr) {
+            const code = resolveErr?.code ?? "STAGING_NOT_FOUND";
+            return res.status(400).json({
+                error: resolveErr.message ?? "Staged eligibility not found",
+                code,
+            });
+        }
+
+        let relayerEligible;
+        try {
+            relayerEligible = await getRelayerEligible({
+                sdk: zamaSdk,
+                eligibilityEngineAddress,
+                nullifier: v.proofForContract.nullifier,
+                trialId: v.trialIdBI,
+                finalCt: staged.finalCt,
+                stagedAtMs: staged.stagedAtMs,
+            });
+        } catch (decryptErr) {
+            const code = decryptErr?.code ?? "DECRYPT_FAILED";
+            if (code === "STAGING_EXPIRED") {
+                return res.status(400).json({
+                    error: "Staging expired — re-stage eligibility before finalize",
+                    code,
+                });
+            }
+            safeError("Relayer eligibility decrypt failed:", extractErrorMessage(decryptErr));
+            return res.status(400).json({
+                error: "Relayer could not verify staged eligibility ciphertext",
+                code,
+            });
+        }
+
+        if (!relayerEligible) {
+            return res.status(400).json({
+                error: NOT_ELIGIBLE_MSG,
+                code: "NOT_ELIGIBLE",
+                eligible: false,
+            });
+        }
 
         try {
             await registry.finalizeAnonymousApplyWithProof.staticCall(
@@ -376,12 +478,12 @@ async function relayFinalize(req, res) {
                 consentWalletSignature,
                 noirProof,
                 publicInputs,
-                eligible
+                relayerEligible
             );
-            console.log("✅ finalize staticCall passed");
+            safeLog("finalize staticCall passed");
         } catch (staticErr) {
             const reason = formatContractRevert(staticErr);
-            console.error("❌ Finalize static call revert:", reason);
+            safeError("Finalize static call revert:", reason);
             return res.status(400).json({ error: "Contract would revert: " + reason });
         }
 
@@ -396,7 +498,7 @@ async function relayFinalize(req, res) {
             consentWalletSignature,
             noirProof,
             publicInputs,
-            eligible
+            relayerEligible
         );
         const gasLimit = (estimatedGas * 130n) / 100n;
 
@@ -411,18 +513,36 @@ async function relayFinalize(req, res) {
             consentWalletSignature,
             noirProof,
             publicInputs,
-            eligible,
+            relayerEligible,
             { gasLimit }
         );
 
         const receipt = await tx.wait();
-        console.log(`✅ Finalize TX confirmed: ${receipt.hash}`);
+        safeLog("Finalize TX confirmed:", receipt.hash);
 
-        res.json({ success: true, txHash: receipt.hash, eligible: true });
+        res.json({ success: true, txHash: receipt.hash, eligible: relayerEligible });
     } catch (err) {
         const reason = extractErrorMessage(err);
-        console.error("❌ Finalize relay error:", reason);
+        safeError("Finalize relay error:", reason);
         res.status(500).json({ error: reason });
+    }
+}
+
+function verifyCompletionProofAuth({ kind, user, handle, stageTxHash, callerSignature }) {
+    if (!callerSignature || typeof callerSignature !== "string") {
+        throw new Error("Missing callerSignature");
+    }
+    if (!user || !ethers.isAddress(user)) {
+        throw new Error("user must be a valid address");
+    }
+    const userAddr = ethers.getAddress(user);
+    const digest = ethers.solidityPackedKeccak256(
+        ["string", "address", "bytes32", "string"],
+        [kind, userAddr, handle ?? ethers.ZeroHash, stageTxHash ?? ""]
+    );
+    const recovered = ethers.verifyMessage(ethers.getBytes(digest), callerSignature);
+    if (ethers.getAddress(recovered) !== userAddr) {
+        throw new Error("Invalid completion-proof caller signature");
     }
 }
 
@@ -431,10 +551,12 @@ async function relayCompletionProof(req, res) {
         if (!watcher) {
             return res.status(503).json({ error: "Watcher not initialized" });
         }
-        const { kind, user, handle, stageTxHash } = req.body;
+        const { kind, user, handle, stageTxHash, callerSignature } = req.body;
         if (!kind || !["withdraw", "unstake", "withdrawTo"].includes(kind)) {
             return res.status(400).json({ error: "kind must be withdraw | unstake | withdrawTo" });
         }
+
+        verifyCompletionProofAuth({ kind, user, handle, stageTxHash, callerSignature });
 
         const result = await watcher.lookupCompletionProof({ kind, user, handle, stageTxHash });
         res.json({
@@ -460,7 +582,7 @@ async function relayPublicExit(req, res) {
             "nonce",
             "deadline",
             "signature",
-            "sufficientHandle",
+            "transferableHandle",
         ];
         for (const key of required) {
             if (req.body[key] === undefined || req.body[key] === null || req.body[key] === "") {
@@ -475,12 +597,46 @@ async function relayPublicExit(req, res) {
             nonce: BigInt(req.body.nonce),
             deadline: BigInt(req.body.deadline),
             signature: req.body.signature,
-            sufficientHandle: req.body.sufficientHandle,
+            transferableHandle: req.body.transferableHandle,
         });
 
         res.json({ success: true, ...result });
     } catch (err) {
         res.status(500).json({ error: extractErrorMessage(err) });
+    }
+}
+
+async function relayCancelStage(req, res) {
+    safeLog("CANCEL trialId:", req.body?.trialId);
+
+    try {
+        const { deadline, permitSignature, cancelSignature } = req.body;
+        if (deadline == null || !permitSignature || !cancelSignature) {
+            return res.status(400).json({ error: "Missing deadline, permitSignature, or cancelSignature" });
+        }
+
+        const v = await validateConsentAndSemaphoreProof(req.body, "cancel");
+        if (v.error) return res.status(v.status).json({ error: v.error });
+
+        const deadlineBI = toBigInt(deadline, "deadline");
+
+        const tx = await registry.cancelAnonymousApplyStage(
+            v.trialIdBI,
+            v.proofForContract,
+            v.commitmentBI,
+            v.permitRecipientAddr,
+            deadlineBI,
+            permitSignature,
+            cancelSignature
+        );
+        const receipt = await tx.wait();
+        invalidateEligibilityCaches(v.proofForContract.nullifier, v.trialIdBI);
+        safeLog("Cancel TX confirmed:", receipt.hash);
+        res.json({ success: true, txHash: receipt.hash });
+    } catch (err) {
+        const reason = formatContractRevert(err);
+        safeError("Cancel relay error:", reason);
+        res.status(500).json({ error: reason });
     }
 }
 
@@ -491,6 +647,7 @@ async function relayRegister(req, res) {
             identityCommitment,
             viewPermitRecipient,
             profileCommitment,
+            profileSaltCommitment,
             encryptedFields,
             inputProof,
             nonce,
@@ -502,12 +659,13 @@ async function relayRegister(req, res) {
             !identityCommitment ||
             !viewPermitRecipient ||
             !profileCommitment ||
+            !profileSaltCommitment ||
             !encryptedFields ||
             !inputProof ||
             nonce === undefined ||
             !signature
         ) {
-            return res.status(400).json({ error: "Missing registration fields" });
+            return res.status(400).json({ error: "Missing registration fields (profileSaltCommitment required)" });
         }
         if (!ethers.isAddress(patientWallet) || !ethers.isAddress(viewPermitRecipient)) {
             return res.status(400).json({ error: "Invalid address" });
@@ -518,6 +676,7 @@ async function relayRegister(req, res) {
             BigInt(identityCommitment),
             ethers.getAddress(viewPermitRecipient),
             profileCommitment,
+            profileSaltCommitment,
             encryptedFields.age,
             encryptedFields.gender,
             encryptedFields.weight,
@@ -550,11 +709,15 @@ async function relayClaim(req, res) {
             permitHolder,
             destination,
             units,
+            encryptedAmountCommitment,
             encryptedUnitsHandle,
             inputProof,
             nonce,
             deadline,
             signature,
+            withdrawToNonce,
+            withdrawToDeadline,
+            withdrawToSignature,
         } = req.body;
         if (
             trialId === undefined ||
@@ -562,11 +725,15 @@ async function relayClaim(req, res) {
             !permitHolder ||
             !destination ||
             units === undefined ||
+            !encryptedAmountCommitment ||
             !encryptedUnitsHandle ||
             !inputProof ||
             nonce === undefined ||
             deadline === undefined ||
-            !signature
+            !signature ||
+            withdrawToNonce === undefined ||
+            withdrawToDeadline === undefined ||
+            !withdrawToSignature
         ) {
             return res.status(400).json({ error: "Missing claim relay fields" });
         }
@@ -577,11 +744,15 @@ async function relayClaim(req, res) {
             ethers.getAddress(permitHolder),
             ethers.getAddress(destination),
             BigInt(units),
+            encryptedAmountCommitment,
             encryptedUnitsHandle,
             inputProof,
             BigInt(nonce),
             BigInt(deadline),
-            signature
+            signature,
+            BigInt(withdrawToNonce),
+            BigInt(withdrawToDeadline),
+            withdrawToSignature
         );
         const receipt = await tx.wait();
         res.json({ success: true, txHash: receipt.hash });
@@ -625,16 +796,105 @@ async function relayRegisterAnon(req, res) {
     }
 }
 
-app.get("/health", (_, res) =>
+app.get("/health", async (_, res) => {
+    let relayerAuthorized = null;
+    try {
+        relayerAuthorized = await registry.authorizedRelayers(relayerWallet.address);
+    } catch {
+        relayerAuthorized = null;
+    }
     res.json({
         status: "ok",
         registry: REGISTRY_ADDRESS,
+        semaphore: SEMAPHORE_ADDRESS,
+        eligibilityEngine: eligibilityEngineAddress,
+        relayerWallet: relayerWallet.address,
+        relayerAuthorized,
         chainId: ETHEREUM_SEPOLIA_CHAIN_ID,
-    })
-);
+        serverJsSha256: SERVER_JS_SHA256,
+    });
+});
 
+app.get("/transparency", async (_, res) => {
+    let relayerAuthorized = null;
+    try {
+        relayerAuthorized = await registry.authorizedRelayers(relayerWallet.address);
+    } catch {
+        relayerAuthorized = null;
+    }
+    res.json({
+        relayerWallet: relayerWallet.address,
+        relayerAuthorized,
+        relayerGovernance: "P3.1 authorizedRelayers + 2-day timelock (scheduleRelayerAuth / applyRelayerAuth)",
+        openFinalize: "P3.2 finalizeAnonymousApplyWithProof — patient EOA may submit directly",
+        thresholdCommittee: "P3.3 deferred until institutional pilot",
+        pinnedContracts: {
+            registry: REGISTRY_ADDRESS,
+            semaphore: SEMAPHORE_ADDRESS,
+            eligibilityEngine: eligibilityEngineAddress,
+            confidentialEth: CONFIDENTIAL_ETH_ADDRESS ?? null,
+            stakingManager: STAKING_MANAGER_ADDRESS ?? null,
+            sponsorIncentiveVault: SPONSOR_INCENTIVE_VAULT_ADDRESS ?? null,
+        },
+        chainId: ETHEREUM_SEPOLIA_CHAIN_ID,
+        rpcUrlHost: (() => {
+            try {
+                return new URL(RPC_URL).host;
+            } catch {
+                return "configured";
+            }
+        })(),
+        zamaRelayerConfigured: Boolean(ZAMA_RELAYER_URL),
+        serverJsSha256: SERVER_JS_SHA256,
+        loggingPolicy: {
+            logged: ["route kind", "trialId", "tx hashes", "revert reasons (redacted)"],
+            notLogged: [
+                "patient vitals or health fields",
+                "full ciphertext handles",
+                "IPFS payloads",
+                "Noir witness plaintext",
+                "email/phone/SSN patterns",
+            ],
+        },
+        eligibilityDecrypt: {
+            interimMitigation: "P0.2 defense-in-depth",
+            structuralFix: "P2 FHE.select payout gating (shipped)",
+            stagingTtlDays: 7,
+            ignoresClientEligible: true,
+        },
+    });
+});
+
+async function relayPinDocument(req, res) {
+    try {
+        const pinSecret = process.env.RELAYER_PIN_SECRET?.trim();
+        if (pinSecret) {
+            const auth = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+            if (auth !== pinSecret) {
+                return res.status(401).json({ error: "Unauthorized pin relay" });
+            }
+        }
+        const { dataBase64, json, name } = req.body ?? {};
+        let bytes;
+        if (typeof dataBase64 === "string" && dataBase64.length > 0) {
+            bytes = Buffer.from(dataBase64, "base64");
+        } else if (json !== undefined) {
+            bytes = Buffer.from(JSON.stringify(json), "utf8");
+        } else {
+            return res.status(400).json({ error: "Provide dataBase64 or json payload" });
+        }
+        const cid = await pinBufferToIpfs(bytes, typeof name === "string" ? name : "medvault-document");
+        return res.json({ success: true, cid, IpfsHash: cid });
+    } catch (err) {
+        console.error("pin-document error:", err);
+        return res.status(500).json({ error: err?.message || "Pin failed" });
+    }
+}
+
+app.post("/relay/pin-document", limiter, relayPinDocument);
 app.post("/relay/apply-stage", limiter, relayStage);
 app.post("/relay/apply-finalize", limiter, relayFinalize);
+app.post("/relay/cancel-stage", limiter, relayCancelStage);
 app.post("/relay/register", limiter, relayRegister);
 app.post("/relay/claim", limiter, relayClaim);
 app.post("/relay/register-anon", limiter, relayRegisterAnon);

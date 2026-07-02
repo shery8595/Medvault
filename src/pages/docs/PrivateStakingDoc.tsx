@@ -53,8 +53,9 @@ export function PrivateStakingDoc() {
                 </p>
                 <Callout type="info" title="Default private design (Option A)">
                     Private staking withdrawal means <strong>return to confidential MedVault balance</strong>, not an Aave
-                    exit. Use <code>stakeFromConfidential</code> → <code>requestPrivateUnstake</code> →{" "}
-                    <code>completePrivateUnstake</code>. See{" "}
+                    exit. Use <code>stakeAndLock</code> (with cETH operator) → <code>requestPrivateUnstake</code> →{" "}
+                    <code>completePrivateUnstake</code>. Deprecated: <code>requestConfidentialStake</code> /{" "}
+                    <code>completeConfidentialStake</code> / <code>stakeFromConfidential</code> revert. See{" "}
                     <Link to="/docs/private-withdrawals" className="font-semibold text-[#00685f] hover:underline">
                         Private withdrawals
                     </Link>{" "}
@@ -82,7 +83,7 @@ export function PrivateStakingDoc() {
                 </p>
                 <ul>
                     <li><strong>Public stake (<code>stake</code>):</strong> Send ETH from wallet → Aave V3 via WETH gateway. Encrypted stake total tracked in gwei units.</li>
-                    <li><strong>Confidential stake (<code>stakeFromConfidential</code>):</strong> Move encrypted cETH units into encrypted stake ledger — no Aave deposit.</li>
+                    <li><strong>Confidential stake (<code>stakeAndLock</code>):</strong> Atomic ERC-7984 transfer-and-call from encrypted cETH into encrypted stake ledger — set cETH operator first.</li>
                     <li><strong>Private unstake (<code>requestPrivateUnstake</code>):</strong> Release encrypted stake back to cETH via <code>transferEncrypted</code>.</li>
                     <li><strong>Public unstake (<code>requestPublicUnstake</code>):</strong> Explicit Aave unwind; aliases <code>requestUnstake</code> / <code>completeUnstake</code> for back-compat.</li>
                 </ul>
@@ -95,26 +96,30 @@ export function PrivateStakingDoc() {
                 <CodeBlock
                     filename="StakingManager.sol"
                     language="solidity"
-                    code={`function stakeFromConfidential(
+                    code={`function stakeAndLock(
     externalEuint64 encryptedUnits,
     bytes calldata inputProof
 ) external {
-    euint64 units = FHE.fromExternal(encryptedUnits, inputProof);
-    FHE.allow(units, address(cETH));
-    cETH.transferEncrypted(msg.sender, address(this), units);
-    // ... update _encryptedTotalStaked
+    // Caller must set StakingManager as cETH operator, then:
+    IERC7984(address(cETH)).confidentialTransferFromAndCall(
+        msg.sender, address(this), encryptedUnits, inputProof,
+        abi.encodePacked(STAKE_AND_LOCK_FLAG)
+    );
 }
+
+// Deprecated — reverts "Use stakeAndLock":
+// requestConfidentialStake, completeConfidentialStake, stakeFromConfidential
 
 function requestPrivateUnstake(
     externalEuint64 encryptedUnits,
     bytes calldata inputProof
 ) external {
-    // FHE.ge(encStaked, units) → sufficientHandle (public decrypt only)
+    // FHE.select(ge(encStaked, units), units, 0) → transferableHandle
 }
 
 function completePrivateUnstake(
-    bytes calldata sufficientCleartexts,
-    bytes calldata sufficientProof
+    bytes calldata transferableCleartexts,
+    bytes calldata transferableProof
 ) external {
     // subtract stake, cETH.transferEncrypted back to patient
 }`}

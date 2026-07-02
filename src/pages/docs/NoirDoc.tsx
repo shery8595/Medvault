@@ -13,11 +13,12 @@ export function NoirDoc() {
 
                 <p className="text-slate-600 text-sm leading-relaxed max-w-3xl">
                     <strong>Zama FHE</strong> is MedVault&apos;s compute authority: encrypted eligibility, scoring, and
-                    consent run on ciphertext in <code>EligibilityEngine</code>. <strong>Noir</strong> is a narrow{" "}
-                    <strong>public attestation seal</strong> — it does not replace FHE matching. The circuit (
-                    <code>circuits/eligibility_proof</code>) produces a compliance receipt that binds Semaphore
-                    identity, profile commitment, trial scope, criteria schema version, and the staged Zama FHE result
-                    handle. Proofs verify on-chain via <code>HonkVerifier.sol</code> (UltraHonk, EVM Keccak transcript).
+                    consent run on ciphertext in <code>EligibilityEngine</code>.                     <strong>Noir</strong> is a narrow{" "}
+                    <strong>public attestation seal</strong> — it does not replace FHE matching. MedVault ships{" "}
+                    <strong>two circuits</strong>: <code>eligibility_plaintext</code> (25 public inputs, eligibility bit
+                    in-circuit) and <code>eligibility_encrypted</code> (15 public inputs, FHE-only eligibility). Proofs
+                    verify on-chain via <code>HonkVerifier.sol</code> or <code>HonkVerifierEncrypted.sol</code>{" "}
+                    (UltraHonk, EVM Keccak transcript), selected by <code>trial.encryptedCriteria</code>.
                 </p>
 
                 <Callout type="info" title="Related docs">
@@ -80,10 +81,11 @@ export function NoirDoc() {
                     </li>
                 </ol>
 
-                <h2>What the circuit attests</h2>
+                <h2>What the circuits attest</h2>
                 <p className="text-sm">
-                    From <code>circuits/eligibility_proof/src/main.nr</code> — compliance mirror, not the product&apos;s
-                    primary gate:
+                    <strong>Plaintext mode</strong> (<code>circuits/eligibility_plaintext</code>) — compliance mirror
+                    with in-circuit <code>eligible</code> bit. <strong>Encrypted mode</strong> (
+                    <code>circuits/eligibility_encrypted</code>) — identity + binding only; Zama FHE decides eligibility.
                 </p>
                 <ol className="text-sm space-y-2">
                     <li>
@@ -113,7 +115,12 @@ export function NoirDoc() {
                     </li>
                 </ol>
 
-                <h2>Public inputs (16)</h2>
+                <h2>Public inputs — plaintext (25)</h2>
+                <p className="text-sm">
+                    Solidity-facing count: <code>ELIGIBILITY_PUBLIC_INPUT_COUNT = 25</code> in{" "}
+                    <code>src/lib/noir.ts</code>. Wired to <code>eligibilityVerifier</code>. Document bindings (indices
+                    17–24) are zero when <code>has_document = 0</code>.
+                </p>
                 <div className="not-prose overflow-hidden rounded-xl border border-slate-200 text-sm my-6">
                     <table className="w-full">
                         <thead>
@@ -131,7 +138,21 @@ export function NoirDoc() {
                                 ["4", "eligible"],
                                 ["5", "fhe_stage_handle_hash"],
                                 ["6", "criteria_schema_hash"],
-                                ["7–15", "trial criteria (minAge … requires_normal_bp)"],
+                                ["7", "min_age"],
+                                ["8", "max_age"],
+                                ["9", "requires_diabetes"],
+                                ["10", "min_hb"],
+                                ["11", "gender_requirement"],
+                                ["12", "min_height"],
+                                ["13", "max_weight"],
+                                ["14", "requires_non_smoker"],
+                                ["15", "requires_normal_bp"],
+                                ["16", "criteria_mode (0)"],
+                                ["17", "doc_cid_hash"],
+                                ["18", "aes_key_ct_hash"],
+                                ["19–22", "aes_key_fhe_handle_hash_0 … _3"],
+                                ["23", "doc_schema_hash"],
+                                ["24", "has_document"],
                             ].map(([idx, field], i) => (
                                 <tr key={idx} className={i % 2 ? "bg-slate-50/50" : "bg-white"}>
                                     <td className="px-3 py-2">{idx}</td>
@@ -141,6 +162,18 @@ export function NoirDoc() {
                         </tbody>
                     </table>
                 </div>
+
+                <h2>Public inputs — encrypted (15)</h2>
+                <p className="text-sm">
+                    <code>ELIGIBILITY_ENCRYPTED_PUBLIC_INPUT_COUNT = 15</code>. Wired to{" "}
+                    <code>eligibilityVerifierEncrypted</code>. No in-circuit <code>eligible</code> bit — FHE{" "}
+                    <code>finalCt</code> is authoritative.
+                </p>
+                <ul className="text-xs font-mono text-sm space-y-1">
+                    <li>0 scope · 1 nullifier · 2 result_hash · 3 fhe_stage_handle_hash</li>
+                    <li>4 criteria_schema_hash · 5 encrypted_criteria_binding_hash · 6 criteria_mode (= 1)</li>
+                    <li>7–13 document binding (same layout as plaintext) · 14 has_document</li>
+                </ul>
 
                 <h2>On-chain attestation API</h2>
                 <p className="text-sm">
@@ -156,7 +189,14 @@ export function NoirDoc() {
                 <Callout type="warning" title="Residual binding caveat">
                     The seal is <strong>operationally</strong> bound to the Zama <code>finalCt</code> handle hash.
                     Full cryptographic proof that FHE ciphertext plaintext equals the Noir witness requires Zama
-                    input-proof primitives not yet wired in this repo. See README &quot;Known privacy limits&quot;.
+                    input-proof primitives not yet wired in this repo. See{" "}
+                    <a
+                        href="https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md"
+                        className="font-semibold text-[#00685f] hover:underline"
+                    >
+                        SECURITY.md
+                    </a>{" "}
+                    (Noir–FHE integrity gap).
                 </Callout>
 
                 <h2>Browser proving stack</h2>
@@ -194,14 +234,15 @@ export function NoirDoc() {
                     language="bash"
                     filename="From repo root"
                     code={`npm run build:circuit
-# → circuits/eligibility_proof/target/eligibility_proof.json
-# → contracts/HonkVerifier.sol
-# → src/lib/circuits/eligibility_proof.json
+# → src/lib/circuits/eligibility_plaintext.json
+# → src/lib/circuits/eligibility_encrypted.json
+# → contracts/HonkVerifier.sol + HonkVerifierEncrypted.sol
 
-npx hardhat run scripts/upgrade-attestation-sepolia.ts --network sepolia
-# Deploy HonkVerifier + EligibilityEngine + rewire registry/vault
+npm run deploy:sepolia
+# Deploy both verifiers + schedule engine wiring
 
-node scripts/redeploy-subgraph.js v0.1.1`}
+npm run deploy:wiring:sepolia
+# After 6h timelock — apply eligibilityVerifier + eligibilityVerifierEncrypted`}
                 />
                 <p className="text-sm">
                     Tests: <code>test/unit/attestation-binding.test.ts</code> (FHE vs Noir differential + anti-replay),{" "}
@@ -217,8 +258,8 @@ node scripts/redeploy-subgraph.js v0.1.1`}
                         Local profile plaintext matches registered commitment (used as Noir private witness).
                     </li>
                     <li>
-                        Deployed <code>HonkVerifier</code> VK fingerprint matches{" "}
-                        <code>src/lib/circuits/vk_fingerprint.json</code>.
+                        Deployed <code>HonkVerifier</code> / <code>HonkVerifierEncrypted</code> VK fingerprints match{" "}
+                        <code>src/lib/circuits/vk_fingerprint.json</code> (plaintext + encrypted keys).
                     </li>
                 </ul>
 
@@ -227,7 +268,7 @@ node scripts/redeploy-subgraph.js v0.1.1`}
                     {[
                         ["FHE stage mismatch", "Proof must use the same finalCt handle as the staged Zama result."],
                         ["Criteria schema mismatch", "Redeploy engine after build:circuit; schema hash is versioned."],
-                        ["SumcheckFailed / VK mismatch", "Run build:circuit and redeploy HonkVerifier on Sepolia."],
+                        ["SumcheckFailed / VK mismatch", "Run build:circuit and redeploy both Honk verifiers on Sepolia."],
                         ["Nullifier mismatch", "Re-apply anonymously; recover nullifier in semaphore.ts if needed."],
                         ["No Zama FHE result handle", "Complete stage/finalize or ensure getAnonymousResult is set."],
                     ].map(([issue, fix]) => (

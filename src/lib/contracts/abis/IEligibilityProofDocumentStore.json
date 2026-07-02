@@ -1,0 +1,70 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IEligibilityProofDocumentStore",
+  "sourceName": "contracts/lib/EligibilityProofLib.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_nullifier",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_trialId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getDocumentBindingForEngine",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "cidHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "aesKeyCtHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "keyHandleHash0",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "keyHandleHash1",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "keyHandleHash2",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "keyHandleHash3",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bool",
+          "name": "docExists",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "docRevoked",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

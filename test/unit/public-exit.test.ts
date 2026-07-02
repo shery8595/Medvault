@@ -11,7 +11,7 @@ import {
     signPublicExitAuthorization,
 } from "../../test-support/withdraw";
 
-describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
+describe("Unit: public exit (EIP-712 v2 + stealth recipient)", function () {
     before(function () {
         assertFhevmMock();
     });
@@ -22,16 +22,20 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
         const reqTx = await requestEncryptedWithdraw(confidentialETH, patient, 1);
         const reqRc = await reqTx.wait();
         if (!reqRc) throw new Error("Missing request receipt");
-        const sufficientHandle = parseEventArg(
+        const transferableHandle = parseEventArg(
             reqRc,
             confidentialETH.interface,
             "WithdrawRequested",
-            "sufficientHandle"
+            "transferableHandle"
         );
-        return { patient, confidentialETH, reqRc, sufficientHandle };
+        return { patient, confidentialETH, reqRc, transferableHandle };
     }
 
-    it("PEX-01: relayer completes fast public exit to stealth recipient", async function () {
+    async function transferableProof(transferableHandle: string) {
+        return mockPublicDecryptProof(transferableHandle);
+    }
+
+    it("SUF-05 / PEX-01: relayer completes fast public exit to stealth recipient", async function () {
         const stack = await deployMedVaultStack();
         const { patient, confidentialETH, reqRc } = await stageWithdraw(stack);
         const stealth = ethers.Wallet.createRandom().address;
@@ -51,25 +55,13 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
         expect(after - before).to.equal(CET_MIN_DEPOSIT_WEI);
     });
 
-    it("PEX-02: wrong stealth recipient reverts", async function () {
+    it("SUF-05 / PEX-02: wrong stealth recipient reverts", async function () {
         const stack = await deployMedVaultStack();
-        const { patient, confidentialETH, reqRc, sufficientHandle } = await stageWithdraw(stack);
+        const { patient, confidentialETH, transferableHandle } = await stageWithdraw(stack);
         const signedRecipient = ethers.Wallet.createRandom().address;
         const actualRecipient = ethers.Wallet.createRandom().address;
 
-        const sufficient = await mockPublicDecryptProof(sufficientHandle);
-        const revealTx = await confidentialETH
-            .connect(patient)
-            .revealWithdrawAmount(sufficient.cleartexts, sufficient.proof);
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseEventArg(
-            revealRc!,
-            confidentialETH.interface,
-            "WithdrawAmountRevealed",
-            "amountHandle"
-        );
-        const amount = await mockPublicDecryptProof(amountHandle);
-
+        const transferable = await transferableProof(transferableHandle);
         const contractAddress = await confidentialETH.getAddress();
         const network = await ethers.provider.getNetwork();
         const nonce = await confidentialETH.withdrawNonces(patient.address);
@@ -79,7 +71,7 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
             chainId: network.chainId,
             owner: patient.address,
             stealthRecipient: signedRecipient,
-            sufficientHandle,
+            transferableHandle,
             exitMode: 0,
             nonce,
             deadline,
@@ -95,33 +87,19 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
                     nonce,
                     deadline,
                     signature,
-                    sufficient.cleartexts,
-                    sufficient.proof,
-                    amount.cleartexts,
-                    amount.proof
+                    transferable.cleartexts,
+                    transferable.proof
                 ),
             /Invalid signature/
         );
     });
 
-    it("PEX-03: expired authorization reverts", async function () {
+    it("SUF-05 / PEX-03: expired authorization reverts", async function () {
         const stack = await deployMedVaultStack();
-        const { patient, confidentialETH, reqRc, sufficientHandle } = await stageWithdraw(stack);
+        const { patient, confidentialETH, transferableHandle } = await stageWithdraw(stack);
         const stealth = ethers.Wallet.createRandom().address;
 
-        const sufficient = await mockPublicDecryptProof(sufficientHandle);
-        const revealTx = await confidentialETH
-            .connect(patient)
-            .revealWithdrawAmount(sufficient.cleartexts, sufficient.proof);
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseEventArg(
-            revealRc!,
-            confidentialETH.interface,
-            "WithdrawAmountRevealed",
-            "amountHandle"
-        );
-        const amount = await mockPublicDecryptProof(amountHandle);
-
+        const transferable = await transferableProof(transferableHandle);
         const contractAddress = await confidentialETH.getAddress();
         const network = await ethers.provider.getNetwork();
         const nonce = await confidentialETH.withdrawNonces(patient.address);
@@ -131,7 +109,7 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
             chainId: network.chainId,
             owner: patient.address,
             stealthRecipient: stealth,
-            sufficientHandle,
+            transferableHandle,
             exitMode: 0,
             nonce,
             deadline,
@@ -148,33 +126,19 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
                     nonce,
                     deadline,
                     signature,
-                    sufficient.cleartexts,
-                    sufficient.proof,
-                    amount.cleartexts,
-                    amount.proof
+                    transferable.cleartexts,
+                    transferable.proof
                 ),
             /Authorization expired/
         );
     });
 
-    it("PEX-04: replay with consumed authorization reverts", async function () {
+    it("SUF-05 / PEX-04: replay with consumed authorization reverts", async function () {
         const stack = await deployMedVaultStack();
-        const { patient, confidentialETH, reqRc, sufficientHandle } = await stageWithdraw(stack);
+        const { patient, confidentialETH, transferableHandle } = await stageWithdraw(stack);
         const stealth = ethers.Wallet.createRandom().address;
 
-        const sufficient = await mockPublicDecryptProof(sufficientHandle);
-        const revealTx = await confidentialETH
-            .connect(patient)
-            .revealWithdrawAmount(sufficient.cleartexts, sufficient.proof);
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseEventArg(
-            revealRc!,
-            confidentialETH.interface,
-            "WithdrawAmountRevealed",
-            "amountHandle"
-        );
-        const amount = await mockPublicDecryptProof(amountHandle);
-
+        const transferable = await transferableProof(transferableHandle);
         const contractAddress = await confidentialETH.getAddress();
         const network = await ethers.provider.getNetwork();
         const nonce = await confidentialETH.withdrawNonces(patient.address);
@@ -184,7 +148,7 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
             chainId: network.chainId,
             owner: patient.address,
             stealthRecipient: stealth,
-            sufficientHandle,
+            transferableHandle,
             exitMode: 0,
             nonce,
             deadline,
@@ -199,10 +163,8 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
                 nonce,
                 deadline,
                 signature,
-                sufficient.cleartexts,
-                sufficient.proof,
-                amount.cleartexts,
-                amount.proof
+                transferable.cleartexts,
+                transferable.proof
             );
 
         await expectRevert(
@@ -215,33 +177,19 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
                     nonce,
                     deadline,
                     signature,
-                    sufficient.cleartexts,
-                    sufficient.proof,
-                    amount.cleartexts,
-                    amount.proof
+                    transferable.cleartexts,
+                    transferable.proof
                 ),
             /Invalid nonce|Nothing pending/
         );
     });
 
-    it("PEX-05: exit mode mismatch in signature reverts", async function () {
+    it("SUF-05 / PEX-05: exit mode mismatch in signature reverts", async function () {
         const stack = await deployMedVaultStack();
-        const { patient, confidentialETH, reqRc, sufficientHandle } = await stageWithdraw(stack);
+        const { patient, confidentialETH, transferableHandle } = await stageWithdraw(stack);
         const stealth = ethers.Wallet.createRandom().address;
 
-        const sufficient = await mockPublicDecryptProof(sufficientHandle);
-        const revealTx = await confidentialETH
-            .connect(patient)
-            .revealWithdrawAmount(sufficient.cleartexts, sufficient.proof);
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseEventArg(
-            revealRc!,
-            confidentialETH.interface,
-            "WithdrawAmountRevealed",
-            "amountHandle"
-        );
-        const amount = await mockPublicDecryptProof(amountHandle);
-
+        const transferable = await transferableProof(transferableHandle);
         const contractAddress = await confidentialETH.getAddress();
         const network = await ethers.provider.getNetwork();
         const nonce = await confidentialETH.withdrawNonces(patient.address);
@@ -251,7 +199,7 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
             chainId: network.chainId,
             owner: patient.address,
             stealthRecipient: stealth,
-            sufficientHandle,
+            transferableHandle,
             exitMode: 0,
             nonce,
             deadline,
@@ -267,12 +215,44 @@ describe("Unit: public exit (EIP-712 + stealth recipient)", function () {
                     nonce,
                     deadline,
                     signature,
-                    sufficient.cleartexts,
-                    sufficient.proof,
-                    amount.cleartexts,
-                    amount.proof
+                    transferable.cleartexts,
+                    transferable.proof
                 ),
             /Invalid signature/
         );
+    });
+
+    it("SUF-05 / PEX-06: reverting stealth recipient escrows to owner and preserves nonce", async function () {
+        const stack = await deployMedVaultStack();
+        const { patient, confidentialETH, reqRc } = await stageWithdraw(stack);
+
+        const RejectOnce = await ethers.getContractFactory("RejectOnce");
+        const rejecter = await RejectOnce.deploy();
+        await rejecter.waitForDeployment();
+        const rejecterAddr = await rejecter.getAddress();
+
+        const nonceBefore = await confidentialETH.withdrawNonces(patient.address);
+
+        const exitTx = await completePublicExit(
+            confidentialETH,
+            stack.stranger,
+            patient,
+            reqRc,
+            rejecterAddr,
+            0
+        );
+        await expect(exitTx).to.emit(confidentialETH, "InsolventWithdrawalAttempted");
+        await expect(exitTx)
+            .to.emit(confidentialETH, "FailedWithdrawEscrowed")
+            .withArgs(patient.address, CET_MIN_DEPOSIT_WEI);
+
+        expect(await confidentialETH.pendingFailedWithdrawWei(patient.address)).to.equal(
+            CET_MIN_DEPOSIT_WEI
+        );
+        expect(await confidentialETH.pendingFailedWithdrawWei(rejecterAddr)).to.equal(0n);
+        expect(await confidentialETH.withdrawNonces(patient.address)).to.equal(nonceBefore);
+
+        await confidentialETH.connect(patient).claimFailedWithdraw();
+        expect(await confidentialETH.pendingFailedWithdrawWei(patient.address)).to.equal(0n);
     });
 });

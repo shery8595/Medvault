@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { fheStageHandleToField } from "../../src/lib/criteriaSchema";
 import {
     buildEligibilityPublicInputs,
+    ELIGIBILITY_PUBLIC_INPUT_COUNT,
     fheStageHandleToField as testSupportFheStageField,
     trialCriteriaFromDefaults,
 } from "../../test-support/noirProof";
@@ -26,7 +27,7 @@ describe("Unit: direct wallet apply FHE stage binding", function () {
             criteria
         );
 
-        expect(publicInputs).to.have.length(17);
+        expect(publicInputs).to.have.length(ELIGIBILITY_PUBLIC_INPUT_COUNT);
         expect(BigInt(publicInputs[5]!)).to.equal(fheStageHandleToField(finalCt));
         expect(BigInt(publicInputs[5]!)).to.equal(testSupportFheStageField(finalCt));
     });

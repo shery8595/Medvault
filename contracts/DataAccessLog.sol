@@ -14,7 +14,10 @@ contract DataAccessLog {
         APPLICATION_STATUS_CHANGED,
         MILESTONE_COMPLETED,
         REWARDS_DISTRIBUTED,
-        PARTICIPANT_JOINED_POOL
+        PARTICIPANT_JOINED_POOL,
+        DOCUMENT_RECORDED,
+        DOCUMENT_SPONSOR_AUTHORIZED,
+        DOCUMENT_ACCESS_REVOKED
     }
 
     struct LogEntry {
@@ -28,11 +31,12 @@ contract DataAccessLog {
     // FINDING 10: Ring buffer constants
     uint256 public constant MAX_LOG_ENTRIES = 10_000;
     uint256 private _logHead;
+    uint256 private _totalLogCount;
 
     LogEntry[] public logs;
     mapping(address => bool) public isAuthorizedLogger;
     mapping(address => bool) public pendingLoggerChanges;
-    uint256 public constant LOGGER_CHANGE_DELAY = 2 days;
+    uint256 public constant LOGGER_CHANGE_DELAY = 6 hours;
     mapping(address => uint256) public loggerChangeEta;
     address public owner;
     address public pendingOwner; // FINDING 11: Two-step ownership transfer
@@ -92,6 +96,12 @@ contract DataAccessLog {
         loggerChangeEta[_logger] = 0;
     }
 
+    /// @notice L-1: Cancel a pending logger authorization change before it is applied.
+    function cancelAuthorizedLoggerSchedule(address _logger) external onlyOwner {
+        loggerChangeEta[_logger] = 0;
+        pendingLoggerChanges[_logger] = false;
+    }
+
     /// @dev Immediate path retained for test deployments; production should use schedule/apply.
     /// @dev Removed instant bypass — use scheduleAuthorizedLogger + applyAuthorizedLogger.
 
@@ -108,6 +118,7 @@ contract DataAccessLog {
         uint256 _trialId,
         bytes32 _patientHash
     ) external onlyAuthorized {
+        _totalLogCount++;
         LogEntry memory entry = LogEntry({
             action: _action,
             trialId: _trialId,
@@ -150,6 +161,11 @@ contract DataAccessLog {
 
     function getLogCount() external view returns (uint256) {
         return logs.length;
+    }
+
+    /// @notice L-2: Total actions ever logged (monotonic; survives ring-buffer wrap).
+    function getTotalLogCount() external view returns (uint256) {
+        return _totalLogCount;
     }
 
     function getLog(uint256 _index) external view returns (LogEntry memory) {

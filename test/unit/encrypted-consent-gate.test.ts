@@ -1,8 +1,20 @@
 import { expect } from "chai";
-import { deployMedVaultStack } from "../../test-support/deployments";
+import { ethers } from "hardhat";
+import { deployMedVaultStack, createTrialForSponsor } from "../../test-support/deployments";
 import { expectRevert } from "../../test-support/assertions";
+import {
+    registerPatient,
+    walletApplyWithConsent,
+    sponsorAcceptApplication,
+} from "../../test-support/journey";
+import { grantConsentLegacy } from "../../test-support/consent";
+import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
+import { assertFhevmMock, coerceFheHandle, mockUserDecryptBool } from "../../test-support/fhe";
 
 describe("Unit: EncryptedConsentGate", function () {
+    before(function () {
+        assertFhevmMock();
+    });
     it("ECG-01: authorize and deauthorize computer", async function () {
         const stack = await deployMedVaultStack();
         await stack.encryptedConsentGate
@@ -65,5 +77,141 @@ describe("Unit: EncryptedConsentGate", function () {
                 await stack.eligibilityEngine.getAddress()
             )
         ).to.equal(true);
+    });
+
+    it("P2-ECG-01: computeGateWithActiveConsent returns FHE ebool (no plaintext eligibility branch)", async function () {
+        const stack = await deployMedVaultStack();
+        const patient = await registerPatient(stack, stack.patient, ELIGIBLE_PROFILE);
+        const trialId = await createTrialForSponsor(stack);
+        await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient, stack.patient, false);
+        await sponsorAcceptApplication(stack, trialId, nullifier);
+
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .setTrialSponsor(trialId, stack.sponsor.address);
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .authorizeComputer(stack.owner.address);
+
+        const tx = await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .computeGateWithActiveConsent(trialId, nullifier);
+        const rc = await tx.wait();
+        const gatedHandle = rc?.logs
+            .map((l) => {
+                try {
+                    return stack.encryptedConsentGate.interface.parseLog(l);
+                } catch {
+                    return null;
+                }
+            })
+            .find((p) => p?.name === "GateComputed")?.args.gatedResult;
+
+        expect(coerceFheHandle(gatedHandle)).to.be.gt(0n);
+
+        const patientWallet = await stack.eligibilityEngine.getConsentWalletForNullifier(
+            nullifier,
+            trialId
+        );
+        const uniqueId = ethers.keccak256(
+            ethers.solidityPacked(
+                ["uint256", "uint256", "address", "uint256"],
+                [
+                    trialId,
+                    nullifier,
+                    patientWallet,
+                    await stack.consentManager.patientConsentEpoch(patientWallet),
+                ]
+            )
+        );
+
+        const stored = await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .getGatedResult(trialId, uniqueId);
+        expect(coerceFheHandle(stored)).to.equal(coerceFheHandle(gatedHandle));
+        expect(await stack.encryptedConsentGate.gateExists(trialId, uniqueId)).to.equal(true);
+    });
+
+    it("ECG-07: computeGateWithActiveConsent gates false after revokeConsent", async function () {
+        const stack = await deployMedVaultStack();
+        const patient = await registerPatient(stack, stack.patient, ELIGIBLE_PROFILE);
+        const trialId = await createTrialForSponsor(stack);
+        await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient, stack.patient, false);
+        await sponsorAcceptApplication(stack, trialId, nullifier);
+
+        await stack.consentManager.connect(stack.patient).revokeConsent(trialId);
+
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .setTrialSponsor(trialId, stack.sponsor.address);
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .authorizeComputer(stack.owner.address);
+
+        const tx = await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .computeGateWithActiveConsent(trialId, nullifier);
+        const rc = await tx.wait();
+        const gatedHandle = rc?.logs
+            .map((l) => {
+                try {
+                    return stack.encryptedConsentGate.interface.parseLog(l);
+                } catch {
+                    return null;
+                }
+            })
+            .find((p) => p?.name === "GateComputed")?.args.gatedResult;
+
+        expect(coerceFheHandle(gatedHandle)).to.be.gt(0n);
+        expect(
+            await mockUserDecryptBool(
+                gatedHandle,
+                await stack.encryptedConsentGate.getAddress(),
+                stack.sponsor
+            )
+        ).to.equal(false);
+    });
+
+    it("ECG-08: computeGateWithActiveConsent gates false after revokeAllConsent", async function () {
+        const stack = await deployMedVaultStack();
+        const patient = await registerPatient(stack, stack.patient, ELIGIBLE_PROFILE);
+        const trialId = await createTrialForSponsor(stack);
+        await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
+        const { nullifier } = await walletApplyWithConsent(stack, trialId, patient, stack.patient, false);
+        await sponsorAcceptApplication(stack, trialId, nullifier);
+
+        await stack.consentManager.connect(stack.patient).revokeAllConsent();
+
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .setTrialSponsor(trialId, stack.sponsor.address);
+        await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .authorizeComputer(stack.owner.address);
+
+        const tx = await stack.encryptedConsentGate
+            .connect(stack.owner)
+            .computeGateWithActiveConsent(trialId, nullifier);
+        const rc = await tx.wait();
+        const gatedHandle = rc?.logs
+            .map((l) => {
+                try {
+                    return stack.encryptedConsentGate.interface.parseLog(l);
+                } catch {
+                    return null;
+                }
+            })
+            .find((p) => p?.name === "GateComputed")?.args.gatedResult;
+
+        expect(coerceFheHandle(gatedHandle)).to.be.gt(0n);
+        expect(
+            await mockUserDecryptBool(
+                gatedHandle,
+                await stack.encryptedConsentGate.getAddress(),
+                stack.sponsor
+            )
+        ).to.equal(false);
     });
 });

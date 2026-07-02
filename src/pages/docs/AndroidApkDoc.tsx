@@ -29,14 +29,14 @@ export function AndroidApkDoc() {
                 <DocsPageHeaderForRoute />
 
                 <p className="lead not-prose text-base text-slate-600 max-w-3xl">
-                    MedVault ships as an installable <strong>Android demo APK</strong> using Capacitor. The APK bundles
+                    MedVault ships as an installable <strong>Android demo APK</strong> using Capacitor 8. The APK bundles
                     the same React dapp (Privy, Zama FHE, Semaphore, Noir WASM) inside an Android WebView — not a
                     separate native rewrite.
                 </p>
 
                 <div className="not-prose grid sm:grid-cols-2 lg:grid-cols-4 gap-3 my-8">
                     {[
-                        { icon: Smartphone, title: "Capacitor shell", desc: "App id xyz.medvault.app, https://localhost WebView origin" },
+                        { icon: Smartphone, title: "Capacitor 8 shell", desc: "App id xyz.medvault.app, https://localhost WebView origin" },
                         { icon: Download, title: "~33 MB debug APK", desc: "android/app/build/outputs/apk/debug/app-debug.apk" },
                         { icon: Shield, title: "Privy + embedded wallet", desc: "Browser extensions do not work in WebView" },
                         { icon: Wifi, title: "Direct HTTPS APIs", desc: "No Vite/Vercel proxy — Zama + relayer over HTTPS" },
@@ -160,14 +160,19 @@ npm run mobile:apk:debug`}
                 <h2>VI. Mobile-only behavior</h2>
                 <ul>
                     <li>
-                        <strong>Launch route</strong> — native app redirects <code>/</code> → patient dashboard (skips
-                        heavy marketing landing)
+                        <strong>Launch route</strong> — <code>MobileLaunchRedirect</code> sends native app from{" "}
+                        <code>/</code> → patient dashboard (skips heavy marketing landing)
                     </li>
                     <li>
-                        <strong>Android back</strong> — in-app navigation; minimizes at dashboard root
+                        <strong>Android back</strong> — <code>MobileAppShell</code> navigates in-app; minimizes at
+                        dashboard root
                     </li>
                     <li>
-                        <strong>Offline banner</strong> — shown when network unavailable
+                        <strong>Offline banner</strong> — <code>MobileNetworkBanner</code> when network unavailable
+                    </li>
+                    <li>
+                        <strong>Crypto fallback</strong> — <code>CryptoFallbackBanner</code> when WebCrypto AES-GCM is
+                        missing; hybrid document encrypt uses <code>@noble/ciphers</code> fallback
                     </li>
                     <li>
                         <strong>Native hints</strong> — wallet/FHE setup guidance in dashboard shell

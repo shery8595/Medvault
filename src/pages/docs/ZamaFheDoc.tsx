@@ -63,18 +63,22 @@ export function ZamaFheDoc() {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="text-left px-3 py-2 font-bold">Package</th>
+                                <th className="text-left px-3 py-2 font-bold">Version</th>
                                 <th className="text-left px-3 py-2 font-bold">Used for</th>
                             </tr>
                         </thead>
                         <tbody>
                             {[
-                                ["@fhevm/solidity", "Solidity: FHE.sol, euint*, external inputs"],
-                                ["@zama-fhe/sdk", "Browser: encrypt, userDecrypt, relayer integration"],
-                                ["@fhevm/hardhat-plugin", "Tests: hre.fhevm mocks, publicDecrypt"],
-                                ["@zama-fhe/relayer-sdk", "Relayer + Hardhat encrypted-input helpers"],
-                            ].map(([pkg, use], i) => (
+                                ["@fhevm/solidity", "^0.11.1", "Solidity: FHE.sol, euint*, external inputs"],
+                                ["@openzeppelin/confidential-contracts", "^0.5.1", "IERC7984 / ERC7984 confidential token"],
+                                ["@zama-fhe/sdk", "^3.2.0", "Browser: encrypt, userDecrypt, relayer integration"],
+                                ["@zama-fhe/react-sdk", "^3.2.0", "React provider wrapper for ZamaSDK"],
+                                ["@fhevm/hardhat-plugin", "^0.4.2", "Tests: hre.fhevm mocks, publicDecrypt"],
+                                ["@zama-fhe/relayer-sdk", "0.4.1", "Relayer + Hardhat encrypted-input helpers"],
+                            ].map(([pkg, ver, use], i) => (
                                 <tr key={pkg} className={i % 2 ? "bg-slate-50/50" : "bg-white"}>
                                     <td className="px-3 py-2 font-mono text-[10px] text-[#00685f]">{pkg}</td>
+                                    <td className="px-3 py-2 font-mono text-[10px] text-slate-500">{ver}</td>
                                     <td className="px-3 py-2 text-xs text-slate-600">{use}</td>
                                 </tr>
                             ))}
@@ -132,6 +136,19 @@ const { encryptedValues, inputProof } = await sdk.encrypt({
                         patient can user-decrypt.
                     </li>
                 </ul>
+
+                <h2>ERC-7984 confidential token</h2>
+                <p className="text-sm">
+                    <code>ConfidentialETH7984</code> implements OpenZeppelin IERC7984. Withdraw staging uses KMS-gated
+                    sufficiency proofs — see{" "}
+                    <Link to="/docs/private-withdrawals" className="font-semibold text-[#00685f] hover:underline">
+                        Private withdrawals
+                    </Link>
+                    . <code>StakingManager</code> implements <code>onConfidentialTransferReceived</code> for
+                    confidential stake (<code>stakeAndLock</code>). Vault trial funding via the same callback is{" "}
+                    <strong>disabled</strong> (<code>ConfidentialFundingDisabled</code>) until FHE-sum accounting ships
+                    — production sponsors use plain-ETH <code>fundTrial</code>.
+                </p>
 
                 <h2>Network</h2>
                 <ul className="text-sm">

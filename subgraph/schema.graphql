@@ -208,7 +208,7 @@ type ClaimLifecycle @entity(immutable: false) {
   id: ID!                              # trialId-permitHolder
   trialId: BigInt!
   permitHolder: Bytes!
-  sufficientHandle: Bytes!
+  transferableHandle: Bytes!
   initiatedAt: BigInt!
   initiatedTxHash: Bytes!
   completed: Boolean!
@@ -218,7 +218,7 @@ type ClaimLifecycle @entity(immutable: false) {
 type WithdrawRequest @entity(immutable: true) {
   id: ID!                              # txHash-logIndex
   user: Bytes!
-  sufficientHandle: Bytes!
+  transferableHandle: Bytes!
   kind: String!                        # withdraw | withdrawTo
   blockNumber: BigInt!
   txHash: Bytes!
@@ -227,7 +227,7 @@ type WithdrawRequest @entity(immutable: true) {
 type UnstakeRequest @entity(immutable: true) {
   id: ID!
   user: Bytes!
-  sufficientHandle: Bytes!
+  transferableHandle: Bytes!
   blockNumber: BigInt!
   txHash: Bytes!
 }

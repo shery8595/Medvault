@@ -7,6 +7,7 @@
 import hre from "hardhat";
 import { ethers } from "hardhat";
 import { loadAddresses, networkKeyFromHardhatName } from "./lib/networkAddresses";
+import { wireAutomationForwarder } from "./lib/timelockWiring";
 
 async function main() {
   const forwarder = process.env.CHAINLINK_FORWARDER?.trim();
@@ -18,9 +19,9 @@ async function main() {
   const addresses = loadAddresses(key);
   const automation = await ethers.getContractAt("MedVaultAutomation", addresses.MedVaultAutomation);
 
-  console.log(`Setting chainlinkForwarder → ${forwarder} on ${addresses.MedVaultAutomation}`);
-  await (await automation.setChainlinkForwarder(forwarder)).wait();
-  console.log(`✓ chainlinkForwarder = ${await automation.chainlinkForwarder()}`);
+  console.log(`Scheduling chainlinkForwarder → ${forwarder} on ${addresses.MedVaultAutomation}`);
+  await wireAutomationForwarder(automation, forwarder);
+  console.log(`Current chainlinkForwarder = ${await automation.chainlinkForwarder()}`);
 }
 
 main().catch((error) => {

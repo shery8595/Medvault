@@ -19,6 +19,7 @@ import {
 import { CET_MIN_DEPOSIT_WEI } from "../../test-support/constants";
 import { expectRevert } from "../../test-support/assertions";
 import { impersonateAccount } from "../../test-support/signers";
+import { authorizeCethContract } from "../../test-support/timelock";
 
 describe("Security regression", function () {
     it("SEC-C2: front-run stage with attacker permit signature reverts", async function () {
@@ -94,18 +95,25 @@ describe("Security regression", function () {
             AWETH
         );
         await stakingManager.waitForDeployment();
-        await stack.confidentialETH.authorizeContract(await stakingManager.getAddress());
+        await authorizeCethContract(
+            stack.confidentialETH,
+            stack.owner,
+            await stakingManager.getAddress(),
+            true
+        );
 
         await stack.confidentialETH.connect(stack.patient).deposit({ value: CET_MIN_DEPOSIT_WEI });
         const { createEncryptedUint64 } = await import("../../test-support/fhe");
+        const { time } = await import("@nomicfoundation/hardhat-network-helpers");
+        const stakingAddr = await stakingManager.getAddress();
+        const until = BigInt((await time.latest()) + 86400);
+        await stack.confidentialETH.connect(stack.patient).setOperator(stakingAddr, until);
         const enc = await createEncryptedUint64(
-            await stakingManager.getAddress(),
-            stack.patient.address,
+            await stack.confidentialETH.getAddress(),
+            stakingAddr,
             1
         );
-        await stakingManager
-            .connect(stack.patient)
-            .requestConfidentialStake(enc.handle, enc.inputProof);
+        await stakingManager.connect(stack.patient).stakeAndLock(enc.handle, enc.inputProof);
         expect(await stack.confidentialETH.isBalanceLocked(stack.patient.address)).to.equal(true);
         await expectRevert(
             stack.confidentialETH
@@ -124,7 +132,9 @@ describe("Security regression", function () {
         await stack.confidentialETH
             .connect(vaultSigner)
             .depositFor(await reverter.getAddress(), { value: CET_MIN_DEPOSIT_WEI });
-        const bal = await stack.confidentialETH.getBalance(await reverter.getAddress());
+        const bal = await stack.confidentialETH
+            .connect(vaultSigner)
+            .getBalance(await reverter.getAddress());
         expect(bal).to.not.equal(0n);
     });
 });

@@ -9,7 +9,8 @@ export type AnonymousSubmissionStatus =
 
 /**
  * Staged = FHE eligibility computed, finalize not completed (may be ineligible).
- * Sponsors must only see applications that finished finalize with eligible=true.
+ * Sponsors must only see applications that finished finalize (identity attested).
+ * "Accepted" application status = sponsor accepted the application, not medical eligibility.
  */
 export function isSponsorVisibleAnonymousStatus(status: AnonymousSubmissionStatus | null | undefined): boolean {
   return status === "Pending" || status === "Accepted" || status === "Rejected";

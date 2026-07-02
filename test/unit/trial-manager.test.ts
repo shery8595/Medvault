@@ -64,12 +64,18 @@ describe("Unit: TrialManager", function () {
         );
     });
 
-    it("TM-07: setAutomationContract only owner", async function () {
+    it("TM-07: setAutomationContract reverts (use timelock)", async function () {
         const stack = await deployMedVaultStack();
         await expectRevert(
             stack.trialManager
-                .connect(stack.stranger)
+                .connect(stack.owner)
                 .setAutomationContract(stack.stranger.address),
+            /Use scheduleAutomationContract/
+        );
+        await expectRevert(
+            stack.trialManager
+                .connect(stack.stranger)
+                .scheduleAutomationContract(stack.stranger.address),
             "Only owner"
         );
     });

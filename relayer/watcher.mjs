@@ -3,21 +3,22 @@ import { publicDecryptProof } from "./zama-client.mjs";
 import { createBatchExitQueue } from "./batch-exit-queue.mjs";
 
 const CONFIDENTIAL_ETH_ABI = [
-    "event WithdrawRequested(address indexed user, bytes32 sufficientHandle)",
-    "event WithdrawToRequested(address indexed user, bytes32 sufficientHandle)",
-    "event WithdrawAmountRevealed(address indexed user, bytes32 amountHandle)",
-    "function revealWithdrawToAmountFor(address user, bytes sufficientCleartexts, bytes sufficientProof) returns (bytes32)",
-    "function completeWithdrawTo(address user, bytes amountCleartexts, bytes amountProof) external",
-    "function revealWithdrawAmountFor(address owner, bytes sufficientCleartexts, bytes sufficientProof) returns (bytes32)",
-    "function completePublicExit(address owner, address stealthRecipient, uint8 exitMode, uint256 nonce, uint256 deadline, bytes signature, bytes sufficientCleartexts, bytes sufficientProof, bytes amountCleartexts, bytes amountProof) external",
+    "event WithdrawRequested(address indexed user, bytes32 transferableHandle)",
+    "event WithdrawToRequested(address indexed user, bytes32 transferableHandle)",
+    "function completeWithdrawTo(address user, bytes transferableCleartexts, bytes transferableProof) external",
+    "function completePublicExit(address owner, address stealthRecipient, uint8 exitMode, uint256 nonce, uint256 deadline, bytes signature, bytes transferableCleartexts, bytes transferableProof) external",
 ];
 
 const STAKING_MANAGER_ABI = [
-    "event PublicUnstakeRequested(address indexed user, bytes32 sufficientHandle)",
-    "event PrivateUnstakeRequested(address indexed user, bytes32 sufficientHandle)",
-    "function completeUnstake(bytes sufficientCleartexts, bytes sufficientProof) external",
-    "function completePrivateUnstake(bytes sufficientCleartexts, bytes sufficientProof) external",
+    "event PublicUnstakeRequested(address indexed user, bytes32 transferableHandle)",
+    "event PrivateUnstakeRequested(address indexed user, bytes32 transferableHandle)",
+    "function completeUnstake(bytes transferableCleartexts, bytes transferableProof) external",
+    "function completePrivateUnstake(bytes transferableCleartexts, bytes transferableProof) external",
 ];
+
+const DEFAULT_CONFIRMATION_DEPTH = Number(process.env.WATCHER_CONFIRMATION_DEPTH || 3);
+const MAX_HANDLER_RETRIES = Number(process.env.WATCHER_MAX_RETRIES || 5);
+const RETRY_BASE_MS = Number(process.env.WATCHER_RETRY_BASE_MS || 5_000);
 
 /**
  * Poll v0.9 stage events and submit on-chain completions the relayer wallet can pay for.
@@ -32,6 +33,7 @@ export function startV09Watcher({
     lookbackBlocks = 2_000,
     batchMinSize = Number(process.env.BATCH_EXIT_MIN_SIZE || 2),
     batchMaxWaitMs = Number(process.env.BATCH_EXIT_MAX_WAIT_MS || 120_000),
+    confirmationDepth = DEFAULT_CONFIRMATION_DEPTH,
 }) {
     if (!confidentialEthAddress) {
         console.warn("Watcher: CONFIDENTIAL_ETH_ADDRESS unset — withdraw-to auto-complete disabled");
@@ -47,23 +49,20 @@ export function startV09Watcher({
         : null;
     const stakingIface = stakingManagerAddress ? new ethers.Interface(STAKING_MANAGER_ABI) : null;
 
-    /** @type {Map<string, { cleartexts: string, proof: string, eligible: boolean }>} */
+    /** @type {Map<string, { cleartexts: string, proof: string, units: bigint, transferable: boolean }>} */
     const proofCache = new Map();
     const processed = new Set();
+    /** @type {Map<string, { handler: () => Promise<void>, attempts: number, nextRetryAt: number }>} */
+    const retryQueue = new Map();
     let fromBlock = 0;
+    let lastCanonicalHash = null;
     let running = false;
 
     const batchQueue = createBatchExitQueue({
         minBatchSize: batchMinSize,
         maxWaitMs: batchMaxWaitMs,
-        onFlush: async (batch) => {
-            for (const item of batch) {
-                try {
-                    await executePublicExit(item);
-                } catch (err) {
-                    console.error("Batch public exit failed:", err?.message || err);
-                }
-            }
+        onFlush: async (item) => {
+            await executePublicExit(item);
         },
     });
 
@@ -72,43 +71,87 @@ export function startV09Watcher({
         fromBlock = Math.max(0, latest - lookbackBlocks);
     }
 
-    function cacheKey(kind, user, handle) {
-        return `${kind}:${user.toLowerCase()}:${handle.toLowerCase()}`;
+    function cacheKey(kind, user, handle, stageTxHash) {
+        const base = `${kind}:${user.toLowerCase()}:${handle.toLowerCase()}`;
+        if (stageTxHash) return `${base}:${stageTxHash.toLowerCase()}`;
+        return base;
     }
 
-    async function cacheProof(kind, user, handle) {
-        const key = cacheKey(kind, user, handle);
+    async function cacheProof(kind, user, handle, stageTxHash) {
+        const key = cacheKey(kind, user, handle, stageTxHash);
         if (proofCache.has(key)) return proofCache.get(key);
 
-        const { eligible, cleartexts, proof } = await publicDecryptProof(zamaSdk, handle);
-        const entry = { cleartexts, proof, eligible };
+        const { units, transferable, cleartexts, proof } = await publicDecryptProof(zamaSdk, handle);
+        const entry = { cleartexts, proof, units, transferable, eligible: transferable };
         proofCache.set(key, entry);
         return entry;
     }
 
-    async function revealAndCompleteWithdrawTo(user, sufficientCleartexts, sufficientProof) {
-        const revealTx = await cEth.revealWithdrawToAmountFor(user, sufficientCleartexts, sufficientProof);
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseAmountHandle(revealRc);
-        const amount = await publicDecryptProof(zamaSdk, amountHandle);
-        const completeTx = await cEth.completeWithdrawTo(user, amount.cleartexts, amount.proof);
-        const receipt = await completeTx.wait();
-        return receipt.hash;
+    function scheduleRetry(id, handler, attempts) {
+        const delay = RETRY_BASE_MS * 2 ** Math.min(attempts, 6);
+        retryQueue.set(id, {
+            handler,
+            attempts,
+            nextRetryAt: Date.now() + delay,
+        });
     }
 
-    function parseAmountHandle(receipt) {
-        for (const log of receipt.logs) {
-            if (log.address?.toLowerCase() !== confidentialEthAddress.toLowerCase()) continue;
+    async function drainRetryQueue() {
+        const now = Date.now();
+        for (const [id, entry] of [...retryQueue.entries()]) {
+            if (entry.nextRetryAt > now) continue;
+            retryQueue.delete(id);
             try {
-                const parsed = cEthIface.parseLog(log);
-                if (parsed.name === "WithdrawAmountRevealed") {
-                    return parsed.args.amountHandle;
+                await entry.handler();
+                processed.add(id);
+            } catch (err) {
+                const nextAttempts = entry.attempts + 1;
+                if (nextAttempts >= MAX_HANDLER_RETRIES) {
+                    console.error(`Watcher: giving up on ${id} after ${nextAttempts} attempts:`, err?.message || err);
+                } else {
+                    console.error(`Watcher: retry ${nextAttempts}/${MAX_HANDLER_RETRIES} for ${id}:`, err?.message || err);
+                    scheduleRetry(id, entry.handler, nextAttempts);
                 }
-            } catch {
-                /* ignore */
             }
         }
-        throw new Error("WithdrawAmountRevealed not found");
+    }
+
+    async function runHandler(id, handler) {
+        try {
+            await handler();
+            processed.add(id);
+        } catch (err) {
+            console.error(`Watcher: handler failed (${id}), scheduling retry:`, err?.message || err);
+            scheduleRetry(id, handler, 1);
+        }
+    }
+
+    function rollbackForReorg(safeBlock) {
+        processed.clear();
+        retryQueue.clear();
+        proofCache.clear();
+        fromBlock = Math.max(0, safeBlock - lookbackBlocks);
+        lastCanonicalHash = null;
+        console.warn(`Watcher: reorg detected — re-scanning from block ${fromBlock}`);
+    }
+
+    async function detectReorg(safeHead) {
+        if (fromBlock <= 0) return false;
+        const anchor = fromBlock - 1;
+        const block = await provider.getBlock(anchor);
+        if (!block) return false;
+        if (lastCanonicalHash && block.hash !== lastCanonicalHash) {
+            rollbackForReorg(safeHead);
+            return true;
+        }
+        lastCanonicalHash = block.hash;
+        return false;
+    }
+
+    async function completeWithdrawToWithProof(user, transferableCleartexts, transferableProof) {
+        const completeTx = await cEth.completeWithdrawTo(user, transferableCleartexts, transferableProof);
+        const receipt = await completeTx.wait();
+        return receipt.hash;
     }
 
     async function executePublicExit(item) {
@@ -119,21 +162,15 @@ export function startV09Watcher({
             nonce,
             deadline,
             signature,
-            sufficientHandle,
+            transferableHandle,
         } = item;
 
-        const { eligible, cleartexts: sufficientCleartexts, proof: sufficientProof } =
-            await cacheProof("withdraw", owner, sufficientHandle);
-        if (!eligible) throw new Error("Insufficient balance for public exit");
-
-        const revealTx = await cEth.revealWithdrawAmountFor(
+        const handle = transferableHandle;
+        const { cleartexts: transferableCleartexts, proof: transferableProof } = await cacheProof(
+            "withdraw",
             owner,
-            sufficientCleartexts,
-            sufficientProof
+            handle
         );
-        const revealRc = await revealTx.wait();
-        const amountHandle = parseAmountHandle(revealRc);
-        const amount = await publicDecryptProof(zamaSdk, amountHandle);
 
         const tx = await cEth.completePublicExit(
             owner,
@@ -142,10 +179,8 @@ export function startV09Watcher({
             nonce,
             deadline,
             signature,
-            sufficientCleartexts,
-            sufficientProof,
-            amount.cleartexts,
-            amount.proof
+            transferableCleartexts,
+            transferableProof
         );
         const receipt = await tx.wait();
         return receipt.hash;
@@ -154,32 +189,39 @@ export function startV09Watcher({
     async function handleWithdrawTo(log) {
         const parsed = cEthIface.parseLog(log);
         const user = parsed.args.user;
-        const handle = parsed.args.sufficientHandle;
+        const handle = parsed.args.transferableHandle;
         const id = `${log.transactionHash}:${log.index}`;
 
-        const { eligible, cleartexts, proof } = await cacheProof("withdrawTo", user, handle);
-        if (!eligible) {
-            console.log(`Watcher: withdraw-to insufficient for ${user} (${id})`);
+        const { transferable, cleartexts, proof } = await cacheProof(
+            "withdrawTo",
+            user,
+            handle,
+            log.transactionHash
+        );
+        if (!transferable) {
+            console.log(`Watcher: withdraw-to insufficient noop for ${user} (${id})`);
+            const noopTx = await cEth.completeWithdrawTo(user, cleartexts, proof);
+            await noopTx.wait();
             return;
         }
 
-        const hash = await revealAndCompleteWithdrawTo(user, cleartexts, proof);
+        const hash = await completeWithdrawToWithProof(user, cleartexts, proof);
         console.log(`Watcher: completeWithdrawTo for ${user} → ${hash}`);
     }
 
     async function handleWithdrawRequested(log) {
         const parsed = cEthIface.parseLog(log);
         const user = parsed.args.user;
-        const handle = parsed.args.sufficientHandle;
-        await cacheProof("withdraw", user, handle);
+        const handle = parsed.args.transferableHandle;
+        await cacheProof("withdraw", user, handle, log.transactionHash);
         console.log(`Watcher: cached withdraw proof for ${user} (user must call completeWithdraw)`);
     }
 
     async function handleUnstakeRequested(log, eventName) {
         const parsed = stakingIface.parseLog(log);
         const user = parsed.args.user;
-        const handle = parsed.args.sufficientHandle;
-        await cacheProof("unstake", user, handle);
+        const handle = parsed.args.transferableHandle;
+        await cacheProof("unstake", user, handle, log.transactionHash);
         console.log(`Watcher: cached ${eventName} proof for ${user}`);
     }
 
@@ -188,59 +230,52 @@ export function startV09Watcher({
         running = true;
         try {
             const latest = await provider.getBlockNumber();
-            if (fromBlock > latest) return;
+            const safeHead = Math.max(0, latest - confirmationDepth);
 
-            if (cEth && cEthIface) {
+            if (fromBlock > safeHead) {
+                await drainRetryQueue();
+                return;
+            }
+
+            let headChanged = await detectReorg(safeHead);
+
+            if (!headChanged && cEth && cEthIface) {
                 const withdrawToFilter = cEth.filters.WithdrawToRequested();
                 const withdrawFilter = cEth.filters.WithdrawRequested();
                 const [withdrawToLogs, withdrawLogs] = await Promise.all([
-                    cEth.queryFilter(withdrawToFilter, fromBlock, latest),
-                    cEth.queryFilter(withdrawFilter, fromBlock, latest),
+                    cEth.queryFilter(withdrawToFilter, fromBlock, safeHead),
+                    cEth.queryFilter(withdrawFilter, fromBlock, safeHead),
                 ]);
 
                 for (const log of withdrawToLogs) {
                     const id = `${log.transactionHash}:${log.index}`;
-                    if (processed.has(id)) continue;
-                    processed.add(id);
-                    try {
-                        await handleWithdrawTo(log);
-                    } catch (err) {
-                        console.error(`Watcher: withdraw-to failed (${id}):`, err?.message || err);
-                    }
+                    if (processed.has(id) || retryQueue.has(id)) continue;
+                    await runHandler(id, () => handleWithdrawTo(log));
                 }
 
                 for (const log of withdrawLogs) {
                     const id = `${log.transactionHash}:${log.index}`;
-                    if (processed.has(id)) continue;
-                    processed.add(id);
-                    try {
-                        await handleWithdrawRequested(log);
-                    } catch (err) {
-                        console.error(`Watcher: withdraw cache failed (${id}):`, err?.message || err);
-                    }
+                    if (processed.has(id) || retryQueue.has(id)) continue;
+                    await runHandler(id, () => handleWithdrawRequested(log));
                 }
             }
 
-            if (staking && stakingIface) {
+            if (!headChanged && staking && stakingIface) {
                 const publicFilter = staking.filters.PublicUnstakeRequested();
                 const privateFilter = staking.filters.PrivateUnstakeRequested();
                 const [publicLogs, privateLogs] = await Promise.all([
-                    staking.queryFilter(publicFilter, fromBlock, latest),
-                    staking.queryFilter(privateFilter, fromBlock, latest),
+                    staking.queryFilter(publicFilter, fromBlock, safeHead),
+                    staking.queryFilter(privateFilter, fromBlock, safeHead),
                 ]);
                 for (const log of [...publicLogs, ...privateLogs]) {
                     const id = `${log.transactionHash}:${log.index}`;
-                    if (processed.has(id)) continue;
-                    processed.add(id);
-                    try {
-                        await handleUnstakeRequested(log, log.fragment?.name || "UnstakeRequested");
-                    } catch (err) {
-                        console.error(`Watcher: unstake cache failed (${id}):`, err?.message || err);
-                    }
+                    if (processed.has(id) || retryQueue.has(id)) continue;
+                    await runHandler(id, () => handleUnstakeRequested(log, log.fragment?.name || "UnstakeRequested"));
                 }
             }
 
-            fromBlock = latest + 1;
+            fromBlock = safeHead + 1;
+            await drainRetryQueue();
         } finally {
             running = false;
         }
@@ -257,10 +292,10 @@ export function startV09Watcher({
                     const parsed = cEthIface.parseLog(log);
                     if (kind === "withdraw" && parsed.name === "WithdrawRequested") {
                         user = parsed.args.user;
-                        handle = parsed.args.sufficientHandle;
+                        handle = parsed.args.transferableHandle;
                     } else if (kind === "withdrawTo" && parsed.name === "WithdrawToRequested") {
                         user = parsed.args.user;
-                        handle = parsed.args.sufficientHandle;
+                        handle = parsed.args.transferableHandle;
                     }
                 } catch {
                     /* ignore */
@@ -280,7 +315,7 @@ export function startV09Watcher({
                         parsed.name === "PrivateUnstakeRequested"
                     ) {
                         user = parsed.args.user;
-                        handle = parsed.args.sufficientHandle;
+                        handle = parsed.args.transferableHandle;
                     }
                 } catch {
                     /* ignore */
@@ -292,7 +327,7 @@ export function startV09Watcher({
             throw new Error("Could not resolve user/handle for completion proof");
         }
 
-        return cacheProof(kind, user, handle);
+        return cacheProof(kind, user, handle, stageTxHash);
     }
 
     async function submitPublicExit(item) {
@@ -308,7 +343,9 @@ export function startV09Watcher({
     return {
         async start() {
             await initCursor();
-            console.log(`Watcher: polling from block ${fromBlock} every ${pollMs}ms`);
+            console.log(
+                `Watcher: polling from block ${fromBlock} every ${pollMs}ms (confirmations=${confirmationDepth})`
+            );
             setInterval(() => {
                 pollOnce().catch((err) => console.error("Watcher poll error:", err?.message || err));
             }, pollMs);

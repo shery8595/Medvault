@@ -1,0 +1,184 @@
+name: medvault
+
+services:
+  frontend:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env.local
+        required: false
+      - path: .env.docker.example
+        required: false
+    environment:
+      VITE_PRIVY_APP_ID: ${VITE_PRIVY_APP_ID:-clxxxxxxxxxxxxxxxx}
+      VITE_SUBGRAPH_URL: ${VITE_SUBGRAPH_URL:-https://api.studio.thegraph.com/query/1755644/medvault/v0.2.0}
+      VITE_INDEXER_URL: ${VITE_INDEXER_URL:-http://localhost:3300}
+      VITE_RECLAIM_ALLOW_SKIP: ${VITE_RECLAIM_ALLOW_SKIP:-true}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  relayer:
+    profiles: ["relayer"]
+    build:
+      context: ./relayer
+    ports:
+      - "8787:8787"
+    env_file:
+      - path: relayer/.env
+        required: false
+    environment:
+      PORT: 8787
+      RPC_URL: ${RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  graph-ipfs:
+    image: ipfs/kubo:v0.15.0
+    profiles: ["graph"]
+    ports:
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - graph-ipfs-data:/data/ipfs
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  graph-db:
+    image: postgres:12
+    profiles: ["graph"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: graph-node
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - graph-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d graph-node"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  graph-node:
+    image: graphprotocol/graph-node
+    profiles: ["graph"]
+    depends_on:
+      graph-db:
+        condition: service_healthy
+      graph-ipfs:
+        condition: service_healthy
+    environment:
+      postgres_host: graph-db
+      postgres_user: postgres
+      postgres_pass: postgres
+      postgres_db: graph-node
+      ipfs: graph-ipfs:5001
+      # Local Graph against Sepolia RPC (indexing only; app still uses Studio URL by default)
+      ethereum: sepolia:${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8020:8020"
+      - "8030:8030"
+
+  subgraph-deploy:
+    profiles: ["graph"]
+    image: node:22-bookworm-slim
+    working_dir: /subgraph
+    depends_on:
+      graph-node:
+        condition: service_started
+    volumes:
+      - ./subgraph:/subgraph
+    environment:
+      GRAPH_NODE_URL: http://graph-node:8020/
+    command: >
+      sh -c "npm ci &&
+             node -e \"let n=0; const ping=()=>fetch('http://graph-node:8020/').then(()=>process.exit(0)).catch(()=>++n>60?process.exit(1):setTimeout(ping,1000)); ping();\" &&
+             npm run codegen &&
+             npm run build &&
+             (npm run create-local || true) &&
+             npm run deploy-local"
+    restart: "no"
+
+  mongo:
+    image: mongo:7
+    profiles: ["indexer"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - indexer-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["indexer"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  indexer:
+    profiles: ["indexer"]
+    build:
+      context: .
+      dockerfile: indexer/Dockerfile
+    ports:
+      - "3300:3300"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      INDEXER_PORT: 3300
+      MONGODB_URI: mongodb://mongo:27017/medvault
+      REDIS_URL: redis://redis:6379
+      MEDVAULT_SUBGRAPH_URL: ${VITE_SUBGRAPH_URL:-https://api.studio.thegraph.com/query/1755644/medvault/v0.2.0}
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+      MEDVAULT_NETWORK: sepolia
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3300/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  graph-db-data:
+  graph-ipfs-data:
+  indexer-mongo-data:

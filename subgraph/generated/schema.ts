@@ -2476,8 +2476,8 @@ export class ClaimLifecycle extends Entity {
     this.set("permitHolder", Value.fromBytes(value));
   }
 
-  get sufficientHandle(): Bytes {
-    let value = this.get("sufficientHandle");
+  get transferableHandle(): Bytes {
+    let value = this.get("transferableHandle");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -2485,8 +2485,8 @@ export class ClaimLifecycle extends Entity {
     }
   }
 
-  set sufficientHandle(value: Bytes) {
-    this.set("sufficientHandle", Value.fromBytes(value));
+  set transferableHandle(value: Bytes) {
+    this.set("transferableHandle", Value.fromBytes(value));
   }
 
   get initiatedAt(): BigInt {
@@ -2600,8 +2600,8 @@ export class WithdrawRequest extends Entity {
     this.set("user", Value.fromBytes(value));
   }
 
-  get sufficientHandle(): Bytes {
-    let value = this.get("sufficientHandle");
+  get transferableHandle(): Bytes {
+    let value = this.get("transferableHandle");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -2609,8 +2609,8 @@ export class WithdrawRequest extends Entity {
     }
   }
 
-  set sufficientHandle(value: Bytes) {
-    this.set("sufficientHandle", Value.fromBytes(value));
+  set transferableHandle(value: Bytes) {
+    this.set("transferableHandle", Value.fromBytes(value));
   }
 
   get kind(): string {
@@ -2707,8 +2707,8 @@ export class UnstakeRequest extends Entity {
     this.set("user", Value.fromBytes(value));
   }
 
-  get sufficientHandle(): Bytes {
-    let value = this.get("sufficientHandle");
+  get transferableHandle(): Bytes {
+    let value = this.get("transferableHandle");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -2716,8 +2716,8 @@ export class UnstakeRequest extends Entity {
     }
   }
 
-  set sufficientHandle(value: Bytes) {
-    this.set("sufficientHandle", Value.fromBytes(value));
+  set transferableHandle(value: Bytes) {
+    this.set("transferableHandle", Value.fromBytes(value));
   }
 
   get blockNumber(): BigInt {

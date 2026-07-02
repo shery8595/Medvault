@@ -27,7 +27,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { Link } from "react-router-dom";
-import { useWeb3 } from "../../lib/Web3Context";
+import { friendlyContractError } from "../../lib/contractErrors";
 import {
   getConsentManager,
   getEligibilityEngine,
@@ -51,6 +51,9 @@ import { ethers } from "ethers";
 import { EncryptionAnimation } from "../ui/EncryptionAnimation";
 import { formatPhaseBadge, formatTrialDurationLabel, trialDiscoverDescription } from "../../lib/trialDisplay";
 import { NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE, isNotEligibleForTrialMessage } from "../../lib/relayer";
+import { registerAnonymousParticipantByNullifier } from "../../lib/contracts/sponsorAdapters";
+import { HybridDocumentUploader } from "./HybridDocumentUploader";
+import { PatientDocumentRevokePanel } from "./PatientDocumentRevokePanel";
 
 interface TrialCardProps {
   trial: Trial;
@@ -477,17 +480,17 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
       } catch (precheckErr) {
         console.warn("[Rewards] register:precheck_failed", precheckErr);
       }
-      const tx = await vault.registerAnonymousParticipant(BigInt(trial.id), nullifier);
-      console.log("[Rewards] register:tx_submitted", {
-        trialId: trial.id,
-        txHash: tx.hash,
-      });
-      await tx.wait();
+      const identity = getStoredIdentity();
+      if (!identity) {
+        throw new Error(
+          "No local anonymous identity found. Use the same browser/profile used during registration."
+        );
+      }
+      await registerAnonymousParticipantByNullifier(signer, trial.id, nullifier, identity);
       setIsRegistered(true);
       setIncentiveStatus("Successfully registered in reward enclave!");
       console.log("[Rewards] register:tx_confirmed", {
         trialId: trial.id,
-        txHash: tx.hash,
       });
     } catch (err: any) {
       console.error("Registration failed:", err);
@@ -510,7 +513,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
       if (err.reason?.includes("capacity") || err.message?.includes("capacity")) {
         setIncentiveStatus("Registration failed: Trial participant limit reached (200 max).");
       } else {
-        setIncentiveStatus(`Registration failed: ${err.reason || err.message || "Unknown error"}`);
+        setIncentiveStatus(`Registration failed: ${friendlyContractError(err)}`);
       }
     } finally {
       setIsRegistering(false);
@@ -713,6 +716,16 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
               </div>
             )}
 
+            {!hasApplied && !trial.applicationStatus ? (
+              <HybridDocumentUploader trialId={trial.id} compact className="mt-2" />
+            ) : applyWizardNullifier != null ? (
+              <PatientDocumentRevokePanel
+                nullifier={applyWizardNullifier.toString()}
+                trialId={trial.id}
+                className="mt-2"
+              />
+            ) : null}
+
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200/80 px-3 py-2 text-xs font-semibold w-fit">
                 <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -822,7 +835,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                       <Coins className="h-3.5 w-3.5" />
                     </div>
                     <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider truncate">
-                      {trial.incentivePool?.distributed ? "Payout secured" : "Incentive enclave"}
+                      {trial.incentivePool?.distributed ? "Rewards staged" : "Incentive enclave"}
                     </h5>
                   </div>
                   {trial.incentivePool?.distributed ? (
@@ -837,7 +850,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                 </div>
                 <p className="text-[10px] text-slate-600 leading-relaxed">
                   {trial.incentivePool?.distributed
-                    ? "Rewards are available in your private enclave. Open Medical Vault to reveal and withdraw."
+                    ? "Sponsor staged your entitlement. Confirm receipt in Medical Vault, then claim to your wallet."
                     : "This trial has a funded incentive pool. Register to secure your encrypted reward share."}
                 </p>
                 {trial.incentivePool?.distributed ? (
@@ -1179,6 +1192,16 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                 </p>
               )}
 
+              {!trial.applicationStatus && !hasApplied ? (
+                <HybridDocumentUploader trialId={trial.id} className="mb-3" />
+              ) : applyWizardNullifier != null ? (
+                <PatientDocumentRevokePanel
+                  nullifier={applyWizardNullifier.toString()}
+                  trialId={trial.id}
+                  className="mb-3"
+                />
+              ) : null}
+
               <Button
                 className={cn(
                   "w-full shadow-lg gap-2 font-bold h-11",
@@ -1261,7 +1284,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                           <Coins className="h-3.5 w-3.5" />
                         </div>
                         <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                          {trial.incentivePool?.distributed ? "Payout Secured" : "Incentive Enclave"}
+                          {trial.incentivePool?.distributed ? "Rewards Staged" : "Incentive Enclave"}
                         </h5>
                       </div>
                       {trial.incentivePool?.distributed ? (
@@ -1272,7 +1295,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                     </div>
                     <p className="text-[10px] text-slate-500 leading-relaxed">
                       {trial.incentivePool?.distributed
-                        ? "Rewards have been deposited into your private reward enclave. You can now reveal and withdraw them from your Medical Vault."
+                        ? "Sponsor staged your entitlement. Confirm receipt in Medical Vault, then claim to your wallet."
                         : "This trial has a verified incentive pool. Register to secure your encrypted reward share upon trial completion."}
                     </p>
                     {trial.incentivePool?.distributed ? (
@@ -1504,7 +1527,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                                       <Coins className="h-3.5 w-3.5" />
                                     </div>
                                     <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                                      {trial.incentivePool?.distributed ? "Payout Secured" : "Incentive Enclave"}
+                                      {trial.incentivePool?.distributed ? "Rewards Staged" : "Incentive Enclave"}
                                     </h5>
                                   </div>
                                   {trial.incentivePool?.distributed ? (
@@ -1515,7 +1538,7 @@ export function TrialCard({ trial, index = 0, variant = "default", onApplySucces
                                 </div>
                                 <p className="text-[10px] text-slate-500 leading-relaxed">
                                   {trial.incentivePool?.distributed
-                                    ? "Rewards have been deposited into your private reward enclave. You can now reveal and withdraw them from your Medical Vault."
+                                    ? "Sponsor staged your entitlement. Confirm receipt in Medical Vault, then claim to your wallet."
                                     : "This trial has a verified incentive pool. Register to secure your encrypted reward share upon trial completion."}
                                 </p>
                                 {trial.incentivePool?.distributed ? (

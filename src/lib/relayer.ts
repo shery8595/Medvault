@@ -1,21 +1,26 @@
-import type { Provider } from 'ethers';
+import { ethers, type Provider } from 'ethers';
 import type { Identity } from '@semaphore-protocol/identity';
 import type { SemaphoreProof } from './semaphore';
 import {
     generateAnonymousProof,
     getEphemeralSigner,
+    hasAppliedToTrial,
     parseAnonymousApplyStagedFinalCt,
     toContractSemaphoreProof,
     signAnonymousApplyPermit,
+    signAnonymousApplyCancelPermit,
     signConsentWalletBinding,
 } from './semaphore';
-import { getMedVaultRegistry, getEligibilityEngine, getTrialManager, resolveChainIdFrom } from './contracts';
+import { getMedVaultRegistry, getEligibilityEngine, getTrialManager, resolveChainIdFrom, requireChainId } from './contracts';
 import { FheTypes, decryptForViewWithEphemeral } from './fhe';
 import { generateEligibilityProof } from './noir';
 import { BN254_FIELD_ORDER } from './criteriaSchema';
 import { fetchTrialCriteria } from './trialCriteria';
 import { getStoredPatientProfilePlain } from './profileStorage';
 import { getMedVaultRelayerUrl } from './mobile';
+import { resolveDocumentBindingForApply } from './patientDocumentUpload';
+import { tryGetPatientDocumentStoreAddress } from './contracts';
+import type { DocumentBindingInputs } from './noir';
 
 function serializeProofForRelay(proof: SemaphoreProof) {
     return {
@@ -30,6 +35,8 @@ function serializeProofForRelay(proof: SemaphoreProof) {
 
 export const NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE =
     "You don't meet this trial's eligibility requirements. Your profile was evaluated privately on-chain—you won't be able to submit this application. Try another trial, or update your encrypted health profile if your situation changes.";
+
+export { isStaleStagePermitError, friendlyContractError } from "./contractErrors";
 
 export function isNotEligibleForTrialMessage(text: string | null | undefined): boolean {
     if (!text) return false;
@@ -71,24 +78,86 @@ async function postRelay(path: string, body: Record<string, unknown>): Promise<{
     };
 }
 
-/** Stage-only relay (tx 1). */
+/** Cancel staged anonymous apply via authorized relayer (`onlyAuthorizedRelayer`). */
+export async function cancelViaRelayer(
+    trialId: number | bigint,
+    proof: SemaphoreProof,
+    commitment: string,
+    permitRecipient: string,
+    deadline: bigint,
+    permitSignature: string,
+    cancelSignature: string
+): Promise<string> {
+    const { txHash } = await postRelay('/relay/cancel-stage', {
+        trialId: Number(trialId),
+        proof: serializeProofForRelay(proof),
+        commitment,
+        permitRecipient,
+        deadline: deadline.toString(),
+        permitSignature,
+        cancelSignature,
+    });
+    return txHash;
+}
+
 export async function stageViaRelayer(
     trialId: number | bigint,
     proof: SemaphoreProof,
     commitment: string,
-    permitRecipient: string
+    permitRecipient: string,
+    deadline: bigint,
+    permitSignature: string
 ): Promise<string> {
     const { txHash } = await postRelay('/relay/apply-stage', {
         trialId: Number(trialId),
         proof: serializeProofForRelay(proof),
         commitment: commitment.toString(),
-        permitRecipient
+        permitRecipient,
+        deadline: deadline.toString(),
+        permitSignature,
     });
     return txHash;
 }
 
 /**
+ * P3.2: Submit finalize directly from patient wallet (open finalize; payout integrity is FHE.select-gated).
+ */
+export async function finalizeAnonymousApplyDirect(
+    trialId: number | bigint,
+    proof: SemaphoreProof,
+    commitment: string,
+    permitRecipient: string,
+    consentSigner: import('ethers').Signer,
+    consentWallet: string,
+    deadline: bigint,
+    permitSignature: string,
+    consentWalletSignature: string,
+    noirProof: string,
+    publicInputs: string[]
+): Promise<string> {
+    const registry = getMedVaultRegistry(consentSigner);
+    const tx = await registry
+        .connect(consentSigner)
+        .finalizeAnonymousApplyWithProof(
+            BigInt(trialId),
+            toContractSemaphoreProof(proof),
+            BigInt(commitment),
+            permitRecipient,
+            consentWallet,
+            deadline,
+            permitSignature,
+            consentWalletSignature,
+            noirProof,
+            publicInputs
+        );
+    const receipt = await tx.wait();
+    if (!receipt) throw new Error('Finalize receipt not found');
+    return receipt.hash;
+}
+
+/**
  * Finalize relay with Noir proof (client generates proof after local FHE decrypt).
+ * Optional gasless path when relayer is authorized and patient uses relayer as permitRecipient.
  */
 export async function finalizeViaRelayerWithProof(
     trialId: number | bigint,
@@ -100,8 +169,7 @@ export async function finalizeViaRelayerWithProof(
     permitSignature: string,
     consentWalletSignature: string,
     noirProof: string,
-    publicInputs: string[],
-    eligible: boolean
+    publicInputs: string[]
 ): Promise<string> {
     const { txHash } = await postRelay('/relay/apply-finalize', {
         trialId: Number(trialId),
@@ -114,13 +182,12 @@ export async function finalizeViaRelayerWithProof(
         consentWalletSignature,
         noirProof,
         publicInputs,
-        eligible,
     });
     return txHash;
 }
 
 /**
- * Full anonymous apply: relayer stage → browser decrypt + Noir proof → relayer finalize.
+ * Full anonymous apply: relayer stage → browser decrypt + Noir proof → patient direct finalize (P3.2).
  */
 export async function submitViaRelayer(
     trialId: number | bigint,
@@ -129,32 +196,72 @@ export async function submitViaRelayer(
     permitRecipient: string,
     ctx: { provider: Provider; identity: Identity; consentSigner: import('ethers').Signer }
 ): Promise<string> {
-    const stageTxHash = await stageViaRelayer(trialId, proof, commitment, permitRecipient);
-
     const provider = ctx.provider;
+    const registry = getMedVaultRegistry(provider);
+    const registryAddr = await registry.getAddress();
+    const chainId = requireChainId(await resolveChainIdFrom(ctx.consentSigner));
+    const ephemeralSigner = getEphemeralSigner(ctx.identity, provider);
+
+    const stageDeadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const stagePermitSignature = await signAnonymousApplyPermit(
+        ephemeralSigner,
+        registryAddr,
+        chainId,
+        {
+            trialId: BigInt(trialId),
+            commitment: BigInt(commitment),
+            nullifier: proof.nullifier,
+            permitRecipient,
+            deadline: stageDeadline,
+        }
+    );
+
+    const stageTxHash = await stageViaRelayer(
+        trialId,
+        proof,
+        commitment,
+        permitRecipient,
+        stageDeadline,
+        stagePermitSignature
+    );
+
     const receipt = await provider.getTransactionReceipt(stageTxHash);
     if (!receipt) throw new Error('Stage receipt not found');
 
-    const registry = getMedVaultRegistry(provider);
-    const registryAddr = await registry.getAddress();
     const finalCt = parseAnonymousApplyStagedFinalCt(receipt, registryAddr);
-    const chainId = await resolveChainIdFrom(provider);
     const engine = getEligibilityEngine(provider, chainId);
     const engineAddress = await engine.getAddress();
 
-    const ephemeralSigner = getEphemeralSigner(ctx.identity, provider);
     const eligible = Boolean(
         await decryptForViewWithEphemeral(ephemeralSigner, finalCt, FheTypes.Bool, engineAddress)
     );
 
     const proofFresh = await generateAnonymousProof(ctx.identity, provider, trialId, permitRecipient);
 
-    if (!eligible) {
-        await registry.cancelAnonymousApplyStage(
-            BigInt(trialId),
-            toContractSemaphoreProof(proofFresh),
-            BigInt(commitment),
-            permitRecipient
+    const trialManager = getTrialManager(provider, chainId);
+    const trial = await trialManager.getTrial(BigInt(trialId));
+    const encryptedCriteria = Boolean(trial.encryptedCriteria);
+
+    if (!eligible && !encryptedCriteria) {
+        const cancelSignature = await signAnonymousApplyCancelPermit(
+            ephemeralSigner,
+            registryAddr,
+            chainId,
+            {
+                trialId: BigInt(trialId),
+                nullifier: proofFresh.nullifier,
+                permitRecipient,
+                deadline: stageDeadline,
+            }
+        );
+        await cancelViaRelayer(
+            trialId,
+            proofFresh,
+            commitment,
+            permitRecipient,
+            stageDeadline,
+            stagePermitSignature,
+            cancelSignature
         );
         throw new Error(NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE);
     }
@@ -165,9 +272,7 @@ export async function submitViaRelayer(
     }
 
     const criteria = await fetchTrialCriteria(provider, BigInt(trialId), chainId);
-    const trialManager = getTrialManager(provider, chainId);
-    const trial = await trialManager.getTrial(BigInt(trialId));
-    const proofOptions = trial.encryptedCriteria
+    const proofOptions = encryptedCriteria
         ? {
               criteriaMode: 1 as const,
               encryptedCriteriaBindingHash:
@@ -175,21 +280,33 @@ export async function submitViaRelayer(
                   BN254_FIELD_ORDER,
           }
         : { criteriaMode: 0 as const };
+
+    const docStoreAddr = tryGetPatientDocumentStoreAddress(chainId);
+    let documentBinding: DocumentBindingInputs | undefined;
+    if (docStoreAddr) {
+        documentBinding = await resolveDocumentBindingForApply(
+            ephemeralSigner,
+            proofFresh.nullifier,
+            BigInt(trialId),
+            docStoreAddr
+        );
+    }
+
     const { proofBytes, publicInputs } = await generateEligibilityProof(
         ctx.identity,
         BigInt(commitment),
         BigInt(trialId),
         profile,
         criteria,
-        true,
+        encryptedCriteria ? true : eligible,
         finalCt,
-        proofOptions
+        {
+            ...proofOptions,
+            ...(documentBinding ? { documentBinding } : {}),
+        }
     );
 
-    const registryAddr = await registry.getAddress();
-    const chainId = await resolveChainIdFrom(ctx.consentSigner);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-    const ephemeralSigner = getEphemeralSigner(ctx.identity, provider);
     const permitSignature = await signAnonymousApplyPermit(
         ephemeralSigner,
         registryAddr,
@@ -215,28 +332,70 @@ export async function submitViaRelayer(
         }
     );
 
-    return finalizeViaRelayerWithProof(
+    return finalizeAnonymousApplyDirect(
         trialId,
         proofFresh,
         commitment,
         permitRecipient,
+        ctx.consentSigner,
         consentWallet,
         deadline,
         permitSignature,
         consentWalletSignature,
         proofBytes,
-        publicInputs,
-        true
-    );
+        publicInputs
+    ).then(async (txHash) => {
+        const applied = await hasAppliedToTrial(provider, trialId, proofFresh.nullifier);
+        if (applied) return txHash;
+
+        const outcome = await engine.silentApplyOutcome(proofFresh.nullifier, BigInt(trialId));
+        if (Number(outcome) === 2) {
+            throw new Error(NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE);
+        }
+        throw new Error(
+            "Application finalize confirmed but trial enrollment was not recorded. Check Applied Trials or retry."
+        );
+    });
 }
 
 export type CompletionProofKind = 'withdraw' | 'unstake' | 'withdrawTo';
+
+export function buildCompletionProofDigest(params: {
+    kind: CompletionProofKind;
+    user: string;
+    handle?: string;
+    stageTxHash?: string;
+}): string {
+    return ethers.solidityPackedKeccak256(
+        ['string', 'address', 'bytes32', 'string'],
+        [
+            params.kind,
+            ethers.getAddress(params.user),
+            params.handle ?? ethers.ZeroHash,
+            params.stageTxHash ?? '',
+        ]
+    );
+}
+
+export async function signCompletionProofRequest(
+    signer: import('ethers').Signer,
+    params: {
+        kind: CompletionProofKind;
+        user: string;
+        handle?: string;
+        stageTxHash?: string;
+    }
+): Promise<string> {
+    const digest = buildCompletionProofDigest(params);
+    return signer.signMessage(ethers.getBytes(digest));
+}
 
 export async function fetchCompletionProof(params: {
     kind: CompletionProofKind;
     stageTxHash: string;
     user?: string;
     handle?: string;
+    callerSignature: string;
 }): Promise<{ eligible: boolean; cleartexts: string; decryptionProof: string }> {
     const relayerUrl = getMedVaultRelayerUrl();
     const response = await fetch(`${relayerUrl}/relay/completion-proof`, {

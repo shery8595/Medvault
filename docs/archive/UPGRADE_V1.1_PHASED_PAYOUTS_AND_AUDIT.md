@@ -1,5 +1,7 @@
 # MedVault V1.1 Upgrade: Phased Payouts & Regulatory Audit Trail
 
+> **Historical design — shipped (archived 2026-06-30).** `TrialMilestoneManager` and `DataAccessLog` ship in production. Current docs: [Smart Contracts](https://med-vault.xyz/docs/contracts), [ZERO_REVELATION_REWARDS.md](../ZERO_REVELATION_REWARDS.md), [`docs/archive/README.md`](./README.md).
+
 This document outlines the proposed architecture for the V1.1 upgrade of MedVault. The goal is to move beyond "all-or-nothing" trial completions and introduce enterprise-grade observability.
 
 ## 1. Multi-Phase Trial Management (`TrialMilestoneManager.sol`)

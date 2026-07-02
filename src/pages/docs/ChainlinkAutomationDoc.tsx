@@ -37,17 +37,59 @@ export function ChainlinkAutomationDoc() {
                 </ul>
 
                 <Callout type="info" title="Screening (milestone 0) only">
-                    At trial end, <code>performUpkeep</code> calls <code>vault.distribute(trialId)</code>, which pays{" "}
-                    <strong>milestone 0 (screening)</strong> to all registered participants and emits{" "}
-                    <code>MilestoneRewardsDistributed</code> for index <code>0</code>. Later milestones are released by
-                    the sponsor via <code>distributePartial</code> / <code>distributeMilestoneToParticipant</code> on{" "}
+                    At trial end, <code>performUpkeep</code> calls <code>vault.distribute(trialId)</code>, which{" "}
+                    <strong>stages milestone 0 (screening)</strong> entitlements for registered participants and emits{" "}
+                    <code>MilestoneRewardsDistributed</code> for index <code>0</code>. Patients must{" "}
+                    <code>confirmReceipt</code> to receive cETH. Later milestones are staged by the sponsor via{" "}
+                    <code>distributePartial</code> / <code>distributeMilestoneToParticipant</code> on{" "}
                     <strong>SponsorIncentiveVault</strong>.
                 </Callout>
 
-                <h2>Chainlink forwarder</h2>
+                <h2>Task type 1 only</h2>
                 <p>
-                    The owner sets <code>chainlinkForwarder</code> via <code>setChainlinkForwarder</code>. Only that address
-                    (or <code>owner</code>) may call <code>performUpkeep</code>, matching Chainlink&apos;s forwarder pattern.
+                    <code>performUpkeep</code> decodes a single task type: <strong><code>1</code></strong> — finalize an
+                    expired trial. It sets <code>finalized[trialId]</code>, calls <code>vault.distribute(trialId)</code>{" "}
+                    (milestone 0 / screening staging), then <code>trialManager.deactivateTrial(trialId)</code>. No other task types
+                    are implemented. <code>MedVaultAutomation</code> is <strong>not indexed</strong> by the subgraph.
+                </p>
+
+                <h2>Ops scripts</h2>
+                <div className="not-prose overflow-x-auto my-4 rounded-xl border border-slate-200 text-xs">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="text-left px-3 py-2 font-bold">Script</th>
+                                <th className="text-left px-3 py-2 font-bold">npm alias</th>
+                                <th className="text-left px-3 py-2 font-bold">Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-slate-600">
+                            <tr className="border-b border-slate-100">
+                                <td className="px-3 py-2 font-mono">set-chainlink-forwarder.ts</td>
+                                <td className="px-3 py-2 font-mono">deploy:chainlink-forwarder:sepolia</td>
+                                <td className="px-3 py-2">Schedule/apply real forwarder (2-day timelock)</td>
+                            </tr>
+                            <tr className="border-b border-slate-100">
+                                <td className="px-3 py-2 font-mono">diagnose-automation-upkeep.ts</td>
+                                <td className="px-3 py-2">—</td>
+                                <td className="px-3 py-2">Print checkUpkeep, forwarder, trial expiry state</td>
+                            </tr>
+                            <tr className="border-b border-slate-100">
+                                <td className="px-3 py-2 font-mono">finish-wiring.ts</td>
+                                <td className="px-3 py-2 font-mono">deploy:wiring:sepolia</td>
+                                <td className="px-3 py-2">Apply automation/vault timelocks after deploy</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>II. Chainlink forwarder</h2>
+                <p>
+                    The owner sets <code>chainlinkForwarder</code> via{" "}
+                    <code>scheduleChainlinkForwarder</code> / <code>applyChainlinkForwarder</code> (2-day timelock on live
+                    networks). Only that address (or <code>owner</code>) may call <code>performUpkeep</code>, matching
+                    Chainlink&apos;s forwarder pattern. The constructor requires a <strong>non-zero</strong> placeholder
+                    at deploy.
                 </p>
 
                 <h2>Relationship to Chainlink Price Feeds</h2>
@@ -65,8 +107,9 @@ export function ChainlinkAutomationDoc() {
                 <ul>
                     <li>Deploy <code>MedVaultAutomation</code> with <code>TrialManager</code> and vault addresses.</li>
                     <li>
-                        Ensure <code>TrialManager.setAutomationContract</code> points at this automation contract so new
-                        trials call <code>onTrialCreated</code>.
+                        Ensure <code>TrialManager.scheduleAutomationContract</code> /{" "}
+                        <code>applyAutomationContract</code> points at this automation contract so new trials call{" "}
+                        <code>onTrialCreated</code> (instant <code>setAutomationContract</code> reverts).
                     </li>
                     <li>
                         Register an upkeep in the Chainlink Automation UI for this contract (
@@ -75,8 +118,10 @@ export function ChainlinkAutomationDoc() {
                     <li>
                         After registration, copy the <strong>Forwarder address</strong> from your upkeep&apos;s Details page
                         (per-upkeep, not a global network address) and call{" "}
-                        <code>setChainlinkForwarder(forwarder)</code> on <code>MedVaultAutomation</code>. Until this is set,
-                        Chainlink&apos;s simulated <code>performUpkeep</code> reverts and the upkeep never shows a run date.
+                        <code>scheduleChainlinkForwarder(forwarder)</code> / <code>applyChainlinkForwarder</code> on{" "}
+                        <code>MedVaultAutomation</code>, or <code>npm run deploy:chainlink-forwarder:sepolia</code>.
+                        Until the forwarder is applied, Chainlink&apos;s simulated <code>performUpkeep</code> reverts and
+                        the upkeep never shows a run date.
                     </li>
                     <li>
                         <code>checkData</code> can be empty (<code>0x</code>) — the contract ignores it.

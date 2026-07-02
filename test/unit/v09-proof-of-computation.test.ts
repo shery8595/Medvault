@@ -8,6 +8,7 @@ import { ELIGIBLE_PROFILE, PROFILE_FAIL_AGE } from "../../test-support/fixtures/
 import { deriveNullifier } from "../../test-support/semaphore";
 import { impersonateAccount } from "../../test-support/signers";
 import { expectRevert } from "../../test-support/assertions";
+import { authorizeCethContract } from "../../test-support/timelock";
 import {
     assertFhevmMock,
     mockPublicDecryptProof,
@@ -25,13 +26,13 @@ import {
 import { confidentialStakeAndComplete, completePrivateUnstakeFromReceipt } from "../../test-support/staking";
 import { generateTestEligibilityProof } from "../../test-support/noirProof";
 
-describe("Unit: v0.9 proof-of-computation flows", function () {
+describe("Unit: transferable-amount proof-of-computation (SUF)", function () {
     before(function () {
         assertFhevmMock();
     });
 
     describe("ConfidentialETH.requestWithdraw → completeWithdraw", function () {
-        it("V09-01: sufficient proof completes withdraw and transfers ETH", async function () {
+        it("SUF-01: sufficient proof completes withdraw and transfers ETH", async function () {
             const stack = await deployMedVaultStack();
             const { patient, confidentialETH } = stack;
 
@@ -48,6 +49,27 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                 "user"
             );
             expect(withdrawnUser.toLowerCase()).to.equal(patient.address.toLowerCase());
+        });
+
+        it("SUF-02: insufficient withdraw emits InsufficientWithdrawNoop (no revert)", async function () {
+            const stack = await deployMedVaultStack();
+            const { patient, confidentialETH } = stack;
+
+            await confidentialETH.connect(patient).deposit({ value: CET_MIN_DEPOSIT_WEI });
+            const reqTx = await requestEncryptedWithdraw(confidentialETH, patient, 2);
+            const reqRc = await reqTx.wait();
+            const transferableHandle = parseEventArg(
+                reqRc!,
+                confidentialETH.interface,
+                "WithdrawRequested",
+                "transferableHandle"
+            );
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
+            const completeTx = await confidentialETH
+                .connect(patient)
+                .completeWithdraw(cleartexts, proof);
+            await expect(completeTx).to.emit(confidentialETH, "InsufficientWithdrawNoop");
+            await expect(completeTx).to.not.emit(confidentialETH, "Withdrawal");
         });
 
         it("V09-02: blocks concurrent requestWithdraw while pending", async function () {
@@ -78,43 +100,69 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
             await confidentialETH.connect(patient).cancelPendingWithdraw();
         });
 
-        it("V09-04: forged proof reverts with KMSInvalidSigner", async function () {
+        it("SUF-03: forged transferable proof reverts with KMSInvalidSigner", async function () {
             const stack = await deployMedVaultStack();
             const { patient, confidentialETH } = stack;
 
             await confidentialETH.connect(patient).deposit({ value: CET_MIN_DEPOSIT_WEI });
             const reqTx = await requestEncryptedWithdraw(confidentialETH, patient, 1);
             const reqRc = await reqTx.wait();
-            const sufficientHandle = parseEventArg(
+            const transferableHandle = parseEventArg(
                 reqRc!,
                 confidentialETH.interface,
                 "WithdrawRequested",
-                "sufficientHandle"
+                "transferableHandle"
             );
 
-            const { cleartexts, proof } = await mockPublicDecryptProof(sufficientHandle);
-            const forgedCleartexts = ethers.AbiCoder.defaultAbiCoder().encode(["bool"], [false]);
-
-            const revealTx = await confidentialETH
-                .connect(patient)
-                .revealWithdrawAmount(cleartexts, proof);
-            const revealRc = await revealTx.wait();
-            const amountHandle = parseEventArg(
-                revealRc!,
-                confidentialETH.interface,
-                "WithdrawAmountRevealed",
-                "amountHandle"
-            );
-            const amount = await mockPublicDecryptProof(amountHandle);
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
+            const forgedCleartexts = ethers.AbiCoder.defaultAbiCoder().encode(["uint64"], [0n]);
 
             await expectRevert(
-                confidentialETH.connect(patient).completeWithdraw(forgedCleartexts, amount.proof),
+                confidentialETH.connect(patient).completeWithdraw(forgedCleartexts, proof),
                 /KMSInvalidSigner|InvalidKMSSignatures/
             );
             await expectRevert(
-                confidentialETH.connect(patient).completeWithdraw(amount.cleartexts, amount.proof + "00"),
+                confidentialETH.connect(patient).completeWithdraw(cleartexts, proof + "00"),
                 /KMSInvalidSigner|InvalidKMSSignatures/
             );
+        });
+    });
+
+    describe("ConfidentialETH.transferEncrypted (homomorphic)", function () {
+        it("SUF-04: transferEncrypted emits only EncryptedTransfer (no public decrypt handle)", async function () {
+            const stack = await deployMedVaultStack();
+            const vaultAddr = await stack.sponsorIncentiveVault.getAddress();
+            const vaultSigner = await impersonateAccount(vaultAddr);
+            await ethers.provider.send("hardhat_setBalance", [vaultAddr, "0x1000000000000000000"]);
+            await stack.confidentialETH
+                .connect(vaultSigner)
+                .depositFor(vaultAddr, { value: CET_MIN_DEPOSIT_WEI * 2n });
+            const bal = await stack.confidentialETH.connect(vaultSigner).getBalance(vaultAddr);
+            const { transferEncryptedWithProof } = await import("../../test-support/transfer");
+            const tx = await transferEncryptedWithProof(
+                stack.confidentialETH,
+                vaultSigner,
+                vaultAddr,
+                stack.sponsor.address,
+                bal
+            );
+            const rc = await tx.wait();
+            const parsed = (rc?.logs ?? [])
+                .map((l) => {
+                    try {
+                        return stack.confidentialETH.interface.parseLog(l);
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter((p): p is NonNullable<typeof p> => p !== null);
+            expect(parsed.some((p) => p.name === "EncryptedTransfer")).to.equal(true);
+            expect(parsed.some((p) => p.name === "TransferSufficiencyPrepared")).to.equal(false);
+            expect(parsed.some((p) => p.name === "WithdrawRequested")).to.equal(false);
+            const sponsorBal = await stack.confidentialETH
+                .connect(stack.sponsor)
+                .getBalance(stack.sponsor.address);
+            expect(coerceFheHandle(sponsorBal)).to.be.gt(0n);
         });
     });
 
@@ -133,13 +181,15 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                 vaultSigner,
                 stack.patient.address,
                 destination,
-                1
+                1,
+                stack.patient
             );
             const reqRc = await reqTx.wait();
             const destBefore = await ethers.provider.getBalance(destination);
 
             await completeEncryptedWithdrawTo(
                 stack.confidentialETH,
+                await stack.sponsorIncentiveVault.getAddress(),
                 stack.owner,
                 stack.patient.address,
                 reqRc!
@@ -163,7 +213,10 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                         stack.patient.address,
                         stack.stranger.address,
                         encrypted.handle,
-                        encrypted.inputProof
+                        encrypted.inputProof,
+                        0n,
+                        BigInt((await time.latest()) + 3600),
+                        "0x" + "00".repeat(130)
                     ),
                 /Not authorized/
             );
@@ -187,11 +240,16 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                 AWETH_SEPOLIA
             );
             await stakingManager.waitForDeployment();
-            await stack.confidentialETH.authorizeContract(await stakingManager.getAddress());
+            await authorizeCethContract(
+                stack.confidentialETH,
+                stack.owner,
+                await stakingManager.getAddress(),
+                true
+            );
             return { ...stack, stakingManager, mockAave };
         }
 
-        it("V09-07: sufficient proof completes public unstake", async function () {
+        it("SUF-07 / V09-07: sufficient public unstake completes", async function () {
             const { stakingManager, patient } = await deployStakingStack();
             const stakeAmount = CET_MIN_DEPOSIT_WEI * 2n;
 
@@ -206,16 +264,43 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
 
             const reqTx = await stakingManager.connect(patient).requestPublicUnstake(stakeAmount);
             const reqRc = await reqTx.wait();
-            const sufficientHandle = parseEventArg(
+            const transferableHandle = parseEventArg(
                 reqRc!,
                 stakingManager.interface,
                 "PublicUnstakeRequested",
-                "sufficientHandle"
+                "transferableHandle"
             );
 
-            const { cleartexts, proof } = await mockPublicDecryptProof(sufficientHandle);
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
             const unstakeTx = await stakingManager.connect(patient).completePublicUnstake(cleartexts, proof);
             await expect(unstakeTx).to.emit(stakingManager, "PublicUnstaked").withArgs(patient.address);
+        });
+
+        it("SUF-07: insufficient public unstake completes as noop (no PublicUnstaked)", async function () {
+            const { stakingManager, patient } = await deployStakingStack();
+            const stakeAmount = CET_MIN_DEPOSIT_WEI;
+
+            await stakingManager.connect(patient).stake({ value: stakeAmount });
+
+            const awethMock = await ethers.getContractAt("MockAave", AWETH_SEPOLIA);
+            const gatewayMock = await ethers.getContractAt("MockAave", WETH_GATEWAY_SEPOLIA);
+            const stakingAddr = await stakingManager.getAddress();
+            await awethMock.testCredit(patient.address, stakeAmount);
+            await gatewayMock.testCredit(stakingAddr, stakeAmount);
+            await awethMock.connect(patient).approve(stakingAddr, stakeAmount);
+
+            const reqTx = await stakingManager.connect(patient).requestPublicUnstake(stakeAmount * 2n);
+            const reqRc = await reqTx.wait();
+            const transferableHandle = parseEventArg(
+                reqRc!,
+                stakingManager.interface,
+                "PublicUnstakeRequested",
+                "transferableHandle"
+            );
+
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
+            const unstakeTx = await stakingManager.connect(patient).completePublicUnstake(cleartexts, proof);
+            await expect(unstakeTx).to.not.emit(stakingManager, "PublicUnstaked");
         });
 
         it("V09-08: cancelPendingUnstake after timeout", async function () {
@@ -240,7 +325,12 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                 AWETH_SEPOLIA
             );
             await stakingManager.waitForDeployment();
-            await stack.confidentialETH.authorizeContract(await stakingManager.getAddress());
+            await authorizeCethContract(
+                stack.confidentialETH,
+                stack.owner,
+                await stakingManager.getAddress(),
+                true
+            );
             return { ...stack, stakingManager };
         }
 
@@ -274,8 +364,59 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
             );
             await expect(completeTx).to.emit(stakingManager, "PrivateUnstaked").withArgs(patient.address);
 
-            const balanceHandle = await confidentialETH.getBalance(patient.address);
+            const balanceHandle = await confidentialETH.connect(patient).getBalance(patient.address);
             expect(coerceFheHandle(balanceHandle)).to.be.gt(0n);
+        });
+
+        it("SUF-07: deprecated confidential stake paths revert (Use stakeAndLock)", async function () {
+            const { stakingManager, patient, confidentialETH } = await deployPrivateStakingStack();
+            const stakingAddr = await stakingManager.getAddress();
+
+            await confidentialETH.connect(patient).deposit({ value: CET_MIN_DEPOSIT_WEI });
+            const encStake = await createEncryptedUint64(stakingAddr, patient.address, 2);
+            await expectRevert(
+                stakingManager
+                    .connect(patient)
+                    .requestConfidentialStake(encStake.handle, encStake.inputProof),
+                /Use stakeAndLock/
+            );
+
+            const { cleartexts, proof } = { cleartexts: "0x", proof: "0x" };
+            await expectRevert(
+                stakingManager.connect(patient).completeConfidentialStake(cleartexts, proof),
+                /Use stakeAndLock/
+            );
+        });
+
+        it("SUF-07: insufficient private unstake completes as noop (no PrivateUnstaked)", async function () {
+            const { stakingManager, patient, confidentialETH } = await deployPrivateStakingStack();
+            const stakingAddr = await stakingManager.getAddress();
+
+            await confidentialETH.connect(patient).deposit({ value: CET_MIN_DEPOSIT_WEI * 2n });
+            await confidentialStakeAndComplete(
+                stakingManager,
+                confidentialETH,
+                patient,
+                patient.address,
+                1
+            );
+
+            const encUnstake = await createEncryptedUint64(stakingAddr, patient.address, 2);
+            const reqTx = await stakingManager
+                .connect(patient)
+                .requestPrivateUnstake(encUnstake.handle, encUnstake.inputProof);
+            const reqRc = await reqTx.wait();
+            const transferableHandle = parseEventArg(
+                reqRc!,
+                stakingManager.interface,
+                "PrivateUnstakeRequested",
+                "transferableHandle"
+            );
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
+            const completeTx = await stakingManager
+                .connect(patient)
+                .completePrivateUnstake(cleartexts, proof);
+            await expect(completeTx).to.not.emit(stakingManager, "PrivateUnstaked");
         });
 
         it("V09-10: private unstake event omits amount", async function () {
@@ -320,7 +461,7 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
     describe("EligibilityEngine.finalizeAnonymousEligibilityWithProof", function () {
         async function stageEligible(stack: Awaited<ReturnType<typeof deployMedVaultStack>>) {
             const id = new Identity();
-            await registerPatientOnRegistry(
+            const { profileSalt } = await registerPatientOnRegistry(
                 stack,
                 stack.patient,
                 id.commitment,
@@ -345,18 +486,20 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                 "AnonymousEligibilityStaged",
                 "finalCt"
             );
-            return { trialId, nullifier, finalCt, registrySigner, commitment: id.commitment, id };
+            return { trialId, nullifier, finalCt, registrySigner, commitment: id.commitment, id, profileSalt };
         }
 
         it("V09-11: eligible finalize persists anonymousResults", async function () {
             const stack = await deployMedVaultStack();
-            const { trialId, nullifier, finalCt, registrySigner, commitment, id } = await stageEligible(stack);
+            const { trialId, nullifier, finalCt, registrySigner, commitment, id, profileSalt } =
+                await stageEligible(stack);
 
             const { proofBytes, publicInputs } = await generateTestEligibilityProof({
                 identity: id,
                 commitment,
                 trialId,
                 profile: ELIGIBLE_PROFILE,
+                profileSalt,
                 eligible: true,
                 fheStageHandle: finalCt,
             });
@@ -370,9 +513,8 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                     stack.patient.address,
                     stack.patient.address,
                     proofBytes,
-                    publicInputs,
-                    true
-                );
+                    publicInputs
+            );
 
             const result = await stack.eligibilityEngine.getAnonymousResult(nullifier, trialId);
             expect(coerceFheHandle(result)).to.be.gt(0n);
@@ -416,7 +558,7 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
         it("V09-13: forged noir proof reverts", async function () {
             const stack = await deployMedVaultStack();
             const { trialId, nullifier, registrySigner, commitment } = await stageEligible(stack);
-            const bogusInputs = Array.from({ length: 16 }, () => ethers.ZeroHash);
+            const bogusInputs = Array.from({ length: 25 }, () => ethers.ZeroHash);
 
             await expectRevert(
                 stack.eligibilityEngine
@@ -428,9 +570,8 @@ describe("Unit: v0.9 proof-of-computation flows", function () {
                     stack.patient.address,
                     stack.patient.address,
                     "0x" + "00".repeat(128),
-                        bogusInputs,
-                        true
-                    ),
+                        bogusInputs
+                ),
                 /Invalid Noir proof|reverted/
             );
         });

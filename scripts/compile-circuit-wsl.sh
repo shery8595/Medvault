@@ -4,9 +4,7 @@ set -eu
 export PATH="$HOME/.nargo/bin:$HOME/.bb:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 NOIR_VERSION="1.0.0-beta.21"
-BB_VERSION="5.0.0-nightly.20260324"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CIRCUIT_DIR="$ROOT/circuits/eligibility_proof"
 
 if ! command -v nargo >/dev/null 2>&1; then
   curl -sL https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
@@ -14,13 +12,20 @@ if ! command -v nargo >/dev/null 2>&1; then
 fi
 noirup -v "$NOIR_VERSION"
 
-cd "$CIRCUIT_DIR"
-echo "── nargo compile ──"
-nargo compile
-echo "── nargo test ──"
-nargo test
-
 mkdir -p "$ROOT/src/lib/circuits"
-cp target/eligibility_proof.json "$ROOT/src/lib/circuits/eligibility_proof.json"
-echo "✓ Copied eligibility_proof.json to src/lib/circuits/"
-echo "  Run: npm run generate:honk-verifier  (bb.js Keccak Solidity verifier)"
+
+for CIRCUIT in eligibility_plaintext eligibility_encrypted; do
+  CIRCUIT_DIR="$ROOT/circuits/$CIRCUIT"
+  cd "$CIRCUIT_DIR"
+  echo "── nargo compile ($CIRCUIT) ──"
+  nargo compile
+  echo "── nargo test ($CIRCUIT) ──"
+  nargo test
+  cp "target/${CIRCUIT}.json" "$ROOT/src/lib/circuits/${CIRCUIT}.json"
+  echo "✓ Copied ${CIRCUIT}.json to src/lib/circuits/"
+done
+
+# Back-compat alias for frontend paths still referencing eligibility_proof.json
+cp "$ROOT/src/lib/circuits/eligibility_plaintext.json" "$ROOT/src/lib/circuits/eligibility_proof.json"
+echo "✓ eligibility_proof.json -> eligibility_plaintext.json alias"
+echo "  Run: npm run generate:honk-verifier  (bb.js Keccak Solidity verifiers)"

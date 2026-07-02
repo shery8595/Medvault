@@ -1,93 +1,98 @@
-# 🧬 MedVault: Confidential Clinical Research on FHE
+# MedVault: Confidential Clinical Research on FHE
 
-**MedVault** is privacy-centric clinical trial infrastructure on **Zama (Zama FHE)**. Using **Fully Homomorphic Encryption (FHE)**, it bridges individual medical sovereignty and collective research—patient records stay mathematically private during matching, scoring, and incentive settlement.
+**MedVault homomorphically matches encrypted patient vitals against encrypted sponsor trial criteria on Ethereum Sepolia — with optional Semaphore anonymity and Noir identity/policy attestation (compliance seal).**
+
+MedVault is privacy-centric clinical trial infrastructure on **Zama (Zama FHE)**. Using **Fully Homomorphic Encryption (FHE)**, it bridges individual medical sovereignty and collective research—patient records stay mathematically private during matching, scoring, and incentive settlement.
 
 | | |
 |:--|:--|
-| 🌐 **Live** | https://med-vault.xyz |
-| 📚 **Docs** | https://med-vault.xyz/docs |
-| 📄 **Changelog** | https://med-vault.xyz/docs/changelog |
-| 📦 **Repo** | https://github.com/shery8595/Med-Vault |
-| 🎥 **Demo** | https://www.youtube.com/watch?v=1wR01KflBOM&t=88s |
+| **Live** | https://med-vault.xyz |
+| **Docs** | https://med-vault.xyz/docs |
+| **Lightpaper** | [docs/LIGHTPAPER.md](docs/LIGHTPAPER.md) |
+| **Pitch deck** | [docs/PITCH_DECK.md](docs/PITCH_DECK.md) |
+| **FHE audit map** | [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md) |
+| **Changelog** | https://med-vault.xyz/docs/changelog |
+| **Repo** | https://github.com/shery8595/Med-Vault |
+| **Demo video** | https://www.youtube.com/watch?v=1wR01KflBOM&t=88s |
+| **Terminal demo** | `npm run demo:fhe` |
 
-**⚙️ Stack** — Zama FHE · Semaphore · Noir/UltraHonk · Ethereum Sepolia · The Graph · Chainlink Automation · Hardhat
+**Stack** — Zama FHE · Semaphore · Noir/UltraHonk · Ethereum Sepolia · The Graph · Chainlink Automation · Hardhat
 
-**🧪 Verification** — 265 Hardhat tests: FHE eligibility (encrypted patient + sponsor criteria), aggregates, batch matching, attestation binding, Semaphore anonymity, relayer registration, incentives, end-to-end patient workflows.
-
----
-
-## 🏗️ Mission & vision
-
-Clinical research faces a **Privacy–Data Paradox** 🔒: trials need rich health signals, but exposing PHI erodes trust and blocks enrollment.
-
-MedVault ensures patient health data is **not decrypted for on-chain matching**—`EligibilityEngine` compares encrypted profiles against **public** trial bounds stored in `TrialManager`, patients decrypt outcomes locally, and auditors get tamper-proof access logs without vitals on-chain.
+**Verification** — **483** default Hardhat cases (**~2,020** registered incl. fuzz; see `src/lib/docsStats.ts`): FHE eligibility (encrypted patient + **encrypted sponsor criteria**), aggregates, batch matching, attestation binding, trust-gap payout gating, Phase 5 differential properties, Semaphore anonymity, relayer registration, incentives, end-to-end patient workflows.
 
 ---
 
-## 🔐 Technological core (Zama fhEVM)
+## Mission & vision
+
+Clinical research faces a **Privacy–Data Paradox**: trials need rich health signals, but exposing PHI erodes trust and blocks enrollment.
+
+MedVault ensures patient health data is **not decrypted for on-chain matching**—`EligibilityEngine` compares encrypted profiles against sponsor criteria homomorphically. Production sponsors use **`createTrialWithEncryptedCriteria`** (bounds hidden on-chain); legacy **`createTrial`** (public bounds) remains for tests and SDK/MCP integrators. Patients decrypt outcomes locally; auditors get tamper-proof access logs without vitals on-chain.
+
+---
+
+## Technological core (Zama fhEVM)
 
 | Capability | Implementation |
 |:-----------|:----------------|
-| 🧮 Homomorphic matching | `EligibilityEngine` — `FHE.ge` / `FHE.le` / `FHE.select` on encrypted patient **and** sponsor criteria |
-| 🔒 Encrypted sponsor criteria | `TrialManager.createTrialWithEncryptedCriteria` — bounds hidden on-chain |
-| 📊 Encrypted aggregates | `EncryptedScoreLeaderboard.addToAggregate` — homomorphic sum/count |
-| ⚡ Batch matching | `checkEligibilityBatch` — multi-trial FHE in one call |
-| 🗄️ Encrypted storage | `MedVaultRegistry` + `AnonymousPatientRegistry` — ciphertext handles only |
-| 🔑 Patient decrypt | Zama FHE permits + `FHE.allow` ACL — validators never see plaintext PHI |
-| 🎭 Anonymous identity | Semaphore commitments decouple wallet from application |
-| ✅ ZK attestation | Noir compliance seal + `HonkVerifier` bound to Zama FHE stage handles |
+| Homomorphic matching | `EligibilityEngine` — `FHE.ge` / `FHE.le` / `FHE.select` on encrypted patient **and** sponsor criteria |
+| Encrypted sponsor criteria | `TrialManager.createTrialWithEncryptedCriteria` — bounds hidden on-chain (**recommended**) |
+| Encrypted aggregates | `EncryptedScoreLeaderboard.addToAggregate` — homomorphic sum/count |
+| Batch matching | `checkEligibilityBatch` — multi-trial FHE in one call |
+| Encrypted storage | `MedVaultRegistry` + `AnonymousPatientRegistry` — ciphertext handles only |
+| Patient decrypt | Zama FHE permits + `FHE.allow` ACL — validators never see plaintext PHI |
+| Anonymous identity | Semaphore commitments decouple wallet from application |
+| ZK attestation | Noir identity/policy attestation + `HonkVerifier` bound to Zama FHE stage handles |
 
 ---
 
-## ⚙️ How it works
+## How it works
 
-### 🩺 Patient vaulting
+### Patient vaulting
 
 Vitals encrypt in-browser via `@zama-fhe/sdk`; only ciphertexts and proofs land on-chain.
 
-### 🔍 Stealth eligibility
+### Stealth eligibility
 
-Sponsors publish **public** trial bounds in `TrialManager`. `EligibilityEngine` scores encrypted profiles homomorphically—aggregate signals only. Optional gasless relayer finalize for anonymous applicants.
+Sponsors publish trial criteria via **`createTrialWithEncryptedCriteria`** (recommended; bounds as FHE handles). `EligibilityEngine` scores encrypted profiles homomorphically—aggregate signals only. Optional gasless relayer finalize for anonymous applicants.
 
-### 💰 Confidential DeFi · ⚖️ Compliance
+### Confidential DeFi · Compliance
 
-`ConfidentialETH` + `StakingManager` (Aave V3) · `SponsorIncentiveVault` + `TrialMilestoneManager` · `MedVaultAutomation` + **Chainlink Automation** ⛓️ at `endTime`. Compliance-oriented audit design (`DataAccessLog`); not a claim of HIPAA/GDPR certification.
+`ConfidentialETH` + `StakingManager` (Aave V3) · `SponsorIncentiveVault` + `TrialMilestoneManager` · `MedVaultAutomation` + **Chainlink Automation** at `endTime`.
 
 | Actor | Capabilities |
 |:------|:-------------|
-| 🧑‍⚕️ **Patients** | Encrypted profiles · anonymous apply · consent · local decrypt |
-| 🏛️ **Sponsors** | Trials · incentive pools · aggregate matches — never raw PHI |
+| **Patients** | Encrypted profiles · anonymous apply · consent · local decrypt |
+| **Sponsors** | Trials · incentive pools · aggregate matches — never raw PHI |
 
 ---
 
-## 🌊 Five waves — build timeline (in order)
-
-Waves follow **how MedVault was built**: patient UI first → FHE contracts → sponsor portal → Semaphore/Noir → testing & launch on [med-vault.xyz](https://med-vault.xyz).
+## Five waves — build timeline (in order)
 
 | # | Phase | Status | Shipped |
 |:-:|:------|:------:|:--------|
-| 🌊 **1** | Patient UI & Zama SDK client | ✅ | React dApp · medical vault · `@zama-fhe/sdk` · find-trials · results · Privy |
-| 🌊 **2** | Core FHE contracts | ✅ | `EligibilityEngine` · `MedVaultRegistry` · `TrialManager` · Sepolia deploy |
-| 🌊 **3** | Sponsor portal & incentives | ✅ | `SponsorRegistry` · dashboards · `SponsorIncentiveVault` · `TrialMilestoneManager` |
-| 🌊 **4** | Semaphore, Noir attestation & consent | ✅ | Anonymous apply · compliance seal · consent gates · gasless relayer |
-| 🌊 **5** | Testing, ops & production | ✅ | 265 tests · subgraph · Chainlink · `DataAccessLog` · Aave staking · FHIR/Reclaim · analytics · live testnet |
-| 🔭 | **Next** | 📋 | Confidential training · MPC · cross-chain hub · DAO |
+| **1** | Patient UI & Zama SDK client | Done | React dApp · medical vault · `@zama-fhe/sdk` |
+| **2** | Core FHE contracts | Done | `EligibilityEngine` · `MedVaultRegistry` · `TrialManager` |
+| **3** | Sponsor portal & incentives | Done | `SponsorRegistry` · dashboards · vault · milestones |
+| **4** | Semaphore, Noir & consent | Done | Anonymous apply · identity/policy attestation · relayer |
 
-### Wave highlights (chronological)
+---
 
-**🌊 Wave 1 — Patient UI** — React/Vite frontend first: vault forms, trial discovery, local decrypt UX wired to `@zama-fhe/sdk` before the full on-chain surface was finished.
+## Limitations & Trust Model
 
-**🌊 Wave 2 — Core contracts** — `EligibilityEngine` FHE matching, `MedVaultRegistry` registration, and `TrialManager` (public trial bounds) deployed to Ethereum Sepolia.
+| Layer | Guarantees | Does not guarantee |
+|-------|------------|-------------------|
+| **FHE** | Homomorphic eligibility on ciphertext | Off-chain PHI, wallet linkage, L1 ETH visibility |
+| **Noir** | Identity and policy attestation | fhEVM correctness; seal ≠ eligibility proof |
+| **Relayer** | Gasless relay; interim decrypt-verify before finalize (P0.2 defense-in-depth) | Payout integrity via `FHE.select` (P2 shipped); relayer re-decrypt is defense-in-depth |
+| **Compliance** | Privacy-by-design matching | **Not HIPAA-compliant today** |
 
-**🌊 Wave 3 — Sponsor side** — Sponsor portal: verified onboarding, trial create/fund flows, incentive escrows, milestones, aggregate match views (no PHI).
-
-**🌊 Wave 4 — Semaphore & Noir attestation** — Privacy layer: Semaphore nullifiers, `EncryptedConsentGate`, Noir compliance seal (`eligibility_proof` + `HonkVerifier`) bound to Zama FHE stages, optional relayer finalize.
-
-**🌊 Wave 5 — Testing & launch** — 265 Hardhat suites (unit → integration → E2E), encrypted criteria + aggregate + batch tests, FHE-bound attestation circuit, relayer registration privacy, production ship.
+---
+| **5** | Testing, ops & production | Done | 483 tests · subgraph · live testnet |
+| **Next** | Mainnet pilot | Planned | External audit · sponsor KYC |
 
 ---
 
 <p align="center">
-  <strong>Join the evolution of healthcare</strong> 🌍<br><br>
-  Built with ❤️ on <strong>Zama</strong> · <strong>Ethereum Sepolia</strong> · <strong>Chainlink Automation</strong>
+  <strong>Join the evolution of healthcare</strong><br><br>
+  Built with Zama FHE · Ethereum Sepolia · Chainlink Automation
 </p>

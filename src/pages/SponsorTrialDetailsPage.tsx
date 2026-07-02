@@ -40,8 +40,10 @@ import {
     getAnonymousParticipantMilestoneState,
     getTrialPoolAndMilestones,
     reclaimUndistributedPool,
+    claimReclaimedPool,
     promoteAnonymousParticipantAndDistribute,
     promoteParticipantAndDistribute,
+    pruneUnconfirmedSlots,
     resetMilestonePagination,
     setTrialMilestones,
     updateTrialApplicationStatus,
@@ -70,6 +72,10 @@ export function SponsorTrialDetailsPage() {
             participantCount: 0,
             reclaimableEth: "0",
             screeningDistributed: false,
+            sponsorVerified: true,
+            gracePeriodElapsed: false,
+            pendingReclaimEth: null as string | null,
+            pendingReclaimRecipient: null as string | null,
         },
     });
     const [reclaimStatus, setReclaimStatus] = useState<string | null>(null);
@@ -84,7 +90,7 @@ export function SponsorTrialDetailsPage() {
     const [releasingPhaseIndex, setReleasingPhaseIndex] = useState<number | null>(null);
     const [isDefiningMilestones, setIsDefiningMilestones] = useState(false);
     const [anonymousMilestoneState, setAnonymousMilestoneState] = useState<
-        Record<string, { participant: string; registered: boolean; progress: number; paid: boolean[] }>
+        Record<string, { participant: string; registered: boolean; progress: number; staged: boolean[]; confirmed: boolean[]; paid: boolean[] }>
     >({});
     const [newMilestones, setNewMilestones] = useState([
         { name: "Screening", weight: 2500, deadline: Math.floor(Date.now() / 1000) + 86400 * 7 },
@@ -142,7 +148,7 @@ export function SponsorTrialDetailsPage() {
             );
 
             if (!cancelled) {
-                setAnonymousMilestoneState(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, { participant: string; registered: boolean; progress: number; paid: boolean[] }]>));
+                setAnonymousMilestoneState(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, { participant: string; registered: boolean; progress: number; staged: boolean[]; confirmed: boolean[]; paid: boolean[] }]>));
             }
         };
 
@@ -184,10 +190,10 @@ export function SponsorTrialDetailsPage() {
 
     const handleReclaimUndistributed = async () => {
         if (!signer || !id) return;
-        setReclaimStatus("Reclaiming undistributed ETH...");
+        setReclaimStatus("Scheduling reclaim (pull pattern)...");
         try {
             await reclaimUndistributedPool(signer, id);
-            setReclaimStatus("Success! Undistributed funds returned to your wallet.");
+            setReclaimStatus("Reclaim scheduled. Click “Claim reclaimed ETH” to receive funds in your wallet.");
             const protocolData = await getTrialPoolAndMilestones(signer, id, trial?.endTime);
             setPoolInfo({
                 totalFunded: protocolData.totalFunded,
@@ -200,6 +206,31 @@ export function SponsorTrialDetailsPage() {
         }
     };
 
+    const handleClaimReclaimed = async () => {
+        if (!signer || !id) return;
+        setReclaimStatus("Claiming scheduled reclaim to wallet...");
+        try {
+            await claimReclaimedPool(signer, id);
+            setReclaimStatus("Success! Reclaimed ETH sent to your wallet.");
+            const protocolData = await getTrialPoolAndMilestones(signer, id, trial?.endTime);
+            setPoolInfo({
+                totalFunded: protocolData.totalFunded,
+                distributed: protocolData.distributed,
+                reclaim: protocolData.reclaim,
+            });
+        } catch (err: any) {
+            console.error(err);
+            const raw = `${err.reason || ""} ${err.message || ""}`.toLowerCase();
+            if (raw.includes("rerouted") || raw.includes("owner")) {
+                setReclaimStatus(
+                    "Reclaim was rerouted to the protocol owner (transfer failed or sponsor unverified). Contact support if unexpected."
+                );
+            } else {
+                setReclaimStatus(`Error: ${err.reason || err.message || "Claim reclaimed failed"}`);
+            }
+        }
+    };
+
     const isTrialOwner =
         Boolean(account) &&
         Boolean(trial?.sponsor?.name) &&
@@ -209,7 +240,35 @@ export function SponsorTrialDetailsPage() {
         isTrialOwner &&
         reclaim.trialEnded &&
         parseFloat(poolInfo.totalFunded) > 0 &&
-        !reclaim.reclaimFinalized;
+        !reclaim.reclaimFinalized &&
+        reclaim.canReclaim;
+
+    const showPendingReclaimPanel =
+        isTrialOwner &&
+        reclaim.pendingReclaimEth != null &&
+        parseFloat(reclaim.pendingReclaimEth) > 0;
+
+    const showReclaimBlockedUnverified =
+        isTrialOwner &&
+        reclaim.trialEnded &&
+        reclaim.sponsorVerified === false &&
+        !reclaim.reclaimFinalized &&
+        !showPendingReclaimPanel &&
+        parseFloat(poolInfo.totalFunded) > 0;
+
+    const showReclaimBlockedInfo =
+        isTrialOwner &&
+        reclaim.trialEnded &&
+        reclaim.sponsorVerified !== false &&
+        !reclaim.canReclaim &&
+        !reclaim.reclaimFinalized &&
+        !showPendingReclaimPanel &&
+        parseFloat(poolInfo.totalFunded) > 0;
+
+    const canClaimPendingReclaim =
+        showPendingReclaimPanel &&
+        account &&
+        reclaim.pendingReclaimRecipient?.toLowerCase() === account.toLowerCase();
 
     const handleSetMilestones = async () => {
         if (!signer || !id) return;
@@ -230,8 +289,19 @@ export function SponsorTrialDetailsPage() {
         setReleasingPhaseIndex(index);
         setMilestoneStatus(`Initiating payout for Phase ${index + 1}...`);
         try {
-            await distributePartialMilestone(signer, id, index);
-            setMilestoneStatus(`Success! Phase ${index + 1} rewards distributed.`);
+            const result = await distributePartialMilestone(signer, id, index);
+            if (result.creditFailures.length > 0) {
+                const summary = result.creditFailures
+                    .map((f) => `${f.participant.slice(0, 10)}… (${f.reason})`)
+                    .join("; ");
+                setMilestoneStatus(
+                    `Phase ${index + 1} partially staged — ${result.creditFailures.length} participant(s) could not be credited (${summary}). Eligible patients may still confirmReceipt; check pool enrollment and eligibility.`
+                );
+            } else {
+                setMilestoneStatus(
+                    `Success! Phase ${index + 1} entitlements staged — patients must confirmReceipt to receive cETH.`
+                );
+            }
             // Update local state
             setMilestones(prev => prev.map((m, i) => i === index ? { ...m, distributed: true } : m));
             if (anonymousMatches.length > 0) {
@@ -252,7 +322,7 @@ export function SponsorTrialDetailsPage() {
                             }
                         })
                 );
-                setAnonymousMilestoneState(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, { participant: string; registered: boolean; progress: number; paid: boolean[] }]>));
+                setAnonymousMilestoneState(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, { participant: string; registered: boolean; progress: number; staged: boolean[]; confirmed: boolean[]; paid: boolean[] }]>));
             }
         } catch (err: any) {
             console.error(err);
@@ -321,11 +391,44 @@ export function SponsorTrialDetailsPage() {
         }
     };
 
+    const handlePruneUnconfirmed = async (index: number) => {
+        if (!signer || !id) return;
+        setMilestoneStatus(`Pruning unconfirmed slots for Phase ${index + 1}…`);
+        try {
+            await pruneUnconfirmedSlots(signer, id, index);
+            setMilestoneStatus(`Success! Unconfirmed slots pruned for Phase ${index + 1}.`);
+            if (anonymousMatches.length > 0) {
+                const entries = await Promise.all(
+                    anonymousMatches
+                        .filter((match) => match.nullifier)
+                        .map(async (match) => {
+                            try {
+                                const state = await getAnonymousParticipantMilestoneState(
+                                    signer,
+                                    id,
+                                    match.nullifier!,
+                                    milestones.length
+                                );
+                                return state ? [match.nullifier!, state] as const : null;
+                            } catch {
+                                return null;
+                            }
+                        })
+                );
+                setAnonymousMilestoneState(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, { participant: string; registered: boolean; progress: number; staged: boolean[]; confirmed: boolean[]; paid: boolean[] }]>));
+            }
+        } catch (err: any) {
+            console.error(err);
+            setMilestoneStatus(`Error: ${err.reason || err.message || "Prune failed"}`);
+        }
+    };
+
     const getAnonymousPhaseState = (nullifier: string | undefined, milestoneIndex: number) => {
         const state = nullifier ? anonymousMilestoneState[nullifier] : undefined;
         const promoted = !!state && state.progress >= milestoneIndex + 1;
-        const released = !!state?.paid?.[milestoneIndex];
-        return { promoted, released };
+        const staged = !!state?.staged?.[milestoneIndex];
+        const released = !!(state?.confirmed?.[milestoneIndex] ?? state?.paid?.[milestoneIndex]);
+        return { promoted, staged, released };
     };
 
     const getAnonymousPhaseAggregateState = (milestoneIndex: number) => {
@@ -337,14 +440,17 @@ export function SponsorTrialDetailsPage() {
             .filter(Boolean);
         const allKnown = accepted.length > 0 && states.length === accepted.length;
         const promotedCount = states.filter((state) => state.progress >= milestoneIndex + 1).length;
-        const releasedCount = states.filter((state) => state.paid?.[milestoneIndex]).length;
+        const stagedCount = states.filter((state) => state.staged?.[milestoneIndex]).length;
+        const releasedCount = states.filter((state) => state.confirmed?.[milestoneIndex] ?? state.paid?.[milestoneIndex]).length;
 
         return {
             total: accepted.length,
             allKnown,
             promotedCount,
+            stagedCount,
             releasedCount,
             allPromoted: allKnown && promotedCount === accepted.length,
+            allStaged: allKnown && stagedCount === accepted.length,
             allReleased: allKnown && releasedCount === accepted.length,
         };
     };
@@ -550,8 +656,8 @@ export function SponsorTrialDetailsPage() {
                                         <p className="text-xl font-bold text-slate-900 dark:text-white">{poolInfo.totalFunded} ETH</p>
                                     </div>
                                 </div>
-                                <Badge variant="outline" className={poolInfo.distributed ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}>
-                                    {poolInfo.distributed ? "Distributed" : "Accumulating"}
+                                <Badge variant="outline" className={poolInfo.distributed ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-600"}>
+                                    {poolInfo.distributed ? "Entitlements staged" : "Accumulating"}
                                 </Badge>
                             </div>
                             <CardContent className="p-6 space-y-6">
@@ -607,32 +713,37 @@ export function SponsorTrialDetailsPage() {
                                         <div className="grid gap-3">
                                             {milestones.map((m, idx) => {
                                                 const phase = getAnonymousPhaseAggregateState(idx);
-                                                const screeningAutoPaid = idx === 0 && poolInfo.distributed;
-                                                const phaseReleased = m.distributed || phase.allReleased || screeningAutoPaid;
+                                                const screeningAutoStaged = idx === 0 && poolInfo.distributed;
+                                                const phaseStaged = m.distributed || phase.allStaged || screeningAutoStaged;
+                                                const phaseConfirmed = phase.allReleased;
                                                 const needsPromotion =
                                                     idx > 0 &&
                                                     phase.total > 0 &&
                                                     !phase.allPromoted &&
-                                                    !phaseReleased;
+                                                    !phaseStaged;
                                                 const isReleasing = releasingPhaseIndex === idx;
-                                                const buttonLabel = phaseReleased
-                                                    ? "Released"
-                                                    : isReleasing
-                                                        ? "Releasing…"
-                                                        : needsPromotion
-                                                            ? "Promote First"
-                                                            : "Release Funds";
+                                                const buttonLabel = phaseConfirmed
+                                                    ? "Confirmed"
+                                                    : phaseStaged
+                                                        ? "Staged"
+                                                        : isReleasing
+                                                            ? "Staging…"
+                                                            : needsPromotion
+                                                                ? "Promote First"
+                                                                : "Stage Entitlements";
 
                                                 return (
                                                     <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm">
                                                         <div className="flex items-center gap-3 min-w-0">
                                                             <div className={cn(
                                                                 "h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
-                                                                phaseReleased
+                                                                phaseConfirmed
                                                                     ? "bg-emerald-100 text-emerald-600"
-                                                                    : phase.allPromoted
-                                                                        ? "bg-teal-100 text-teal-700"
-                                                                        : "bg-slate-100 text-slate-500"
+                                                                    : phaseStaged
+                                                                        ? "bg-amber-100 text-amber-700"
+                                                                        : phase.allPromoted
+                                                                            ? "bg-teal-100 text-teal-700"
+                                                                            : "bg-slate-100 text-slate-500"
                                                             )}>
                                                                 {idx + 1}
                                                             </div>
@@ -641,27 +752,41 @@ export function SponsorTrialDetailsPage() {
                                                                 <p className="text-[10px] text-slate-500 uppercase font-mono">{m.weightBps / 100}% Reward Weight</p>
                                                                 {phase.total > 0 && (
                                                                     <p className="text-[10px] text-slate-500">
-                                                                        {phase.releasedCount}/{phase.total} released / {phase.promotedCount}/{phase.total} promoted
+                                                                        {phase.stagedCount}/{phase.total} staged · {phase.releasedCount}/{phase.total} confirmed · {phase.promotedCount}/{phase.total} promoted
                                                                     </p>
                                                                 )}
                                                             </div>
                                                         </div>
+                                                        <div className="flex flex-col items-end gap-1">
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            disabled={phaseReleased || needsPromotion || isReleasing}
+                                                            disabled={phaseStaged || phaseConfirmed || needsPromotion || isReleasing}
                                                             onClick={() => void handleDistributePartial(idx)}
                                                             className={cn(
                                                                 "h-8 min-w-[7.5rem] text-[10px] font-bold uppercase disabled:opacity-100",
-                                                                phaseReleased
+                                                                phaseConfirmed
                                                                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                                                    : needsPromotion
+                                                                    : phaseStaged
                                                                         ? "border-amber-200 bg-amber-50 text-amber-800"
-                                                                        : "bg-slate-100 text-slate-800",
+                                                                        : needsPromotion
+                                                                            ? "border-amber-200 bg-amber-50 text-amber-800"
+                                                                            : "bg-slate-100 text-slate-800",
                                                             )}
                                                         >
                                                             {buttonLabel}
                                                         </Button>
+                                                        {phaseStaged && !phaseConfirmed && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-7 text-[9px] font-bold uppercase text-slate-500"
+                                                                onClick={() => void handlePruneUnconfirmed(idx)}
+                                                            >
+                                                                Prune unconfirmed
+                                                            </Button>
+                                                        )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -677,45 +802,56 @@ export function SponsorTrialDetailsPage() {
                                     </div>
                                 )}
 
+                                {showReclaimBlockedUnverified && (
+                                    <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-relaxed px-1 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 bg-amber-50/80 dark:bg-amber-950/30">
+                                        This sponsor wallet is no longer verified on the registry. Distribution and
+                                        sponsor reclaim are blocked on-chain. The protocol owner can recover the
+                                        remaining pool via{" "}
+                                        <span className="font-mono">reclaimAbandonedToOwner</span> after the trial
+                                        grace period.
+                                    </p>
+                                )}
+
+                                {showReclaimBlockedInfo && (
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed px-1">
+                                        Run screening distribution (or wait for automation) before reclaiming the
+                                        remaining balance.
+                                    </p>
+                                )}
+
                                 {showReclaimPanel && (
                                     <div
                                         className={cn(
                                             "p-4 rounded-xl border space-y-3",
-                                            reclaim.canReclaim
-                                                ? "border-violet-200 bg-violet-50/80 dark:border-violet-900/50 dark:bg-violet-950/30"
-                                                : "border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40",
+                                            "border-violet-200 bg-violet-50/80 dark:border-violet-900/50 dark:bg-violet-950/30",
                                         )}
                                     >
                                         <div className="flex items-start gap-3">
                                             <ShieldAlert className="h-5 w-5 text-violet-600 shrink-0 mt-0.5" />
                                             <div className="space-y-1 min-w-0">
                                                 <h4 className="text-xs font-bold uppercase tracking-widest text-slate-900 dark:text-white">
-                                                    Reclaim undistributed funds
+                                                    Schedule reclaim (two-step)
                                                 </h4>
                                                 <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
                                                     {reclaim.participantCount === 0
-                                                        ? "This trial ended with no enrolled participants. You can recover the full prize pool that was never paid out."
-                                                        : reclaim.screeningDistributed
-                                                            ? "After screening payouts, any ETH still in the pool can be returned to you once the trial has ended."
-                                                            : "Run screening distribution (or wait for automation) before reclaiming the remaining balance."}
+                                                        ? "This trial ended with no enrolled participants. Schedule recovery of the prize pool, then claim ETH in a second transaction."
+                                                        : "After screening payouts, schedule return of any remaining pool balance, then claim to your wallet."}
                                                 </p>
                                             </div>
                                         </div>
-                                        {reclaim.canReclaim ? (
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                                {reclaim.participantCount === 0 && parseFloat(reclaim.reclaimableEth) > 0 && (
-                                                    <p className="text-sm font-bold text-violet-900 dark:text-violet-200 font-mono">
-                                                        ~{reclaim.reclaimableEth} ETH
-                                                    </p>
-                                                )}
-                                                <Button
-                                                    onClick={handleReclaimUndistributed}
-                                                    className="bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 sm:ml-auto"
-                                                >
-                                                    Reclaim to wallet
-                                                </Button>
-                                            </div>
-                                        ) : null}
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            {reclaim.participantCount === 0 && parseFloat(reclaim.reclaimableEth) > 0 && (
+                                                <p className="text-sm font-bold text-violet-900 dark:text-violet-200 font-mono">
+                                                    ~{reclaim.reclaimableEth} ETH
+                                                </p>
+                                            )}
+                                            <Button
+                                                onClick={handleReclaimUndistributed}
+                                                className="bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 sm:ml-auto"
+                                            >
+                                                Schedule reclaim
+                                            </Button>
+                                        </div>
                                         {reclaimStatus && (
                                             <div
                                                 className={cn(
@@ -731,10 +867,43 @@ export function SponsorTrialDetailsPage() {
                                         )}
                                     </div>
                                 )}
-                                {reclaim.reclaimFinalized && parseFloat(poolInfo.totalFunded) > 0 && (
+
+                                {showPendingReclaimPanel && (
+                                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/30 space-y-3">
+                                        <div className="flex items-start gap-3">
+                                            <Coins className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                            <div className="space-y-1 min-w-0">
+                                                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-900 dark:text-white">
+                                                    Pending reclaim
+                                                </h4>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                                                    {reclaim.pendingReclaimEth} ETH is scheduled for{" "}
+                                                    <span className="font-mono">
+                                                        {reclaim.pendingReclaimRecipient?.slice(0, 10)}…
+                                                    </span>
+                                                    . {canClaimPendingReclaim
+                                                        ? "You can claim it now."
+                                                        : "Only the designated recipient can claim."}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {canClaimPendingReclaim && (
+                                            <Button
+                                                onClick={handleClaimReclaimed}
+                                                className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl"
+                                            >
+                                                Claim reclaimed ETH
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {reclaim.reclaimFinalized &&
+                                    !showPendingReclaimPanel &&
+                                    parseFloat(poolInfo.totalFunded) > 0 && (
                                     <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 flex items-center gap-2">
                                         <Check className="h-3.5 w-3.5" />
-                                        Undistributed pool already reclaimed
+                                        Reclaim finalized
                                     </p>
                                 )}
 

@@ -96,8 +96,8 @@ export function RewardsCard() {
         setStatus("Processing withdrawal...");
         try {
             await ensureZamaConnected(signer.provider!, signer);
-            const { sufficientHandle } = await requestEncryptedWithdraw(signer, decryptedBalance);
-            await completeEncryptedWithdraw(signer, sufficientHandle);
+            const { transferableHandle } = await requestEncryptedWithdraw(signer, decryptedBalance);
+            await completeEncryptedWithdraw(signer, transferableHandle);
             setStatus("Withdrawal successful!");
             setDecryptedBalance(0);
             fetchEncryptedBalance();

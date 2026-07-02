@@ -36,7 +36,13 @@ contract SponsorRegistry is ZamaEthereumConfig {
 
     address public owner;
     address public pendingOwner; // MED-2: Two-step ownership transfer
+    /// @notice Off-chain attestation role: read-only access to encrypted institution IDs
+    ///         (`getEncryptedInstitutionId`, `getRequestEncryptedId`). Set via timelocked
+    ///         `scheduleAuditor` / `applyAuditor`; distinct from contract owner.
     address public auditor;
+    address public pendingAuditor;
+    uint256 public auditorChangeEta;
+    uint256 public constant READER_CHANGE_DELAY = 6 hours;
 
     event SponsorAdded(address indexed sponsor, string name);
     event SponsorRemoved(address indexed sponsor);
@@ -71,6 +77,22 @@ contract SponsorRegistry is ZamaEthereumConfig {
         owner = pendingOwner;
         pendingOwner = address(0);
         emit OwnershipAccepted(owner);
+    }
+
+    /// @notice Schedule a new auditor address (6h timelock before `applyAuditor`).
+    /// @dev Auditor may decrypt encrypted institution IDs for compliance review; not a sponsor admin.
+    function scheduleAuditor(address _auditor) external onlyOwner {
+        require(_auditor != address(0), "Zero auditor");
+        pendingAuditor = _auditor;
+        auditorChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    /// @notice Apply the pending auditor after `READER_CHANGE_DELAY` has elapsed.
+    function applyAuditor() external onlyOwner {
+        require(auditorChangeEta != 0 && block.timestamp >= auditorChangeEta, "Timelock active");
+        auditor = pendingAuditor;
+        auditorChangeEta = 0;
+        pendingAuditor = address(0);
     }
 
     /**
@@ -148,9 +170,9 @@ contract SponsorRegistry is ZamaEthereumConfig {
      * @notice Remove a sponsor from the registry
      */
     function removeSponsor(address _sponsor) external onlyOwner {
-        sponsors[_sponsor].verified = false;
-        sponsors[_sponsor].name = "";
+        delete sponsors[_sponsor];
         encryptedSponsorIds[_sponsor] = FHE.asEuint64(0);
+        FHE.allowThis(encryptedSponsorIds[_sponsor]);
         delete requests[_sponsor];
         emit SponsorRemoved(_sponsor);
     }

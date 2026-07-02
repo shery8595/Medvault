@@ -21,6 +21,11 @@
           "type": "bytes32"
         },
         {
+          "internalType": "bytes32",
+          "name": "_profileSaltCommitment",
+          "type": "bytes32"
+        },
+        {
           "internalType": "externalEuint8",
           "name": "_age",
           "type": "bytes32"

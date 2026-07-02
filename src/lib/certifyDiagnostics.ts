@@ -1,11 +1,15 @@
 /**
- * Decode and preflight EligibilityEngine.verifyEligibilityProof failures
+ * Decode and preflight EligibilityEngine attestation / registry finalize failures
  * so the UI shows actionable messages instead of "require(false)".
  */
 
 import { ethers } from "ethers";
 import type { EligibilityProofData } from "./noir";
-import { ELIGIBILITY_PUBLIC_INPUT_COUNT, readSolidityProofMetadata } from "./noir";
+import {
+    ELIGIBILITY_ENCRYPTED_PUBLIC_INPUT_COUNT,
+    ELIGIBILITY_PUBLIC_INPUT_COUNT,
+    readSolidityProofMetadata,
+} from "./noir";
 import { fheStageHandleToField } from "./criteriaSchema";
 import { fieldFromBytes32, parseTrialId } from "./field";
 import EligibilityEngineAbi from "./contracts/abis/EligibilityEngine.json";
@@ -31,6 +35,10 @@ const APPLICATION_STATUS_LABEL: Record<number, string> = {
     3: "Rejected",
 };
 
+const REDEPLOY_HINT =
+    "Run `npm run build:circuit`, redeploy verifiers (`npm run deploy:sepolia` or " +
+    "`npm run deploy:encrypted-verifier:sepolia`), then `npm run deploy:wiring:sepolia` after the timelock.";
+
 export type CertifyPreflightInput = {
     engine: ethers.Contract;
     honkVerifierAddress: string;
@@ -38,6 +46,8 @@ export type CertifyPreflightInput = {
     trialId: bigint;
     nullifier: bigint;
     eligible: boolean;
+    /** When true, use eligibilityVerifierEncrypted + 15 public inputs (encrypted-criteria trials). */
+    encryptedCriteria?: boolean;
     expectedHonkVerifier?: string;
     chainId?: bigint | number;
     fheStageHandle?: bigint | string;
@@ -67,9 +77,14 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
         trialId,
         nullifier,
         eligible,
+        encryptedCriteria = false,
         expectedHonkVerifier,
         chainId,
     } = input;
+
+    const expectedInputCount = encryptedCriteria
+        ? ELIGIBILITY_ENCRYPTED_PUBLIC_INPUT_COUNT
+        : ELIGIBILITY_PUBLIC_INPUT_COUNT;
 
     const proofByteLen = (proofData.proofBytes.length - 2) / 2;
     if (proofByteLen < MIN_SOLIDITY_PROOF_BYTES) {
@@ -78,8 +93,8 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
             "Restart the dev server after pulling the latest certify fix."
         );
     }
-    if (proofData.publicInputs.length !== ELIGIBILITY_PUBLIC_INPUT_COUNT) {
-        return `Expected ${ELIGIBILITY_PUBLIC_INPUT_COUNT} public inputs in proof bundle.`;
+    if (proofData.publicInputs.length !== expectedInputCount) {
+        return `Expected ${expectedInputCount} public inputs in proof bundle (${encryptedCriteria ? "encrypted" : "plaintext"} mode).`;
     }
 
     const networkKey = networkKeyFromChainId(chainId);
@@ -87,27 +102,45 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
         networkKey && (addresses as Record<string, Record<string, string>>)[networkKey]
             ? (addresses as Record<string, Record<string, string>>)[networkKey]
             : undefined;
-    const deployedVkFingerprint = netAddrs?.HonkVerifierVkFingerprint;
-    const localVkFingerprint = (vkFingerprint as { sha256: string }).sha256;
-    if (deployedVkFingerprint && deployedVkFingerprint !== localVkFingerprint) {
+
+    const fp = vkFingerprint as {
+        sha256?: string;
+        plaintext?: { sha256: string };
+        encrypted?: { sha256: string };
+    };
+    const localVkFingerprint = encryptedCriteria
+        ? fp.encrypted?.sha256
+        : fp.plaintext?.sha256 ?? fp.sha256;
+    const deployedVkFingerprint = encryptedCriteria
+        ? netAddrs?.HonkVerifierEncryptedVkFingerprint
+        : netAddrs?.HonkVerifierVkFingerprint;
+
+    if (deployedVkFingerprint && localVkFingerprint && deployedVkFingerprint !== localVkFingerprint) {
         return (
-            "This app was built against a newer eligibility circuit than the HonkVerifier on-chain. " +
-            "On WSL: `npm run build:circuit`, then `npx hardhat run scripts/deploy-verifier.ts --network sepolia`, " +
-            "then `npx hardhat run scripts/set-verifier.ts --network sepolia`, and redeploy the frontend."
+            `This app was built against a newer ${encryptedCriteria ? "encrypted" : "plaintext"} eligibility circuit than the HonkVerifier on-chain. ` +
+            REDEPLOY_HINT
         );
     }
-    if (!deployedVkFingerprint) {
-        // Legacy deployment — on-chain VK may predate vk_fingerprint tracking.
+
+    const engineVerifierSlot = encryptedCriteria ? "eligibilityVerifierEncrypted" : "eligibilityVerifier";
+    const onChainVerifier = (await engine[engineVerifierSlot]()) as string;
+    if (onChainVerifier === ethers.ZeroAddress) {
+        return (
+            `${encryptedCriteria ? "HonkVerifierEncrypted" : "HonkVerifier"} not set on EligibilityEngine. ` +
+            REDEPLOY_HINT
+        );
     }
 
-    if (expectedHonkVerifier) {
-        const onChain = (await engine.eligibilityVerifier()) as string;
-        if (onChain.toLowerCase() !== expectedHonkVerifier.toLowerCase()) {
-            return (
-                `EligibilityEngine points to verifier ${onChain}, but this app expects ${expectedHonkVerifier}. ` +
-                "Run scripts/set-verifier.ts after deploying HonkVerifier from `npm run build:circuit`."
-            );
-        }
+    if (expectedHonkVerifier && onChainVerifier.toLowerCase() !== expectedHonkVerifier.toLowerCase()) {
+        return (
+            `EligibilityEngine.${engineVerifierSlot} is ${onChainVerifier}, but this app expects ${expectedHonkVerifier}. ` +
+            REDEPLOY_HINT
+        );
+    }
+    if (honkVerifierAddress.toLowerCase() !== onChainVerifier.toLowerCase()) {
+        return (
+            `Preflight verifier ${honkVerifierAddress} does not match engine.${engineVerifierSlot} (${onChainVerifier}).`
+        );
     }
 
     const alreadySealed = (await engine.noirVerifiedResults(nullifier, trialId)) as boolean;
@@ -125,8 +158,6 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
 
     const scope = fieldFromBytes32(proofData.publicInputs[0]);
     const piNullifier = fieldFromBytes32(proofData.publicInputs[1]);
-    const piEligible = fieldFromBytes32(proofData.publicInputs[4]);
-    const eligibleField = eligible ? 1n : 0n;
 
     if (scope !== trialId) {
         return `Proof scope (${scope}) does not match trial id (${trialId}).`;
@@ -134,30 +165,44 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
     if (piNullifier !== nullifier) {
         return "Proof nullifier does not match your stored Semaphore application. Re-apply to this trial.";
     }
-    if (piEligible !== eligibleField) {
-        return "Proof eligible bit does not match the result you are sealing.";
-    }
-    const piFheStage = fieldFromBytes32(proofData.publicInputs[5]);
-    const expectedFheStage =
-        input.fheStageHandle != null
-            ? fheStageHandleToField(input.fheStageHandle)
-            : piFheStage;
-    if (piFheStage !== expectedFheStage) {
-        return "Attestation FHE stage handle does not match the persisted Zama result.";
-    }
 
-    const piSchema = proofData.publicInputs[6];
-    const engineSchema = (await engine.CRITERIA_SCHEMA_HASH()) as string;
-    if (piSchema.toLowerCase() !== engineSchema.toLowerCase()) {
-        return "Criteria schema hash does not match the deployed EligibilityEngine.";
+    if (encryptedCriteria) {
+        const piFheStage = fieldFromBytes32(proofData.publicInputs[3]);
+        const expectedFheStage =
+            input.fheStageHandle != null ? fheStageHandleToField(input.fheStageHandle) : piFheStage;
+        if (piFheStage !== expectedFheStage) {
+            return "Attestation FHE stage handle does not match the staged Zama result.";
+        }
+        const piSchema = proofData.publicInputs[4];
+        const engineSchema = (await engine.CRITERIA_SCHEMA_HASH()) as string;
+        if (piSchema.toLowerCase() !== engineSchema.toLowerCase()) {
+            return "Criteria schema hash does not match the deployed EligibilityEngine.";
+        }
+        if (fieldFromBytes32(proofData.publicInputs[6]) !== 1n) {
+            return "Encrypted mode flag must be 1 for encrypted-criteria trials.";
+        }
+    } else {
+        const piEligible = fieldFromBytes32(proofData.publicInputs[4]);
+        const eligibleField = eligible ? 1n : 0n;
+        if (piEligible !== eligibleField) {
+            return "Proof eligible bit does not match the result you are sealing.";
+        }
+        const piFheStage = fieldFromBytes32(proofData.publicInputs[5]);
+        const expectedFheStage =
+            input.fheStageHandle != null ? fheStageHandleToField(input.fheStageHandle) : piFheStage;
+        if (piFheStage !== expectedFheStage) {
+            return "Attestation FHE stage handle does not match the persisted Zama result.";
+        }
+        const piSchema = proofData.publicInputs[6];
+        const engineSchema = (await engine.CRITERIA_SCHEMA_HASH()) as string;
+        if (piSchema.toLowerCase() !== engineSchema.toLowerCase()) {
+            return "Criteria schema hash does not match the deployed EligibilityEngine.";
+        }
     }
 
     const honk = new ethers.Contract(honkVerifierAddress, HONK_IFACE, engine.runner ?? engine.provider);
     try {
-        const ok = (await honk.verify.staticCall(
-            proofData.proofBytes,
-            proofData.publicInputs
-        )) as boolean;
+        const ok = (await honk.verify.staticCall(proofData.proofBytes, proofData.publicInputs)) as boolean;
         if (!ok) {
             return "HonkVerifier.verify returned false (proof does not match the deployed verification key).";
         }
@@ -166,7 +211,7 @@ export async function runCertifyPreflight(input: CertifyPreflightInput): Promise
         if (honkMsg) return honkMsg;
         return (
             "HonkVerifier rejected the proof (SumcheckFailed — the deployed verification key does not match this circuit). " +
-            "Run `npm run build:circuit`, deploy HonkVerifier (`scripts/deploy-verifier.ts`), then `scripts/set-verifier.ts`."
+            REDEPLOY_HINT
         );
     }
 
@@ -183,8 +228,8 @@ export function formatCertifyFailure(err: unknown, preflightHint?: string | null
     if (msg.includes("Circuit artifact not found")) {
         return "Circuit not compiled. Run `npm run build:circuit` first.";
     }
-    if (msg.includes("Verifier not set")) {
-        return "HonkVerifier not set on EligibilityEngine. Run deploy-verifier.ts and set-verifier.ts.";
+    if (msg.includes("Verifier not set") || msg.includes("Encrypted verifier not set")) {
+        return `Honk verifier not set on EligibilityEngine. ${REDEPLOY_HINT}`;
     }
     if (msg.includes("No stored Semaphore nullifier")) {
         return "You must apply to this trial before certifying your result.";
@@ -198,16 +243,13 @@ export function formatCertifyFailure(err: unknown, preflightHint?: string | null
 
     if (
         msg.includes("require(false)") ||
-        msg.includes("execution reverted") && !msg.includes("reverted with reason")
+        (msg.includes("execution reverted") && !msg.includes("reverted with reason"))
     ) {
         const base =
             "On-chain certification reverted without a reason string (usually HonkVerifier SumcheckFailed: " +
             "proof/VK mismatch).";
         if (preflightHint) return `${base} Preflight: ${preflightHint}`;
-        return (
-            `${base} Run \`npm run build:circuit\`, redeploy HonkVerifier, then scripts/set-verifier.ts. ` +
-            "Ensure you completed anonymous apply for this trial."
-        );
+        return `${base} ${REDEPLOY_HINT} Ensure you completed anonymous apply for this trial.`;
     }
 
     if (msg.includes("CALL_EXCEPTION") || msg.includes("missing revert data")) {
@@ -273,9 +315,11 @@ function decodeContractRevert(err: unknown): string | null {
         ["Invalid Noir proof", "Honk attestation rejected by EligibilityEngine (verifier returned false)."],
         ["Already sealed", "This nullifier/trial is already sealed."],
         ["Already certified", "This nullifier/trial is already sealed."],
-        ["Expected 16 public inputs", "Wrong number of public inputs in the transaction."],
+        ["Expected 25 public inputs", "Wrong number of public inputs for plaintext attestation."],
+        ["Expected 15 public inputs", "Wrong number of public inputs for encrypted attestation."],
         ["FHE stage mismatch", "Attestation is not bound to the staged Zama FHE result handle."],
         ["Criteria schema mismatch", "Trial criteria schema version does not match the deployed engine."],
+        ["Encrypted verifier not set", "EligibilityEngine has no HonkVerifierEncrypted configured."],
         ["Verifier not set", "EligibilityEngine has no HonkVerifier configured."],
         ["PublicInputsLengthWrong", "HonkVerifier: public input count does not match the verification key."],
         ["SumcheckFailed", "HonkVerifier: proof invalid for the deployed verification key (circuit/VK mismatch)."],
@@ -314,12 +358,11 @@ function decodeRevertData(data: string): string | null {
 function mapCustomError(name: string): string {
     switch (name) {
         case "PublicInputsLengthWrong":
-            return `HonkVerifier: expected ${ELIGIBILITY_PUBLIC_INPUT_COUNT} public inputs; got a different count.`;
+            return "HonkVerifier: public input count does not match the verification key.";
         case "SumcheckFailed":
             return (
                 "HonkVerifier: proof verification failed (SumcheckFailed). " +
-                "The on-chain VK does not match this proof — redeploy HonkVerifier after `npm run build:circuit` " +
-                "and run scripts/set-verifier.ts."
+                `The on-chain VK does not match this proof — ${REDEPLOY_HINT}`
             );
         default:
             return `Contract error: ${name}`;

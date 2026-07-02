@@ -30,13 +30,17 @@ For fixed patient profile `P` and trial criteria `C`, if criterion `k` flips fro
 
 For identical numeric/boolean criteria values, `_computeEligibilityPlaintext` and `_computeEligibilityEncrypted` yield identical mock-decrypted `(finalResult, score)` for the same patient profile.
 
-**Test:** `test/unit/encrypted-criteria.test.ts` (ECR-01).
+**Test:** `test/unit/encrypted-criteria.test.ts` (ECR-01, DIFF-03).
 
 ### P5 — FHE stage binding (attestation)
 
 `finalizeAnonymousEligibilityWithProof` reverts when public input `fhe_stage_handle_hash` ≠ field(`staged finalCt`).
 
 **Test:** `test/unit/attestation-binding.test.ts` (BIND-01).
+
+## Verification results
+
+See [certora-halmos-results.md](./certora-halmos-results.md) for Certora/Halmos run status and differential fallbacks (Phase 5).
 
 ## Out of scope
 

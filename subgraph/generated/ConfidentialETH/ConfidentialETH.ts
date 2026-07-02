@@ -10,6 +10,50 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AmountDiscloseRequested extends ethereum.Event {
+  get params(): AmountDiscloseRequested__Params {
+    return new AmountDiscloseRequested__Params(this);
+  }
+}
+
+export class AmountDiscloseRequested__Params {
+  _event: AmountDiscloseRequested;
+
+  constructor(event: AmountDiscloseRequested) {
+    this._event = event;
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get requester(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+}
+
+export class AmountDisclosed extends ethereum.Event {
+  get params(): AmountDisclosed__Params {
+    return new AmountDisclosed__Params(this);
+  }
+}
+
+export class AmountDisclosed__Params {
+  _event: AmountDisclosed;
+
+  constructor(event: AmountDisclosed) {
+    this._event = event;
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get amount(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class BalanceLocked extends ethereum.Event {
   get params(): BalanceLocked__Params {
     return new BalanceLocked__Params(this);
@@ -43,6 +87,32 @@ export class BalanceUnlocked__Params {
 
   get user(): Address {
     return this._event.parameters[0].value.toAddress();
+  }
+}
+
+export class ConfidentialTransfer extends ethereum.Event {
+  get params(): ConfidentialTransfer__Params {
+    return new ConfidentialTransfer__Params(this);
+  }
+}
+
+export class ConfidentialTransfer__Params {
+  _event: ConfidentialTransfer;
+
+  constructor(event: ConfidentialTransfer) {
+    this._event = event;
+  }
+
+  get from(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._event.parameters[2].value.toBytes();
   }
 }
 
@@ -100,6 +170,28 @@ export class EncryptedTransfer__Params {
   }
 }
 
+export class FailedWithdrawEscrowed extends ethereum.Event {
+  get params(): FailedWithdrawEscrowed__Params {
+    return new FailedWithdrawEscrowed__Params(this);
+  }
+}
+
+export class FailedWithdrawEscrowed__Params {
+  _event: FailedWithdrawEscrowed;
+
+  constructor(event: FailedWithdrawEscrowed) {
+    this._event = event;
+  }
+
+  get recipient(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get amountWei(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class InsolventWithdrawalAttempted extends ethereum.Event {
   get params(): InsolventWithdrawalAttempted__Params {
     return new InsolventWithdrawalAttempted__Params(this);
@@ -122,6 +214,50 @@ export class InsolventWithdrawalAttempted__Params {
   }
 
   get availableWei(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+}
+
+export class InsufficientWithdrawNoop extends ethereum.Event {
+  get params(): InsufficientWithdrawNoop__Params {
+    return new InsufficientWithdrawNoop__Params(this);
+  }
+}
+
+export class InsufficientWithdrawNoop__Params {
+  _event: InsufficientWithdrawNoop;
+
+  constructor(event: InsufficientWithdrawNoop) {
+    this._event = event;
+  }
+
+  get user(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+}
+
+export class OperatorSet extends ethereum.Event {
+  get params(): OperatorSet__Params {
+    return new OperatorSet__Params(this);
+  }
+}
+
+export class OperatorSet__Params {
+  _event: OperatorSet;
+
+  constructor(event: OperatorSet) {
+    this._event = event;
+  }
+
+  get holder(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get operator(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get until(): BigInt {
     return this._event.parameters[2].value.toBigInt();
   }
 }
@@ -223,29 +359,7 @@ export class TransferSufficiencyPrepared__Params {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get sufficientHandle(): Bytes {
-    return this._event.parameters[1].value.toBytes();
-  }
-}
-
-export class WithdrawAmountRevealed extends ethereum.Event {
-  get params(): WithdrawAmountRevealed__Params {
-    return new WithdrawAmountRevealed__Params(this);
-  }
-}
-
-export class WithdrawAmountRevealed__Params {
-  _event: WithdrawAmountRevealed;
-
-  constructor(event: WithdrawAmountRevealed) {
-    this._event = event;
-  }
-
-  get user(): Address {
-    return this._event.parameters[0].value.toAddress();
-  }
-
-  get amountHandle(): Bytes {
+  get transferableHandle(): Bytes {
     return this._event.parameters[1].value.toBytes();
   }
 }
@@ -285,7 +399,7 @@ export class WithdrawRequested__Params {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get sufficientHandle(): Bytes {
+  get transferableHandle(): Bytes {
     return this._event.parameters[1].value.toBytes();
   }
 }
@@ -325,7 +439,7 @@ export class WithdrawToRequested__Params {
     return this._event.parameters[0].value.toAddress();
   }
 
-  get sufficientHandle(): Bytes {
+  get transferableHandle(): Bytes {
     return this._event.parameters[1].value.toBytes();
   }
 }
@@ -486,6 +600,52 @@ export class ConfidentialETH extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toI32());
   }
 
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  TEST_HELPERS_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "TEST_HELPERS_CHANGE_DELAY",
+      "TEST_HELPERS_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_TEST_HELPERS_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "TEST_HELPERS_CHANGE_DELAY",
+      "TEST_HELPERS_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   UNIT_SCALE(): BigInt {
     let result = super.call("UNIT_SCALE", "UNIT_SCALE():(uint256)", []);
 
@@ -524,6 +684,29 @@ export class ConfidentialETH extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  confidentialBalanceOf(account: Address): Bytes {
+    let result = super.call(
+      "confidentialBalanceOf",
+      "confidentialBalanceOf(address):(bytes32)",
+      [ethereum.Value.fromAddress(account)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialBalanceOf(account: Address): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialBalanceOf",
+      "confidentialBalanceOf(address):(bytes32)",
+      [ethereum.Value.fromAddress(account)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
   confidentialProtocolId(): BigInt {
     let result = super.call(
       "confidentialProtocolId",
@@ -545,6 +728,393 @@ export class ConfidentialETH extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  confidentialTotalSupply(): Bytes {
+    let result = super.call(
+      "confidentialTotalSupply",
+      "confidentialTotalSupply():(bytes32)",
+      [],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTotalSupply(): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTotalSupply",
+      "confidentialTotalSupply():(bytes32)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransfer(
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "confidentialTransfer",
+      "confidentialTransfer(address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransfer(
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransfer",
+      "confidentialTransfer(address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransfer1(to: Address, amount: Bytes): Bytes {
+    let result = super.call(
+      "confidentialTransfer",
+      "confidentialTransfer(address,bytes32):(bytes32)",
+      [ethereum.Value.fromAddress(to), ethereum.Value.fromFixedBytes(amount)],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransfer1(
+    to: Address,
+    amount: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransfer",
+      "confidentialTransfer(address,bytes32):(bytes32)",
+      [ethereum.Value.fromAddress(to), ethereum.Value.fromFixedBytes(amount)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferAndCall(to: Address, amount: Bytes, data: Bytes): Bytes {
+    let result = super.call(
+      "confidentialTransferAndCall",
+      "confidentialTransferAndCall(address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferAndCall(
+    to: Address,
+    amount: Bytes,
+    data: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferAndCall",
+      "confidentialTransferAndCall(address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferAndCall1(
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+    data: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "confidentialTransferAndCall",
+      "confidentialTransferAndCall(address,bytes32,bytes,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferAndCall1(
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+    data: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferAndCall",
+      "confidentialTransferAndCall(address,bytes32,bytes,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferFrom(
+    from: Address,
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "confidentialTransferFrom",
+      "confidentialTransferFrom(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferFrom(
+    from: Address,
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferFrom",
+      "confidentialTransferFrom(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferFrom1(from: Address, to: Address, amount: Bytes): Bytes {
+    let result = super.call(
+      "confidentialTransferFrom",
+      "confidentialTransferFrom(address,address,bytes32):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferFrom1(
+    from: Address,
+    to: Address,
+    amount: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferFrom",
+      "confidentialTransferFrom(address,address,bytes32):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferFromAndCall(
+    from: Address,
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+    data: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "confidentialTransferFromAndCall",
+      "confidentialTransferFromAndCall(address,address,bytes32,bytes,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferFromAndCall(
+    from: Address,
+    to: Address,
+    encryptedAmount: Bytes,
+    inputProof: Bytes,
+    data: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferFromAndCall",
+      "confidentialTransferFromAndCall(address,address,bytes32,bytes,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(encryptedAmount),
+        ethereum.Value.fromBytes(inputProof),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  confidentialTransferFromAndCall1(
+    from: Address,
+    to: Address,
+    amount: Bytes,
+    data: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "confidentialTransferFromAndCall",
+      "confidentialTransferFromAndCall(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_confidentialTransferFromAndCall1(
+    from: Address,
+    to: Address,
+    amount: Bytes,
+    data: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "confidentialTransferFromAndCall",
+      "confidentialTransferFromAndCall(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromAddress(to),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  contractAuthChangeEta(param0: Address): BigInt {
+    let result = super.call(
+      "contractAuthChangeEta",
+      "contractAuthChangeEta(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_contractAuthChangeEta(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "contractAuthChangeEta",
+      "contractAuthChangeEta(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  contractURI(): string {
+    let result = super.call("contractURI", "contractURI():(string)", []);
+
+    return result[0].toString();
+  }
+
+  try_contractURI(): ethereum.CallResult<string> {
+    let result = super.tryCall("contractURI", "contractURI():(string)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toString());
+  }
+
+  decimals(): i32 {
+    let result = super.call("decimals", "decimals():(uint8)", []);
+
+    return result[0].toI32();
+  }
+
+  try_decimals(): ethereum.CallResult<i32> {
+    let result = super.tryCall("decimals", "decimals():(uint8)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toI32());
   }
 
   eip712Domain(): ConfidentialETH__eip712DomainResult {
@@ -653,6 +1223,47 @@ export class ConfidentialETH extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  isOperator(holder: Address, spender: Address): boolean {
+    let result = super.call(
+      "isOperator",
+      "isOperator(address,address):(bool)",
+      [ethereum.Value.fromAddress(holder), ethereum.Value.fromAddress(spender)],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_isOperator(
+    holder: Address,
+    spender: Address,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "isOperator",
+      "isOperator(address,address):(bool)",
+      [ethereum.Value.fromAddress(holder), ethereum.Value.fromAddress(spender)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  name(): string {
+    let result = super.call("name", "name():(string)", []);
+
+    return result[0].toString();
+  }
+
+  try_name(): ethereum.CallResult<string> {
+    let result = super.tryCall("name", "name():(string)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toString());
+  }
+
   owner(): Address {
     let result = super.call("owner", "owner():(address)", []);
 
@@ -668,6 +1279,52 @@ export class ConfidentialETH extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  pendingContractAuth(param0: Address): boolean {
+    let result = super.call(
+      "pendingContractAuth",
+      "pendingContractAuth(address):(bool)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_pendingContractAuth(param0: Address): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "pendingContractAuth",
+      "pendingContractAuth(address):(bool)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  pendingFailedWithdrawWei(param0: Address): BigInt {
+    let result = super.call(
+      "pendingFailedWithdrawWei",
+      "pendingFailedWithdrawWei(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_pendingFailedWithdrawWei(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "pendingFailedWithdrawWei",
+      "pendingFailedWithdrawWei(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   pendingOwner(): Address {
     let result = super.call("pendingOwner", "pendingOwner():(address)", []);
 
@@ -681,6 +1338,29 @@ export class ConfidentialETH extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingTestHelpersValue(): boolean {
+    let result = super.call(
+      "pendingTestHelpersValue",
+      "pendingTestHelpersValue():(bool)",
+      [],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_pendingTestHelpersValue(): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "pendingTestHelpersValue",
+      "pendingTestHelpersValue():(bool)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   pendingWithdrawHandle(user: Address): Bytes {
@@ -755,156 +1435,88 @@ export class ConfidentialETH extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
-  revealWithdrawAmount(
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): Bytes {
+  supportsInterface(interfaceId: Bytes): boolean {
     let result = super.call(
-      "revealWithdrawAmount",
-      "revealWithdrawAmount(bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "supportsInterface",
+      "supportsInterface(bytes4):(bool)",
+      [ethereum.Value.fromFixedBytes(interfaceId)],
     );
 
-    return result[0].toBytes();
+    return result[0].toBoolean();
   }
 
-  try_revealWithdrawAmount(
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): ethereum.CallResult<Bytes> {
+  try_supportsInterface(interfaceId: Bytes): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "revealWithdrawAmount",
-      "revealWithdrawAmount(bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "supportsInterface",
+      "supportsInterface(bytes4):(bool)",
+      [ethereum.Value.fromFixedBytes(interfaceId)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBytes());
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
-  revealWithdrawAmountFor(
-    owner_: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): Bytes {
+  symbol(): string {
+    let result = super.call("symbol", "symbol():(string)", []);
+
+    return result[0].toString();
+  }
+
+  try_symbol(): ethereum.CallResult<string> {
+    let result = super.tryCall("symbol", "symbol():(string)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toString());
+  }
+
+  testHelpersChangeEta(): BigInt {
     let result = super.call(
-      "revealWithdrawAmountFor",
-      "revealWithdrawAmountFor(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(owner_),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "testHelpersChangeEta",
+      "testHelpersChangeEta():(uint256)",
+      [],
     );
 
-    return result[0].toBytes();
+    return result[0].toBigInt();
   }
 
-  try_revealWithdrawAmountFor(
-    owner_: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): ethereum.CallResult<Bytes> {
+  try_testHelpersChangeEta(): ethereum.CallResult<BigInt> {
     let result = super.tryCall(
-      "revealWithdrawAmountFor",
-      "revealWithdrawAmountFor(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(owner_),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "testHelpersChangeEta",
+      "testHelpersChangeEta():(uint256)",
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBytes());
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
-  revealWithdrawToAmount(
-    user: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): Bytes {
+  testHelpersEnabled(): boolean {
     let result = super.call(
-      "revealWithdrawToAmount",
-      "revealWithdrawToAmount(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(user),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "testHelpersEnabled",
+      "testHelpersEnabled():(bool)",
+      [],
     );
 
-    return result[0].toBytes();
+    return result[0].toBoolean();
   }
 
-  try_revealWithdrawToAmount(
-    user: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): ethereum.CallResult<Bytes> {
+  try_testHelpersEnabled(): ethereum.CallResult<boolean> {
     let result = super.tryCall(
-      "revealWithdrawToAmount",
-      "revealWithdrawToAmount(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(user),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
+      "testHelpersEnabled",
+      "testHelpersEnabled():(bool)",
+      [],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
     let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBytes());
-  }
-
-  revealWithdrawToAmountFor(
-    user: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): Bytes {
-    let result = super.call(
-      "revealWithdrawToAmountFor",
-      "revealWithdrawToAmountFor(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(user),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
-    );
-
-    return result[0].toBytes();
-  }
-
-  try_revealWithdrawToAmountFor(
-    user: Address,
-    sufficientCleartexts: Bytes,
-    sufficientProof: Bytes,
-  ): ethereum.CallResult<Bytes> {
-    let result = super.tryCall(
-      "revealWithdrawToAmountFor",
-      "revealWithdrawToAmountFor(address,bytes,bytes):(bytes32)",
-      [
-        ethereum.Value.fromAddress(user),
-        ethereum.Value.fromBytes(sufficientCleartexts),
-        ethereum.Value.fromBytes(sufficientProof),
-      ],
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBytes());
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
   withdrawNonces(param0: Address): BigInt {
@@ -921,6 +1533,29 @@ export class ConfidentialETH extends ethereum.SmartContract {
     let result = super.tryCall(
       "withdrawNonces",
       "withdrawNonces(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  withdrawToNonces(param0: Address): BigInt {
+    let result = super.call(
+      "withdrawToNonces",
+      "withdrawToNonces(address):(uint256)",
+      [ethereum.Value.fromAddress(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_withdrawToNonces(param0: Address): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "withdrawToNonces",
+      "withdrawToNonces(address):(uint256)",
       [ethereum.Value.fromAddress(param0)],
     );
     if (result.reverted) {
@@ -983,6 +1618,62 @@ export class AcceptOwnershipCall__Outputs {
   }
 }
 
+export class ApplyContractAuthCall extends ethereum.Call {
+  get inputs(): ApplyContractAuthCall__Inputs {
+    return new ApplyContractAuthCall__Inputs(this);
+  }
+
+  get outputs(): ApplyContractAuthCall__Outputs {
+    return new ApplyContractAuthCall__Outputs(this);
+  }
+}
+
+export class ApplyContractAuthCall__Inputs {
+  _call: ApplyContractAuthCall;
+
+  constructor(call: ApplyContractAuthCall) {
+    this._call = call;
+  }
+
+  get _contract(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ApplyContractAuthCall__Outputs {
+  _call: ApplyContractAuthCall;
+
+  constructor(call: ApplyContractAuthCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyTestHelpersEnabledCall extends ethereum.Call {
+  get inputs(): ApplyTestHelpersEnabledCall__Inputs {
+    return new ApplyTestHelpersEnabledCall__Inputs(this);
+  }
+
+  get outputs(): ApplyTestHelpersEnabledCall__Outputs {
+    return new ApplyTestHelpersEnabledCall__Outputs(this);
+  }
+}
+
+export class ApplyTestHelpersEnabledCall__Inputs {
+  _call: ApplyTestHelpersEnabledCall;
+
+  constructor(call: ApplyTestHelpersEnabledCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyTestHelpersEnabledCall__Outputs {
+  _call: ApplyTestHelpersEnabledCall;
+
+  constructor(call: ApplyTestHelpersEnabledCall) {
+    this._call = call;
+  }
+}
+
 export class AuthorizeContractCall extends ethereum.Call {
   get inputs(): AuthorizeContractCall__Inputs {
     return new AuthorizeContractCall__Inputs(this);
@@ -1000,7 +1691,7 @@ export class AuthorizeContractCall__Inputs {
     this._call = call;
   }
 
-  get _contract(): Address {
+  get value0(): Address {
     return this._call.inputValues[0].value.toAddress();
   }
 }
@@ -1035,6 +1726,32 @@ export class CancelPendingWithdrawCall__Outputs {
   _call: CancelPendingWithdrawCall;
 
   constructor(call: CancelPendingWithdrawCall) {
+    this._call = call;
+  }
+}
+
+export class ClaimFailedWithdrawCall extends ethereum.Call {
+  get inputs(): ClaimFailedWithdrawCall__Inputs {
+    return new ClaimFailedWithdrawCall__Inputs(this);
+  }
+
+  get outputs(): ClaimFailedWithdrawCall__Outputs {
+    return new ClaimFailedWithdrawCall__Outputs(this);
+  }
+}
+
+export class ClaimFailedWithdrawCall__Inputs {
+  _call: ClaimFailedWithdrawCall;
+
+  constructor(call: ClaimFailedWithdrawCall) {
+    this._call = call;
+  }
+}
+
+export class ClaimFailedWithdrawCall__Outputs {
+  _call: ClaimFailedWithdrawCall;
+
+  constructor(call: ClaimFailedWithdrawCall) {
     this._call = call;
   }
 }
@@ -1080,20 +1797,12 @@ export class CompletePublicExitCall__Inputs {
     return this._call.inputValues[5].value.toBytes();
   }
 
-  get sufficientCleartexts(): Bytes {
+  get transferableCleartexts(): Bytes {
     return this._call.inputValues[6].value.toBytes();
   }
 
-  get sufficientProof(): Bytes {
+  get transferableProof(): Bytes {
     return this._call.inputValues[7].value.toBytes();
-  }
-
-  get amountCleartexts(): Bytes {
-    return this._call.inputValues[8].value.toBytes();
-  }
-
-  get amountProof(): Bytes {
-    return this._call.inputValues[9].value.toBytes();
   }
 }
 
@@ -1122,11 +1831,11 @@ export class CompleteWithdrawCall__Inputs {
     this._call = call;
   }
 
-  get amountCleartexts(): Bytes {
+  get transferableCleartexts(): Bytes {
     return this._call.inputValues[0].value.toBytes();
   }
 
-  get amountProof(): Bytes {
+  get transferableProof(): Bytes {
     return this._call.inputValues[1].value.toBytes();
   }
 }
@@ -1160,11 +1869,11 @@ export class CompleteWithdrawToCall__Inputs {
     return this._call.inputValues[0].value.toAddress();
   }
 
-  get amountCleartexts(): Bytes {
+  get transferableCleartexts(): Bytes {
     return this._call.inputValues[1].value.toBytes();
   }
 
-  get amountProof(): Bytes {
+  get transferableProof(): Bytes {
     return this._call.inputValues[2].value.toBytes();
   }
 }
@@ -1174,6 +1883,358 @@ export class CompleteWithdrawToCall__Outputs {
 
   constructor(call: CompleteWithdrawToCall) {
     this._call = call;
+  }
+}
+
+export class ConfidentialTransferCall extends ethereum.Call {
+  get inputs(): ConfidentialTransferCall__Inputs {
+    return new ConfidentialTransferCall__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferCall__Outputs {
+    return new ConfidentialTransferCall__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferCall__Inputs {
+  _call: ConfidentialTransferCall;
+
+  constructor(call: ConfidentialTransferCall) {
+    this._call = call;
+  }
+
+  get to(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferCall__Outputs {
+  _call: ConfidentialTransferCall;
+
+  constructor(call: ConfidentialTransferCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransfer1Call extends ethereum.Call {
+  get inputs(): ConfidentialTransfer1Call__Inputs {
+    return new ConfidentialTransfer1Call__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransfer1Call__Outputs {
+    return new ConfidentialTransfer1Call__Outputs(this);
+  }
+}
+
+export class ConfidentialTransfer1Call__Inputs {
+  _call: ConfidentialTransfer1Call;
+
+  constructor(call: ConfidentialTransfer1Call) {
+    this._call = call;
+  }
+
+  get to(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+}
+
+export class ConfidentialTransfer1Call__Outputs {
+  _call: ConfidentialTransfer1Call;
+
+  constructor(call: ConfidentialTransfer1Call) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferAndCallCall extends ethereum.Call {
+  get inputs(): ConfidentialTransferAndCallCall__Inputs {
+    return new ConfidentialTransferAndCallCall__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferAndCallCall__Outputs {
+    return new ConfidentialTransferAndCallCall__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferAndCallCall__Inputs {
+  _call: ConfidentialTransferAndCallCall;
+
+  constructor(call: ConfidentialTransferAndCallCall) {
+    this._call = call;
+  }
+
+  get to(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+
+  get data(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferAndCallCall__Outputs {
+  _call: ConfidentialTransferAndCallCall;
+
+  constructor(call: ConfidentialTransferAndCallCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferAndCall1Call extends ethereum.Call {
+  get inputs(): ConfidentialTransferAndCall1Call__Inputs {
+    return new ConfidentialTransferAndCall1Call__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferAndCall1Call__Outputs {
+    return new ConfidentialTransferAndCall1Call__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferAndCall1Call__Inputs {
+  _call: ConfidentialTransferAndCall1Call;
+
+  constructor(call: ConfidentialTransferAndCall1Call) {
+    this._call = call;
+  }
+
+  get to(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[1].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get data(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferAndCall1Call__Outputs {
+  _call: ConfidentialTransferAndCall1Call;
+
+  constructor(call: ConfidentialTransferAndCall1Call) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromCall extends ethereum.Call {
+  get inputs(): ConfidentialTransferFromCall__Inputs {
+    return new ConfidentialTransferFromCall__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferFromCall__Outputs {
+    return new ConfidentialTransferFromCall__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferFromCall__Inputs {
+  _call: ConfidentialTransferFromCall;
+
+  constructor(call: ConfidentialTransferFromCall) {
+    this._call = call;
+  }
+
+  get from(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromCall__Outputs {
+  _call: ConfidentialTransferFromCall;
+
+  constructor(call: ConfidentialTransferFromCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFrom1Call extends ethereum.Call {
+  get inputs(): ConfidentialTransferFrom1Call__Inputs {
+    return new ConfidentialTransferFrom1Call__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferFrom1Call__Outputs {
+    return new ConfidentialTransferFrom1Call__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferFrom1Call__Inputs {
+  _call: ConfidentialTransferFrom1Call;
+
+  constructor(call: ConfidentialTransferFrom1Call) {
+    this._call = call;
+  }
+
+  get from(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFrom1Call__Outputs {
+  _call: ConfidentialTransferFrom1Call;
+
+  constructor(call: ConfidentialTransferFrom1Call) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromAndCallCall extends ethereum.Call {
+  get inputs(): ConfidentialTransferFromAndCallCall__Inputs {
+    return new ConfidentialTransferFromAndCallCall__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferFromAndCallCall__Outputs {
+    return new ConfidentialTransferFromAndCallCall__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferFromAndCallCall__Inputs {
+  _call: ConfidentialTransferFromAndCallCall;
+
+  constructor(call: ConfidentialTransferFromAndCallCall) {
+    this._call = call;
+  }
+
+  get from(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get inputProof(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+
+  get data(): Bytes {
+    return this._call.inputValues[4].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromAndCallCall__Outputs {
+  _call: ConfidentialTransferFromAndCallCall;
+
+  constructor(call: ConfidentialTransferFromAndCallCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromAndCall1Call extends ethereum.Call {
+  get inputs(): ConfidentialTransferFromAndCall1Call__Inputs {
+    return new ConfidentialTransferFromAndCall1Call__Inputs(this);
+  }
+
+  get outputs(): ConfidentialTransferFromAndCall1Call__Outputs {
+    return new ConfidentialTransferFromAndCall1Call__Outputs(this);
+  }
+}
+
+export class ConfidentialTransferFromAndCall1Call__Inputs {
+  _call: ConfidentialTransferFromAndCall1Call;
+
+  constructor(call: ConfidentialTransferFromAndCall1Call) {
+    this._call = call;
+  }
+
+  get from(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get to(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get data(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class ConfidentialTransferFromAndCall1Call__Outputs {
+  _call: ConfidentialTransferFromAndCall1Call;
+
+  constructor(call: ConfidentialTransferFromAndCall1Call) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
   }
 }
 
@@ -1194,7 +2255,7 @@ export class DeauthorizeContractCall__Inputs {
     this._call = call;
   }
 
-  get _contract(): Address {
+  get value0(): Address {
     return this._call.inputValues[0].value.toAddress();
   }
 }
@@ -1263,6 +2324,44 @@ export class DepositForCall__Outputs {
   }
 }
 
+export class DiscloseEncryptedAmountCall extends ethereum.Call {
+  get inputs(): DiscloseEncryptedAmountCall__Inputs {
+    return new DiscloseEncryptedAmountCall__Inputs(this);
+  }
+
+  get outputs(): DiscloseEncryptedAmountCall__Outputs {
+    return new DiscloseEncryptedAmountCall__Outputs(this);
+  }
+}
+
+export class DiscloseEncryptedAmountCall__Inputs {
+  _call: DiscloseEncryptedAmountCall;
+
+  constructor(call: DiscloseEncryptedAmountCall) {
+    this._call = call;
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+
+  get cleartextAmount(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get decryptionProof(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+}
+
+export class DiscloseEncryptedAmountCall__Outputs {
+  _call: DiscloseEncryptedAmountCall;
+
+  constructor(call: DiscloseEncryptedAmountCall) {
+    this._call = call;
+  }
+}
+
 export class GetBalanceForAuthorizedCall extends ethereum.Call {
   get inputs(): GetBalanceForAuthorizedCall__Inputs {
     return new GetBalanceForAuthorizedCall__Inputs(this);
@@ -1323,6 +2422,40 @@ export class LockBalanceCall__Outputs {
   _call: LockBalanceCall;
 
   constructor(call: LockBalanceCall) {
+    this._call = call;
+  }
+}
+
+export class MintClearCall extends ethereum.Call {
+  get inputs(): MintClearCall__Inputs {
+    return new MintClearCall__Inputs(this);
+  }
+
+  get outputs(): MintClearCall__Outputs {
+    return new MintClearCall__Outputs(this);
+  }
+}
+
+export class MintClearCall__Inputs {
+  _call: MintClearCall;
+
+  constructor(call: MintClearCall) {
+    this._call = call;
+  }
+
+  get to(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get amount(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+}
+
+export class MintClearCall__Outputs {
+  _call: MintClearCall;
+
+  constructor(call: MintClearCall) {
     this._call = call;
   }
 }
@@ -1395,6 +2528,36 @@ export class ProposeOwnershipCall__Outputs {
   }
 }
 
+export class RequestDiscloseEncryptedAmountCall extends ethereum.Call {
+  get inputs(): RequestDiscloseEncryptedAmountCall__Inputs {
+    return new RequestDiscloseEncryptedAmountCall__Inputs(this);
+  }
+
+  get outputs(): RequestDiscloseEncryptedAmountCall__Outputs {
+    return new RequestDiscloseEncryptedAmountCall__Outputs(this);
+  }
+}
+
+export class RequestDiscloseEncryptedAmountCall__Inputs {
+  _call: RequestDiscloseEncryptedAmountCall;
+
+  constructor(call: RequestDiscloseEncryptedAmountCall) {
+    this._call = call;
+  }
+
+  get encryptedAmount(): Bytes {
+    return this._call.inputValues[0].value.toBytes();
+  }
+}
+
+export class RequestDiscloseEncryptedAmountCall__Outputs {
+  _call: RequestDiscloseEncryptedAmountCall;
+
+  constructor(call: RequestDiscloseEncryptedAmountCall) {
+    this._call = call;
+  }
+}
+
 export class RequestWithdrawCall extends ethereum.Call {
   get inputs(): RequestWithdrawCall__Inputs {
     return new RequestWithdrawCall__Inputs(this);
@@ -1461,6 +2624,18 @@ export class RequestWithdrawToCall__Inputs {
   get inputProof(): Bytes {
     return this._call.inputValues[3].value.toBytes();
   }
+
+  get nonce(): BigInt {
+    return this._call.inputValues[4].value.toBigInt();
+  }
+
+  get deadline(): BigInt {
+    return this._call.inputValues[5].value.toBigInt();
+  }
+
+  get signature(): Bytes {
+    return this._call.inputValues[6].value.toBytes();
+  }
 }
 
 export class RequestWithdrawToCall__Outputs {
@@ -1471,167 +2646,101 @@ export class RequestWithdrawToCall__Outputs {
   }
 }
 
-export class RevealWithdrawAmountCall extends ethereum.Call {
-  get inputs(): RevealWithdrawAmountCall__Inputs {
-    return new RevealWithdrawAmountCall__Inputs(this);
+export class ScheduleContractAuthCall extends ethereum.Call {
+  get inputs(): ScheduleContractAuthCall__Inputs {
+    return new ScheduleContractAuthCall__Inputs(this);
   }
 
-  get outputs(): RevealWithdrawAmountCall__Outputs {
-    return new RevealWithdrawAmountCall__Outputs(this);
+  get outputs(): ScheduleContractAuthCall__Outputs {
+    return new ScheduleContractAuthCall__Outputs(this);
   }
 }
 
-export class RevealWithdrawAmountCall__Inputs {
-  _call: RevealWithdrawAmountCall;
+export class ScheduleContractAuthCall__Inputs {
+  _call: ScheduleContractAuthCall;
 
-  constructor(call: RevealWithdrawAmountCall) {
+  constructor(call: ScheduleContractAuthCall) {
     this._call = call;
   }
 
-  get sufficientCleartexts(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
-  }
-
-  get sufficientProof(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
-  }
-}
-
-export class RevealWithdrawAmountCall__Outputs {
-  _call: RevealWithdrawAmountCall;
-
-  constructor(call: RevealWithdrawAmountCall) {
-    this._call = call;
-  }
-
-  get amountHandle(): Bytes {
-    return this._call.outputValues[0].value.toBytes();
-  }
-}
-
-export class RevealWithdrawAmountForCall extends ethereum.Call {
-  get inputs(): RevealWithdrawAmountForCall__Inputs {
-    return new RevealWithdrawAmountForCall__Inputs(this);
-  }
-
-  get outputs(): RevealWithdrawAmountForCall__Outputs {
-    return new RevealWithdrawAmountForCall__Outputs(this);
-  }
-}
-
-export class RevealWithdrawAmountForCall__Inputs {
-  _call: RevealWithdrawAmountForCall;
-
-  constructor(call: RevealWithdrawAmountForCall) {
-    this._call = call;
-  }
-
-  get owner_(): Address {
+  get _contract(): Address {
     return this._call.inputValues[0].value.toAddress();
   }
 
-  get sufficientCleartexts(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
-  }
-
-  get sufficientProof(): Bytes {
-    return this._call.inputValues[2].value.toBytes();
+  get _authorize(): boolean {
+    return this._call.inputValues[1].value.toBoolean();
   }
 }
 
-export class RevealWithdrawAmountForCall__Outputs {
-  _call: RevealWithdrawAmountForCall;
+export class ScheduleContractAuthCall__Outputs {
+  _call: ScheduleContractAuthCall;
 
-  constructor(call: RevealWithdrawAmountForCall) {
+  constructor(call: ScheduleContractAuthCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleTestHelpersEnabledCall extends ethereum.Call {
+  get inputs(): ScheduleTestHelpersEnabledCall__Inputs {
+    return new ScheduleTestHelpersEnabledCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleTestHelpersEnabledCall__Outputs {
+    return new ScheduleTestHelpersEnabledCall__Outputs(this);
+  }
+}
+
+export class ScheduleTestHelpersEnabledCall__Inputs {
+  _call: ScheduleTestHelpersEnabledCall;
+
+  constructor(call: ScheduleTestHelpersEnabledCall) {
     this._call = call;
   }
 
-  get amountHandle(): Bytes {
-    return this._call.outputValues[0].value.toBytes();
+  get enabled(): boolean {
+    return this._call.inputValues[0].value.toBoolean();
   }
 }
 
-export class RevealWithdrawToAmountCall extends ethereum.Call {
-  get inputs(): RevealWithdrawToAmountCall__Inputs {
-    return new RevealWithdrawToAmountCall__Inputs(this);
-  }
+export class ScheduleTestHelpersEnabledCall__Outputs {
+  _call: ScheduleTestHelpersEnabledCall;
 
-  get outputs(): RevealWithdrawToAmountCall__Outputs {
-    return new RevealWithdrawToAmountCall__Outputs(this);
+  constructor(call: ScheduleTestHelpersEnabledCall) {
+    this._call = call;
   }
 }
 
-export class RevealWithdrawToAmountCall__Inputs {
-  _call: RevealWithdrawToAmountCall;
+export class SetOperatorCall extends ethereum.Call {
+  get inputs(): SetOperatorCall__Inputs {
+    return new SetOperatorCall__Inputs(this);
+  }
 
-  constructor(call: RevealWithdrawToAmountCall) {
+  get outputs(): SetOperatorCall__Outputs {
+    return new SetOperatorCall__Outputs(this);
+  }
+}
+
+export class SetOperatorCall__Inputs {
+  _call: SetOperatorCall;
+
+  constructor(call: SetOperatorCall) {
     this._call = call;
   }
 
-  get user(): Address {
+  get operator(): Address {
     return this._call.inputValues[0].value.toAddress();
   }
 
-  get sufficientCleartexts(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
-  }
-
-  get sufficientProof(): Bytes {
-    return this._call.inputValues[2].value.toBytes();
+  get until(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
   }
 }
 
-export class RevealWithdrawToAmountCall__Outputs {
-  _call: RevealWithdrawToAmountCall;
+export class SetOperatorCall__Outputs {
+  _call: SetOperatorCall;
 
-  constructor(call: RevealWithdrawToAmountCall) {
+  constructor(call: SetOperatorCall) {
     this._call = call;
-  }
-
-  get amountHandle(): Bytes {
-    return this._call.outputValues[0].value.toBytes();
-  }
-}
-
-export class RevealWithdrawToAmountForCall extends ethereum.Call {
-  get inputs(): RevealWithdrawToAmountForCall__Inputs {
-    return new RevealWithdrawToAmountForCall__Inputs(this);
-  }
-
-  get outputs(): RevealWithdrawToAmountForCall__Outputs {
-    return new RevealWithdrawToAmountForCall__Outputs(this);
-  }
-}
-
-export class RevealWithdrawToAmountForCall__Inputs {
-  _call: RevealWithdrawToAmountForCall;
-
-  constructor(call: RevealWithdrawToAmountForCall) {
-    this._call = call;
-  }
-
-  get user(): Address {
-    return this._call.inputValues[0].value.toAddress();
-  }
-
-  get sufficientCleartexts(): Bytes {
-    return this._call.inputValues[1].value.toBytes();
-  }
-
-  get sufficientProof(): Bytes {
-    return this._call.inputValues[2].value.toBytes();
-  }
-}
-
-export class RevealWithdrawToAmountForCall__Outputs {
-  _call: RevealWithdrawToAmountForCall;
-
-  constructor(call: RevealWithdrawToAmountForCall) {
-    this._call = call;
-  }
-
-  get amountHandle(): Bytes {
-    return this._call.outputValues[0].value.toBytes();
   }
 }
 
@@ -1662,14 +2771,6 @@ export class TransferEncryptedCall__Inputs {
 
   get amount(): Bytes {
     return this._call.inputValues[2].value.toBytes();
-  }
-
-  get sufficientCleartexts(): Bytes {
-    return this._call.inputValues[3].value.toBytes();
-  }
-
-  get sufficientProof(): Bytes {
-    return this._call.inputValues[4].value.toBytes();
   }
 }
 

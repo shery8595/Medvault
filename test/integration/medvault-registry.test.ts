@@ -75,7 +75,7 @@ describe("Integration: MedVaultRegistry", function () {
         );
         await cancelAnonymousApplyStage(
             stack.medVaultRegistry,
-            stack.patient,
+            stack.relayer,
             trialId,
             id,
             stack.patient.address

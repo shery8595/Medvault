@@ -1,9 +1,18 @@
 {
-  "sha256": "4ae6e30085c29752779afee1d0a4e01217133aa328088b410b1b5035633e9fd1",
-  "circuitSize": 1024,
-  "publicInputs": 4,
-  "verifierTarget": "evm-no-zk",
-  "noirVersion": "1.0.0-beta.21",
-  "bbVersion": "5.0.0-nightly.20260324",
-  "generatedAt": "2026-06-26T02:48:02.765Z"
+  "plaintext": {
+    "sha256": "b5338427d5b9e50728b7ddde36f410bcca22c8b57ba1b53f9f53c2295c5593b6",
+    "circuit": "eligibility_plaintext",
+    "verifierTarget": "evm-no-zk",
+    "noirVersion": "1.0.0-beta.21",
+    "bbVersion": "5.0.0-nightly.20260324",
+    "generatedAt": "2026-07-01T23:42:04.076Z"
+  },
+  "encrypted": {
+    "sha256": "6e53573ea8cfe5d49db845de3889cf44ede5375462e04af982f0d33b13146bbb",
+    "circuit": "eligibility_encrypted",
+    "verifierTarget": "evm-no-zk",
+    "noirVersion": "1.0.0-beta.21",
+    "bbVersion": "5.0.0-nightly.20260324",
+    "generatedAt": "2026-07-01T23:42:04.277Z"
+  }
 }

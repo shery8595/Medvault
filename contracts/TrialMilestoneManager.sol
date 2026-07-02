@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.27;
 
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./TrialManager.sol";
 import "./DataAccessLog.sol";
 
@@ -16,7 +18,7 @@ interface ISponsorIncentiveVault {
  * @title TrialMilestoneManager
  * @notice Manages phased trial progress and milestone definitions
  */
-contract TrialMilestoneManager {
+contract TrialMilestoneManager is EIP712 {
     struct Milestone {
         string name;
         uint16 weightBps; // Weight in basis points (100 = 1%)
@@ -28,11 +30,23 @@ contract TrialMilestoneManager {
         bool initialized;
     }
 
-    TrialManager public trialManager;
+    TrialManager public immutable trialManager;
     ISponsorIncentiveVault public vault; // H-4: Vault reference for participant validation
     DataAccessLog public dataAccessLog;
     address public owner;
     address public pendingOwner; // FINDING 11: Two-step ownership transfer
+
+    /// @notice AUDIT-FIX-M-3: Timelock before changing trusted contract addresses.
+    uint256 public constant READER_CHANGE_DELAY = 6 hours;
+    address public pendingVault;
+    uint256 public vaultChangeEta;
+
+    /// @notice H-11: Patient counter-signature nonce for milestone completion.
+    mapping(address => uint256) public milestoneCompletionNonce;
+
+    bytes32 public constant MILESTONE_COMPLETION_TYPEHASH = keccak256(
+        "MilestoneCompletion(uint256 trialId,address patient,uint256 milestoneIndex,uint256 nonce,uint256 deadline)"
+    );
 
     // trialId => phases
     mapping(uint256 => TrialPhases) private trialPhases;
@@ -46,7 +60,7 @@ contract TrialMilestoneManager {
     event OwnershipProposed(address indexed proposedOwner);
     event OwnershipAccepted(address indexed newOwner);
 
-    constructor(address _trialManager) {
+    constructor(address _trialManager) EIP712("MedVault TrialMilestoneManager", "1") {
         owner = msg.sender;
         trialManager = TrialManager(_trialManager);
     }
@@ -80,8 +94,20 @@ contract TrialMilestoneManager {
      * @param _vault Address of the SponsorIncentiveVault contract
      */
     function setVault(address _vault) external onlyOwner {
+        revert("Use scheduleVault + applyVault");
+    }
+
+    function scheduleVault(address _vault) external onlyOwner {
         require(_vault != address(0), "Zero address");
-        vault = ISponsorIncentiveVault(_vault);
+        pendingVault = _vault;
+        vaultChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    function applyVault() external onlyOwner {
+        require(vaultChangeEta != 0 && block.timestamp >= vaultChangeEta, "Timelock active");
+        vault = ISponsorIncentiveVault(pendingVault);
+        vaultChangeEta = 0;
+        pendingVault = address(0);
     }
 
     function setDataAccessLog(address _log) external onlyOwner {
@@ -89,13 +115,10 @@ contract TrialMilestoneManager {
     }
 
     /**
-     * @notice Update the linked TrialManager contract
+     * @notice H-10: trialManager is immutable after construction.
      */
-    function setTrialManager(address _newTrialManager) external onlyOwner {
-        require(_newTrialManager != address(0), "Invalid address");
-        address oldManager = address(trialManager);
-        trialManager = TrialManager(_newTrialManager);
-        emit TrialManagerUpdated(oldManager, _newTrialManager);
+    function setTrialManager(address) external pure {
+        revert("TrialManager is immutable");
     }
 
     /**
@@ -108,26 +131,47 @@ contract TrialMilestoneManager {
         uint16[] calldata _weights,
         uint256[] calldata _deadlines
     ) external onlySponsor(_trialId) {
+        _setMilestonesCore(_trialId, _names, _weights, _deadlines);
+    }
+
+    /**
+     * @notice Vault callback path for atomic confidential fund + set milestones (Plan 04).
+     * @dev Sponsor identity is the confidential transfer `from` address, not msg.sender.
+     */
+    function setMilestonesFromVault(
+        uint256 _trialId,
+        address _sponsor,
+        string[] calldata _names,
+        uint16[] calldata _weights,
+        uint256[] calldata _deadlines
+    ) external {
+        require(msg.sender == address(vault), "Only vault");
+        require(trialManager.getTrial(_trialId).sponsor == _sponsor, "Sponsor mismatch");
+        _setMilestonesCore(_trialId, _names, _weights, _deadlines);
+    }
+
+    function _setMilestonesCore(
+        uint256 _trialId,
+        string[] calldata _names,
+        uint16[] calldata _weights,
+        uint256[] calldata _deadlines
+    ) private {
         require(address(vault) != address(0), "Vault not configured");
         require(trialManager.getTrial(_trialId).endTime > 0, "Trial does not exist");
         require(!trialPhases[_trialId].initialized, "Already initialized");
         require(_names.length > 0 && _names.length <= 4, "1-4 milestones allowed");
         require(_names.length == _weights.length && _names.length == _deadlines.length, "Length mismatch");
-        // M-3: ensure the sponsor is still verified before accepting milestone definitions.
         require(trialManager.isTrialSponsorVerified(_trialId), "Sponsor no longer verified");
 
-        // MED-6: Validate deadlines
         TrialManager.Trial memory trial = trialManager.getTrial(_trialId);
         for (uint256 i = 0; i < _deadlines.length; i++) {
             require(_deadlines[i] > block.timestamp, "Deadline must be in future");
             require(_deadlines[i] <= trial.endTime, "Deadline cannot exceed trial end");
-            // Validate deadlines are sequential (increasing order)
             if (i > 0) {
                 require(_deadlines[i] > _deadlines[i - 1], "Deadlines must be sequential");
             }
         }
 
-        // FINDING 8: Accumulate in uint256 to prevent overflow
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < _names.length; i++) {
             totalWeight += uint256(_weights[i]);
@@ -148,7 +192,29 @@ contract TrialMilestoneManager {
      * @dev HIGH-2: Milestones must be completed in sequential order
      * @dev H-4: Patient must be registered participant in the vault
      */
-    function completeMilestone(uint256 _trialId, address _patient, uint256 _milestoneIndex) external onlySponsor(_trialId) {
+    function completeMilestone(
+        uint256 _trialId,
+        address _patient,
+        uint256 _milestoneIndex,
+        uint256 _deadline,
+        bytes calldata _patientSignature
+    ) external onlySponsor(_trialId) {
+        require(block.timestamp <= _deadline, "Milestone signature expired");
+        bytes32 structHash = keccak256(
+            abi.encode(
+                MILESTONE_COMPLETION_TYPEHASH,
+                _trialId,
+                _patient,
+                _milestoneIndex,
+                milestoneCompletionNonce[_patient],
+                _deadline
+            )
+        );
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address recovered = ECDSA.recover(digest, _patientSignature);
+        require(recovered == _patient, "Invalid patient signature");
+        milestoneCompletionNonce[_patient]++;
+
         require(trialPhases[_trialId].initialized, "Trial not initialized");
         require(_milestoneIndex < trialPhases[_trialId].milestones.length, "Invalid index");
         // M-3: ensure the sponsor is still verified before signing off milestone completions.

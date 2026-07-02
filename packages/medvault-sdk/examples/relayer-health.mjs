@@ -1,8 +1,14 @@
 /**
  * Check MedVault anonymous-apply relayer health.
  *
+ * Prerequisites:
+ *   npm run sdk:build          # builds @medvault/core + @medvault/sdk
+ *   peer: ethers@6.16.0
+ *
  * Usage:
  *   MEDVAULT_RELAYER_URL=https://... node packages/medvault-sdk/examples/relayer-health.mjs
+ *
+ * Falls back to the production relayer URL when MEDVAULT_RELAYER_URL is unset.
  */
 import { MedVaultSDK } from "../dist/index.js";
 

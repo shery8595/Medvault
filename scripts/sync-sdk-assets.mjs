@@ -27,11 +27,19 @@ const ABI_FILES = [
   "MedVaultRegistry",
   "EncryptedScoreLeaderboard",
   "HonkVerifier",
+  "HonkVerifierEncrypted",
+  "PatientDocumentStore",
 ];
 
 mkdirSync(destAbis, { recursive: true });
 copyFileSync(join(srcContracts, "addresses.json"), join(destData, "addresses.json"));
+// IERC7984 implementation lives in ConfidentialETH7984; alias artifact is thin wrapper.
+copyFileSync(
+  join(srcContracts, "abis", "ConfidentialETH7984.json"),
+  join(destAbis, "ConfidentialETH.json")
+);
 for (const name of ABI_FILES) {
+  if (name === "ConfidentialETH") continue;
   copyFileSync(join(srcContracts, "abis", `${name}.json`), join(destAbis, `${name}.json`));
 }
 console.log(`Synced ${ABI_FILES.length + 1} files to packages/medvault-core/data/`);

@@ -57,7 +57,7 @@ describe("Integration: E2E patient journey", function () {
             stack.sponsorIncentiveVault
                 .connect(stack.patient)
                 .registerAnonymousParticipant(trialId, nullifier),
-            /No permit holder|must be accepted/
+            /App not accepted|must be accepted|No permit holder|AppNotAccepted/
         );
     });
 
@@ -115,7 +115,7 @@ describe("Integration: E2E patient journey", function () {
             stack.sponsorIncentiveVault
                 .connect(stack.patient)
                 .registerAnonymousParticipant(trialId, nullifier),
-            "must be accepted"
+            /App not accepted|must be accepted|AppNotAccepted/
         );
     });
 

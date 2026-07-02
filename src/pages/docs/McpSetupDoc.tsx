@@ -108,6 +108,18 @@ npm run mcp:doctor          # optional`}
                                     <code>true</code> disables write tools
                                 </td>
                             </tr>
+                            <tr>
+                                <td className="p-3 font-mono text-xs">AI_SERVICE_URL</td>
+                                <td className="p-3">Optional</td>
+                                <td className="p-3">
+                                    Base URL for AI tools (<code>VITE_AI_SERVICE_URL</code> alias)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 font-mono text-xs">MCP_HTTP_PORT</td>
+                                <td className="p-3">HTTP transport</td>
+                                <td className="p-3">Default <code>3100</code> when using <code>npm run mcp:http</code></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

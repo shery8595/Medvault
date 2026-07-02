@@ -3,6 +3,8 @@ const { ethers } = hre;
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+import { wireAllContracts, wireAutomationForwarder, ensureFhevmInitialized } from "./lib/timelockWiring";
+import { deployAnonymousPatientRegistry } from "./lib/deployAnonymousPatientRegistry";
 
 function resolveNetworkName(name: string) {
     return name === "sepolia" ? "sepolia" : "hardhat";
@@ -16,6 +18,39 @@ async function deploymentStartBlock(contract: { deploymentTransaction: () => { h
     return rec ? Number(rec.blockNumber) : 0;
 }
 
+/** Deploy a linked library contract and return its address. */
+async function deployLibrary(libName: string, libraries: Record<string, string> = {}): Promise<string> {
+    const factory = await ethers.getContractFactory(libName, { libraries });
+    const lib = await factory.deploy();
+    await lib.waitForDeployment();
+    const address = await lib.getAddress();
+    console.log(`✓ ${libName}              → ${address}`);
+    return address;
+}
+
+async function deploySponsorIncentiveVaultLibraries(): Promise<Record<string, string>> {
+    const vaultDistributionLibAddress = await deployLibrary("VaultDistributionLib");
+    const vaultConfidentialLibAddress = await deployLibrary("VaultConfidentialLib");
+    const vaultTimelockLibAddress = await deployLibrary("VaultTimelockLib");
+    const vaultRegistrationLibAddress = await deployLibrary("VaultRegistrationLib");
+    const vaultClaimLibAddress = await deployLibrary("VaultClaimLib");
+    const vaultReclaimLibAddress = await deployLibrary("VaultReclaimLib", {
+        VaultDistributionLib: vaultDistributionLibAddress,
+    });
+    const vaultChallengeLibAddress = await deployLibrary("VaultChallengeLib", {
+        VaultDistributionLib: vaultDistributionLibAddress,
+    });
+    return {
+        VaultDistributionLib: vaultDistributionLibAddress,
+        VaultConfidentialLib: vaultConfidentialLibAddress,
+        VaultTimelockLib: vaultTimelockLibAddress,
+        VaultRegistrationLib: vaultRegistrationLibAddress,
+        VaultClaimLib: vaultClaimLibAddress,
+        VaultReclaimLib: vaultReclaimLibAddress,
+        VaultChallengeLib: vaultChallengeLibAddress,
+    };
+}
+
 async function main() {
     console.log("Starting full MedVault deployment (all contracts + wiring)...\n");
 
@@ -26,9 +61,9 @@ async function main() {
     console.log(`Deployer: ${deployer.address}`);
     console.log(`Network: ${hre.network.name} (${networkName})\n`);
 
-    const AnonymousPatientRegistry = await ethers.getContractFactory("AnonymousPatientRegistry");
-    const anonymousRegistry = await AnonymousPatientRegistry.deploy();
-    await anonymousRegistry.waitForDeployment();
+    await ensureFhevmInitialized();
+
+    const anonymousRegistry = await deployAnonymousPatientRegistry();
     const anonymousRegistryAddress = await anonymousRegistry.getAddress();
     console.log(`✓ AnonymousPatientRegistry → ${anonymousRegistryAddress}`);
 
@@ -61,7 +96,14 @@ async function main() {
     const dataAccessLogAddress = await dataAccessLog.getAddress();
     console.log(`✓ DataAccessLog           → ${dataAccessLogAddress}`);
 
-    const EligibilityEngine = await ethers.getContractFactory("EligibilityEngine");
+    const eligibilityComputeLibAddress = await deployLibrary("EligibilityComputeLib");
+    const eligibilityProofLibAddress = await deployLibrary("EligibilityProofLib");
+    const EligibilityEngine = await ethers.getContractFactory("EligibilityEngine", {
+        libraries: {
+            EligibilityComputeLib: eligibilityComputeLibAddress,
+            EligibilityProofLib: eligibilityProofLibAddress,
+        },
+    });
     const engine = await EligibilityEngine.deploy(anonymousRegistryAddress, trialManagerAddress, consentManagerAddress);
     await engine.waitForDeployment();
     const engineAddress = await engine.getAddress();
@@ -71,7 +113,13 @@ async function main() {
     const honkVerifier = await HonkVerifier.deploy();
     await honkVerifier.waitForDeployment();
     const honkVerifierAddress = await honkVerifier.getAddress();
-    console.log(`✓ HonkVerifier            → ${honkVerifierAddress}`);
+    console.log(`✓ HonkVerifier (plaintext)  → ${honkVerifierAddress}`);
+
+    const HonkVerifierEncrypted = await ethers.getContractFactory("HonkVerifierEncrypted");
+    const honkVerifierEncrypted = await HonkVerifierEncrypted.deploy();
+    await honkVerifierEncrypted.waitForDeployment();
+    const honkVerifierEncryptedAddress = await honkVerifierEncrypted.getAddress();
+    console.log(`✓ HonkVerifierEncrypted       → ${honkVerifierEncryptedAddress}`);
 
     const EncryptedConsentGate = await ethers.getContractFactory("EncryptedConsentGate");
     const consentGate = await EncryptedConsentGate.deploy(engineAddress, consentManagerAddress);
@@ -85,13 +133,16 @@ async function main() {
     const leaderboardAddress = await leaderboard.getAddress();
     console.log(`✓ EncryptedScoreLeaderboard → ${leaderboardAddress}`);
 
-    const ConfidentialETH = await ethers.getContractFactory("ConfidentialETH");
-    const cETH = await ConfidentialETH.deploy();
+    const ConfidentialETH7984 = await ethers.getContractFactory("ConfidentialETH7984");
+    const cETH = await ConfidentialETH7984.deploy();
     await cETH.waitForDeployment();
     const cETHAddress = await cETH.getAddress();
-    console.log(`✓ ConfidentialETH         → ${cETHAddress}`);
+    console.log(`✓ ConfidentialETH7984 (IERC7984) → ${cETHAddress}`);
 
-    const SponsorIncentiveVault = await ethers.getContractFactory("SponsorIncentiveVault");
+    const vaultLibraries = await deploySponsorIncentiveVaultLibraries();
+    const SponsorIncentiveVault = await ethers.getContractFactory("SponsorIncentiveVault", {
+        libraries: vaultLibraries,
+    });
     const vault = await SponsorIncentiveVault.deploy(cETHAddress, trialManagerAddress, engineAddress);
     await vault.waitForDeployment();
     const vaultAddress = await vault.getAddress();
@@ -103,11 +154,19 @@ async function main() {
     const milestoneManagerAddress = await milestoneManager.getAddress();
     console.log(`✓ TrialMilestoneManager   → ${milestoneManagerAddress}`);
 
+    const PatientDocumentStore = await ethers.getContractFactory("PatientDocumentStore");
+    const patientDocumentStore = await PatientDocumentStore.deploy(trialManagerAddress);
+    await patientDocumentStore.waitForDeployment();
+    const patientDocumentStoreAddress = await patientDocumentStore.getAddress();
+    console.log(`✓ PatientDocumentStore    → ${patientDocumentStoreAddress}`);
+
+    const chainlinkForwarder =
+        process.env.CHAINLINK_FORWARDER?.trim() || deployer.address;
     const MedVaultAutomation = await ethers.getContractFactory("MedVaultAutomation");
-    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress, ethers.ZeroAddress);
+    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress, chainlinkForwarder);
     await automation.waitForDeployment();
     const automationAddress = await automation.getAddress();
-    console.log(`✓ MedVaultAutomation      → ${automationAddress}`);
+    console.log(`✓ MedVaultAutomation      → ${automationAddress} (forwarder: ${chainlinkForwarder})`);
 
     const StakingManager = await ethers.getContractFactory("StakingManager");
     const stakingManager = await StakingManager.deploy(cETHAddress, AAVE_POOL, WETH_GATEWAY, AWETH);
@@ -137,83 +196,49 @@ async function main() {
         EligibilityEngine: await deploymentStartBlock(engine),
         SponsorIncentiveVault: await deploymentStartBlock(vault),
         TrialMilestoneManager: await deploymentStartBlock(milestoneManager),
-        StakingManager: await deploymentStartBlock(stakingManager)
+        StakingManager: await deploymentStartBlock(stakingManager),
+        ConfidentialETH: await deploymentStartBlock(cETH),
+        MedVaultAutomation: await deploymentStartBlock(automation),
+        EncryptedConsentGate: await deploymentStartBlock(consentGate),
+        EncryptedScoreLeaderboard: await deploymentStartBlock(leaderboard),
+        PatientDocumentStore: await deploymentStartBlock(patientDocumentStore),
     };
     if (medVaultRegistry) {
         subgraphStartBlocks.MedVaultRegistry = await deploymentStartBlock(medVaultRegistry);
     }
 
-    console.log("\nWiring contracts...");
+    console.log("\nWiring contracts (timelocked setters; hardhat auto-applies after 2d skip)...");
 
-    await (await anonymousRegistry.setAuthorizedEngine(engineAddress)).wait();
-    if (medVaultRegistryAddress !== ethers.ZeroAddress) {
-        await (await anonymousRegistry.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    }
-    await (await anonymousRegistry.setDataAccessLog(dataAccessLogAddress)).wait();
-    console.log("✓ AnonymousPatientRegistry wiring");
+    const trustedRelayer =
+        process.env.TRUSTED_RELAYER_ADDRESS ||
+        (process.env.RELAYER_PRIVATE_KEY
+            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
+            : "");
 
-    await (await trialManager.setAutomationContract(automationAddress)).wait();
-    console.log("✓ TrialManager.setAutomationContract");
+    await wireAllContracts({
+        anonymousRegistry,
+        trialManager,
+        engine,
+        consentManager,
+        vault,
+        milestoneManager,
+        automation,
+        cETH,
+        dataAccessLog,
+        leaderboard,
+        consentGate,
+        medVaultRegistry,
+        patientDocumentStore,
+        honkVerifierAddress,
+        honkVerifierEncryptedAddress,
+        sponsorRegistryAddress,
+        stakingManagerAddress,
+        trustedRelayer: trustedRelayer && ethers.isAddress(trustedRelayer) ? trustedRelayer : undefined,
+    });
 
-    await (await engine.setAutomationContract(automationAddress)).wait();
-    await (await engine.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await engine.setConsentGate(consentGateAddress)).wait();
-    await (await engine.setScoreLeaderboard(leaderboardAddress)).wait();
-    await (await engine.setEligibilityVerifier(honkVerifierAddress)).wait();
-    await (await engine.setSponsorIncentiveVault(vaultAddress)).wait();
-    if (medVaultRegistryAddress !== ethers.ZeroAddress) {
-        await (await engine.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    }
-    console.log("✓ EligibilityEngine wiring (+ HonkVerifier set)");
-
-    await (await consentManager.setEligibilityEngine(engineAddress)).wait();
-    await (await consentManager.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await consentManager.setConsentGate(consentGateAddress)).wait();
-    console.log("✓ ConsentManager wiring");
-
-    await (await trialManager.setEligibilityEngine(engineAddress)).wait();
-    console.log("✓ TrialManager.setEligibilityEngine");
-
-    await (await vault.setMilestoneManager(milestoneManagerAddress)).wait();
-    await (await vault.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await vault.setAutomationContract(automationAddress)).wait();
-    await (await vault.setSponsorRegistry(sponsorRegistryAddress)).wait();
-    console.log("✓ SponsorIncentiveVault wiring");
-
-    await (await milestoneManager.setVault(vaultAddress)).wait();
-    await (await milestoneManager.setDataAccessLog(dataAccessLogAddress)).wait();
-    console.log("✓ TrialMilestoneManager wiring");
-
-    await (await automation.setVault(vaultAddress)).wait();
-    console.log("✓ MedVaultAutomation.setVault");
-
-    await (await cETH.authorizeContract(vaultAddress)).wait();
-    await (await cETH.authorizeContract(stakingManagerAddress)).wait();
-    console.log("✓ ConfidentialETH.authorizeContract (vault, staking)");
-
-    await (await dataAccessLog.setAuthorizedLogger(engineAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(anonymousRegistryAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(vaultAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(consentManagerAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(milestoneManagerAddress, true)).wait();
-    console.log("✓ DataAccessLog authorized loggers");
-
-    await (await leaderboard.authorizeCaller(engineAddress)).wait();
-    await (await consentGate.authorizeComputer(engineAddress)).wait();
-    console.log("✓ Leaderboard + ConsentGate authorizations");
-
-    if (medVaultRegistry) {
-        const trustedRelayer =
-            process.env.TRUSTED_RELAYER_ADDRESS ||
-            (process.env.RELAYER_PRIVATE_KEY
-                ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
-                : "");
-        if (trustedRelayer && ethers.isAddress(trustedRelayer)) {
-            await (await medVaultRegistry.setTrustedRelayer(trustedRelayer)).wait();
-            await (await cETH.authorizeContract(trustedRelayer)).wait();
-            console.log(`✓ MedVaultRegistry.setTrustedRelayer → ${trustedRelayer}`);
-            console.log(`✓ ConfidentialETH.authorizeContract (relayer)`);
-        }
+    const realForwarder = process.env.CHAINLINK_FORWARDER?.trim();
+    if (realForwarder && ethers.isAddress(realForwarder) && realForwarder !== chainlinkForwarder) {
+        await wireAutomationForwarder(automation, realForwarder);
     }
 
     const addressesPath = path.join(__dirname, "../src/lib/contracts/addresses.json");
@@ -229,6 +254,7 @@ async function main() {
         EligibilityEngine: engineAddress,
         HonkVerifier: honkVerifierAddress,
         EligibilityVerifier: honkVerifierAddress,
+        HonkVerifierEncrypted: honkVerifierEncryptedAddress,
         EncryptedConsentGate: consentGateAddress,
         EncryptedScoreLeaderboard: leaderboardAddress,
         SponsorIncentiveVault: vaultAddress,
@@ -236,6 +262,10 @@ async function main() {
         MedVaultAutomation: automationAddress,
         ConfidentialETH: cETHAddress,
         StakingManager: stakingManagerAddress,
+        PatientDocumentStore: patientDocumentStoreAddress,
+        EligibilityComputeLib: eligibilityComputeLibAddress,
+        EligibilityProofLib: eligibilityProofLibAddress,
+        ...vaultLibraries,
         Semaphore: SEMAPHORE_ADDRESS
     };
 
@@ -268,7 +298,11 @@ async function main() {
     for (const [name, address] of Object.entries(newAddresses)) {
         console.log(`  ${name.padEnd(26)} ${address}`);
     }
-    console.log("═══════════════════════════════════════════════\n");
+    console.log("═══════════════════════════════════════════════");
+    if (hre.network.name === "sepolia") {
+        console.log("\nNote: timelocked wiring may need scripts/finish-wiring.ts after 6 hours on live networks.");
+    }
+    console.log("");
 }
 
 main().catch((error) => {

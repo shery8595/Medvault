@@ -4,6 +4,7 @@ import { App as CapApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { isNativeApp } from "../../lib/mobile";
+import { CryptoFallbackBanner } from "./CryptoFallbackBanner";
 import { MobileNetworkBanner } from "./MobileNetworkBanner";
 
 type MobileAppShellProps = {
@@ -50,11 +51,17 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
   }, [location.pathname, navigate]);
 
   if (!isNativeApp()) {
-    return <>{children}</>;
+    return (
+      <>
+        <CryptoFallbackBanner />
+        {children}
+      </>
+    );
   }
 
   return (
     <div className="native-safe min-h-[100dvh]">
+      <CryptoFallbackBanner />
       <MobileNetworkBanner />
       {children}
     </div>

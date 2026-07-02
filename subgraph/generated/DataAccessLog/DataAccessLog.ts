@@ -300,6 +300,29 @@ export class DataAccessLog extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  getTotalLogCount(): BigInt {
+    let result = super.call(
+      "getTotalLogCount",
+      "getTotalLogCount():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_getTotalLogCount(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "getTotalLogCount",
+      "getTotalLogCount():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   isAuthorizedLogger(param0: Address): boolean {
     let result = super.call(
       "isAuthorizedLogger",
@@ -515,6 +538,36 @@ export class ApplyAuthorizedLoggerCall__Outputs {
   _call: ApplyAuthorizedLoggerCall;
 
   constructor(call: ApplyAuthorizedLoggerCall) {
+    this._call = call;
+  }
+}
+
+export class CancelAuthorizedLoggerScheduleCall extends ethereum.Call {
+  get inputs(): CancelAuthorizedLoggerScheduleCall__Inputs {
+    return new CancelAuthorizedLoggerScheduleCall__Inputs(this);
+  }
+
+  get outputs(): CancelAuthorizedLoggerScheduleCall__Outputs {
+    return new CancelAuthorizedLoggerScheduleCall__Outputs(this);
+  }
+}
+
+export class CancelAuthorizedLoggerScheduleCall__Inputs {
+  _call: CancelAuthorizedLoggerScheduleCall;
+
+  constructor(call: CancelAuthorizedLoggerScheduleCall) {
+    this._call = call;
+  }
+
+  get _logger(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class CancelAuthorizedLoggerScheduleCall__Outputs {
+  _call: CancelAuthorizedLoggerScheduleCall;
+
+  constructor(call: CancelAuthorizedLoggerScheduleCall) {
     this._call = call;
   }
 }

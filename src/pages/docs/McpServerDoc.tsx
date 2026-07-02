@@ -84,7 +84,10 @@ export function McpServerDoc() {
                     language="text"
                     code={`packages/medvault-sdk/   # @medvault/sdk — integrator facade
 packages/medvault-core/  # RPC, contracts, subgraph (SDK dependency)
-mcp-server/              # MCP entry (stdio + optional HTTP)
+mcp-server/              # MCP entry (stdio + optional HTTP) — mcp-server/README.md
+relayer/                 # Gasless relay — relayer/README.md
+ai-service/              # Criteria extraction — ai-service/README.md
+indexer/                 # Hybrid subgraph+RPC API — indexer/README.md
 config/mcp/              # Client config snippets`}
                 />
 

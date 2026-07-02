@@ -3,9 +3,12 @@
 # Private witnesses include patient profile fields, Semaphore secret, staged FHE handle,
 # decrypted_eligible (encrypted-criteria mode), and criteria_binding_hash echo.
 #
-# Public inputs (17): scope, nullifier, profile_commitment, result_hash, eligible,
-#   fhe_stage_handle_hash, criteria_schema_hash, min_age (or binding echo at idx 7),
-#   max_age .. requires_normal_bp, criteria_mode (0=plaintext, 1=encrypted echo).
+# Public inputs (25): scope, nullifier, profile_commitment, result_hash, eligible,
+#   fhe_stage_handle_hash, criteria_schema_hash, 9 trial criteria fields (min_age .. requires_normal_bp),
+#   criteria_mode (0=plaintext, 1=encrypted echo binding),
+#   + 8 document binding fields (doc_cid_hash, aes_key_ct_hash, 4x aes_key_fhe_handle_hash,
+#     doc_schema_hash, has_document).
+# HonkVerifier.NUMBER_OF_PUBLIC_INPUTS = 33 = 25 user + 8 pairing points.
 
 secret = "12345678901234567890"
 scope_internal = "42"

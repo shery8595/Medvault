@@ -9,6 +9,11 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { ensureDataAccessLogger } from "./data-access-log-wiring";
+import {
+    advanceTimelockIfHardhat,
+    ensureCethContractAuth,
+    wireAllContracts,
+} from "./lib/timelockWiring";
 
 const VK_FINGERPRINT_FILE = path.join(__dirname, "../src/lib/circuits/vk_fingerprint.json");
 
@@ -80,35 +85,34 @@ async function main() {
     const leaderboard = await ethers.getContractAt("EncryptedScoreLeaderboard", leaderboardAddress);
     const consentGate = await ethers.getContractAt("EncryptedConsentGate", consentGateAddress);
 
-    await (await anonymousRegistry.setAuthorizedEngine(engineAddress)).wait();
-    await (await anonymousRegistry.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    console.log("✓ AnonymousPatientRegistry wiring");
+    await advanceTimelockIfHardhat();
 
-    await (await vault.setMilestoneManager(KEEP.TrialMilestoneManager)).wait();
-    await (await vault.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    await (await vault.setAutomationContract(KEEP.MedVaultAutomation)).wait();
-    if (KEEP.SponsorRegistry) {
-        await (await vault.setSponsorRegistry(KEEP.SponsorRegistry)).wait();
-    }
-    console.log("✓ SponsorIncentiveVault wiring");
-
-    await (await milestoneManager.setVault(vaultAddress)).wait();
-    try {
-        await (await milestoneManager.setDataAccessLog(KEEP.DataAccessLog)).wait();
-    } catch {
-        console.warn("  (skip TrialMilestoneManager.setDataAccessLog)");
-    }
-    await (await automation.setVault(vaultAddress)).wait();
-    try {
-        await (await trialManager.setAutomationContract(KEEP.MedVaultAutomation)).wait();
-    } catch {
-        console.warn("  (skip TrialManager.setAutomationContract — already set)");
-    }
-    console.log("✓ Milestone manager + automation vault pointers");
+    await wireAllContracts({
+        anonymousRegistry,
+        trialManager,
+        engine,
+        consentManager,
+        vault,
+        milestoneManager,
+        automation,
+        cETH,
+        dataAccessLog,
+        leaderboard,
+        consentGate,
+        medVaultRegistry,
+        honkVerifierAddress,
+        sponsorRegistryAddress: KEEP.SponsorRegistry,
+        stakingManagerAddress: current.StakingManager,
+        trustedRelayer:
+            process.env.TRUSTED_RELAYER_ADDRESS ||
+            (process.env.RELAYER_PRIVATE_KEY
+                ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
+                : undefined),
+    });
 
     if (OLD_VAULT && OLD_VAULT !== vaultAddress) {
         try {
-            await (await cETH.deauthorizeContract(OLD_VAULT)).wait();
+            await ensureCethContractAuth(cETH, OLD_VAULT, false);
             console.log("✓ Deauthorized old vault on cETH");
         } catch {
             console.warn("  (skip cETH deauthorize old vault)");
@@ -119,12 +123,6 @@ async function main() {
             /* ignore */
         }
     }
-    try {
-        await (await cETH.authorizeContract(vaultAddress)).wait();
-        console.log("✓ ConfidentialETH authorized new vault");
-    } catch {
-        console.warn("  (skip cETH authorize new vault — already authorized)");
-    }
 
     if (OLD_ENGINE && OLD_ENGINE !== engineAddress) {
         try {
@@ -132,25 +130,6 @@ async function main() {
         } catch {
             /* ignore */
         }
-    }
-    await ensureDataAccessLogger(dataAccessLog, engineAddress, true);
-    await ensureDataAccessLogger(dataAccessLog, KEEP.AnonymousPatientRegistry, true);
-    await ensureDataAccessLogger(dataAccessLog, vaultAddress, true);
-    console.log("✓ DataAccessLog loggers (scheduled or applied)");
-
-    await (await leaderboard.authorizeCaller(engineAddress)).wait();
-    await (await consentGate.authorizeComputer(engineAddress)).wait();
-    console.log("✓ Leaderboard + ConsentGate authorizations");
-
-    const trustedRelayer =
-        process.env.TRUSTED_RELAYER_ADDRESS ||
-        (process.env.RELAYER_PRIVATE_KEY
-            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
-            : "");
-    if (trustedRelayer && ethers.isAddress(trustedRelayer)) {
-        await (await medVaultRegistry.setTrustedRelayer(trustedRelayer)).wait();
-        await (await cETH.authorizeContract(trustedRelayer)).wait();
-        console.log(`✓ Relayer authorized: ${trustedRelayer}`);
     }
 
     const inputCount = await engine.ELIGIBILITY_PUBLIC_INPUT_COUNT();

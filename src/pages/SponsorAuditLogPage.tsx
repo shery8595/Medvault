@@ -31,7 +31,7 @@ import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt
 import { cn } from "../lib/utils";
 
 export function SponsorAuditLogPage() {
-  const { logs, loading, error } = useAuditLogs();
+  const { logs, loading, error, totalLogCount, bufferedLogCount } = useAuditLogs();
   const { account } = useWeb3();
   const [searchTerm, setSearchTerm] = useState("");
   const [trialFilter, setTrialFilter] = useState("");
@@ -116,6 +116,27 @@ export function SponsorAuditLogPage() {
         </div>
         <SponsorHeroCenterArt src="/images/audit_component.png" artClassName={sponsorHeroComponentArtClassCompact} />
       </SponsorHeroBanner>
+
+      {(totalLogCount != null || bufferedLogCount > 0) && (
+        <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+          {totalLogCount != null && (
+            <Card className="border-slate-200">
+              <CardContent className="p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total audit events (on-chain)</p>
+                <p className="text-2xl font-bold text-slate-900 tabular-nums">{totalLogCount.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500 mt-1">Monotonic counter; survives ring-buffer wrap</p>
+              </CardContent>
+            </Card>
+          )}
+          <Card className="border-slate-200">
+            <CardContent className="p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Events in this view</p>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{bufferedLogCount}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Merged chain + subgraph (filtered)</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className={cn(sponsorCardShell, "overflow-hidden border-0")}>
         <CardHeader className={cn(sponsorCardHeader, "px-5 py-5 md:px-6")}>

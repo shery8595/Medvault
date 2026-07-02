@@ -32,6 +32,8 @@ const READ_TOOLS = [
     { name: "medvault_get_sponsor_overview", desc: "Trials, matches, stats; amounts only when signer is sponsor" },
     { name: "medvault_preview_fund_trial_pool", desc: "Dry-run fundTrial preview without submitting tx" },
     { name: "medvault_get_trial_operations_timeline", desc: "Pool status + subgraph context for a trial" },
+    { name: "medvault_ai_extract_criteria", desc: "PHI-redacted protocol criteria extraction via @medvault/ai" },
+    { name: "medvault_ai_audit_logs", desc: "Anonymized audit funnel summary (match rate, bottlenecks)" },
 ];
 
 const WRITE_TOOLS = [
@@ -41,8 +43,10 @@ const WRITE_TOOLS = [
     { name: "medvault_update_application_status", desc: "EligibilityEngine status (+ vault register on accept)" },
     { name: "medvault_deactivate_trial", desc: "TrialManager.deactivateTrial" },
     { name: "medvault_distribute_milestone", desc: "Partial milestone distribution" },
-    { name: "medvault_register_anonymous_participant", desc: "Vault register by nullifier" },
-    { name: "medvault_reclaim_trial_pool", desc: "Reclaim undistributed pool funds" },
+    { name: "medvault_register_anonymous_participant", desc: "Vault register by nullifier (permit-holder only — patient key)" },
+    { name: "medvault_reclaim_trial_pool", desc: "Sponsor: schedule reclaimUndistributed (verified sponsor path)" },
+    { name: "medvault_reclaim_abandoned_pool", desc: "Vault owner: schedule reclaimAbandonedToOwner when sponsor revoked" },
+    { name: "medvault_claim_reclaimed_pool", desc: "Claim ETH after reclaimUndistributed or reclaimAbandonedToOwner scheduled a payout" },
 ];
 
 function ToolTable({ tools }: { tools: typeof READ_TOOLS }) {
@@ -74,12 +78,12 @@ export function McpToolsDoc() {
             <Prose className="max-w-none">
                 <DocsPageHeaderForRoute />
 
-                <p className="lead not-prose text-base text-slate-600 max-w-3xl">
+                <p>
                     All tools are prefixed with <code>medvault_</code> and run against <strong>Ethereum Sepolia</strong> (
-                    chain id <code>11155111</code>). MCP is a <strong>sponsor/developer console</strong> — not for
-                    patients. Write tools require a verified sponsor wallet unless{" "}
-                    <code>MEDVAULT_SPONSOR_OPEN_ACCESS=true</code>. Set <code>MCP_READ_ONLY=true</code> to disable
-                    writes.
+                    chain id <code>11155111</code>). <strong>33 tools</strong> total — 23 read, 10 write. MCP is a{" "}
+                    <strong>sponsor/developer console</strong> — not for patients. Write tools require a verified sponsor
+                    wallet unless <code>MEDVAULT_SPONSOR_OPEN_ACCESS=true</code> (abandoned reclaim / claim tools require
+                    the vault owner key). Set <code>MCP_READ_ONLY=true</code> to disable writes.
                 </p>
 
                 <Callout type="info" title="Pool amount privacy">
@@ -89,7 +93,13 @@ export function McpToolsDoc() {
                 </Callout>
 
                 <h2>Read tools</h2>
-                <p>Most read tools work without a private key. Pool amounts are the main exception.</p>
+                <p>
+                    Most read tools work without a private key. Pool amounts are the main exception.{" "}
+                    <code>medvault_subgraph_query</code> accepts only these allowlisted query names:{" "}
+                    <code>GetSponsorData</code>, <code>GetSponsorStats</code>, <code>GetSponsorTrialIds</code>,{" "}
+                    <code>GetSubgraphAuditLogs</code>, <code>GetTrialsBySponsor</code>, <code>GetActiveTrials</code>,{" "}
+                    <code>GetPendingRequests</code>.
+                </p>
                 <ToolTable tools={READ_TOOLS} />
 
                 <h2>Write tools (sponsor)</h2>

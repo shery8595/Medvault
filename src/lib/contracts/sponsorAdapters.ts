@@ -1,9 +1,23 @@
 import { ethers } from "ethers";
-import { getEligibilityEngine, getConfidentialETH, getSponsorIncentiveVault, getTrialMilestoneManager, getTrialManager } from "./index";
+import {
+  getEligibilityEngine,
+  getConfidentialETH,
+  getSponsorIncentiveVault,
+  getSponsorRegistry,
+  getTrialMilestoneManager,
+  getTrialManager,
+} from "./index";
 import { encryptUint64, ensureZamaConnected } from "../fhe";
-import { signClaimAuthorization, signRegisterAuthorization } from "../semaphore";
+import { signClaimAuthorization, signRegisterAuthorization, getEphemeralSigner } from "../semaphore";
 import { resolveChainIdFrom } from "./index";
+import { buildWithdrawToAuthorization, computeEncryptedAmountCommitment } from "../withdrawFlow";
+import {
+  parseParticipantCreditFailures,
+  type ParticipantCreditFailure,
+} from "../vaultDistributionEvents";
 import type { Identity } from "@semaphore-protocol/identity";
+
+export type { ParticipantCreditFailure };
 
 export async function getPoolFundingAndRegistration(
   signer: ethers.Signer,
@@ -106,6 +120,10 @@ export async function claimRewards(
   if (!provider) throw new Error("Wallet provider not available");
   await ensureZamaConnected(provider, signer);
   const encrypted = await encryptUint64(cEthAddress, vaultAddress, units);
+  const encryptedAmountCommitment = computeEncryptedAmountCommitment(
+    encrypted.handle,
+    encrypted.inputProof
+  );
 
   const signerAddress = await signer.getAddress();
   if (permitHolder.toLowerCase() !== signerAddress.toLowerCase()) {
@@ -115,6 +133,12 @@ export async function claimRewards(
     const chainId = await resolveChainIdFrom(signer);
     const nonce = BigInt(Date.now());
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const ephemeralSigner = getEphemeralSigner(identity, provider);
+    const withdrawTo = await buildWithdrawToAuthorization(
+      ephemeralSigner,
+      destination,
+      encrypted
+    );
     const signature = await signClaimAuthorization(identity, provider, {
       vaultAddress,
       chainId,
@@ -123,6 +147,7 @@ export async function claimRewards(
       permitHolder,
       destination,
       units: BigInt(units),
+      encryptedAmountCommitment,
       nonce,
       deadline,
     });
@@ -132,22 +157,30 @@ export async function claimRewards(
       permitHolder,
       destination,
       BigInt(units),
+      encryptedAmountCommitment,
       encrypted.handle,
       encrypted.inputProof,
       nonce,
       deadline,
-      signature
+      signature,
+      withdrawTo.nonce,
+      withdrawTo.deadline,
+      withdrawTo.signature
     );
     await tx.wait();
     return;
   }
 
+  const withdrawTo = await buildWithdrawToAuthorization(signer, destination, encrypted);
   const tx = await vault.claimParticipantRewards(
     BigInt(trialId),
     nullifier,
     destination,
     encrypted.handle,
-    encrypted.inputProof
+    encrypted.inputProof,
+    withdrawTo.nonce,
+    withdrawTo.deadline,
+    withdrawTo.signature
   );
   await tx.wait();
 }
@@ -182,14 +215,21 @@ export type TrialPoolReclaimStatus = {
   screeningDistributed: boolean;
   reclaimFinalized: boolean;
   trialEnded: boolean;
+  gracePeriodElapsed: boolean;
+  sponsorVerified: boolean;
   canReclaimHint: boolean;
   sponsorAuthorized: boolean;
+  vaultOwnerAuthorized: boolean;
+  canAbandonedReclaim: boolean;
   trialSponsor: string | null;
   totalDepositedWei: string | null;
   totalFunded: string | null;
   canReclaim: boolean | null;
   reclaimableWei: string | null;
   reclaimableEth: string | null;
+  pendingReclaimWei: string | null;
+  pendingReclaimEth: string | null;
+  pendingReclaimRecipient: string | null;
   amountsRestrictedReason: string | null;
   privacyNote: string;
 };
@@ -204,18 +244,36 @@ export async function getTrialPoolReclaimStatus(
   const endSec = trialEndTimeSec != null ? Number(trialEndTimeSec) : 0;
   const trialEnded = endSec > 0 && Math.floor(Date.now() / 1000) >= endSec;
 
-  const [participantCountBn, screeningDistributed, reclaimFinalized, poolFunded] =
+  const [participantCountBn, screeningDistributed, reclaimFinalized, poolFunded, pendingReclaimWeiBn, pendingRecipient] =
     await Promise.all([
       vault.getParticipantCount(tid),
       vault.isDistributed(tid),
       vault.reclaimFinalized(tid),
       vault.isPoolFunded(tid),
+      vault.pendingReclaimWei(tid),
+      vault.pendingReclaimRecipient(tid),
     ]);
 
   const participantCount = Number(participantCountBn);
   const noParticipants = participantCount === 0;
+  const nowSec = Math.floor(Date.now() / 1000);
+  let gracePeriodSec = 90 * 24 * 60 * 60;
+  try {
+    gracePeriodSec = Number(await vault.RECLAIM_GRACE_PERIOD());
+  } catch {
+    /* use default */
+  }
+  const gracePeriodElapsed =
+    noParticipants || (endSec > 0 && nowSec >= endSec + gracePeriodSec);
   const privacyNote =
     "Pool amounts are sponsor-private on-chain. Public callers only see whether a pool is funded.";
+
+  const pendingReclaimWei =
+    pendingReclaimWeiBn > 0n ? pendingReclaimWeiBn.toString() : null;
+  const pendingReclaimEth =
+    pendingReclaimWeiBn > 0n ? ethers.formatEther(pendingReclaimWeiBn) : null;
+  const pendingReclaimRecipient =
+    pendingRecipient !== ethers.ZeroAddress ? pendingRecipient : null;
 
   let trialSponsor: string | null = null;
   try {
@@ -233,6 +291,26 @@ export async function getTrialPoolReclaimStatus(
     signerAddress = null;
   }
 
+  let sponsorVerified = true;
+  if (trialSponsor) {
+    try {
+      const registry = getSponsorRegistry(signer);
+      sponsorVerified = await registry.isVerifiedSponsor(trialSponsor);
+    } catch {
+      sponsorVerified = true;
+    }
+  }
+
+  let vaultOwnerAuthorized = false;
+  if (signerAddress) {
+    try {
+      const vaultOwner = String(await vault.owner()).toLowerCase();
+      vaultOwnerAuthorized = signerAddress === vaultOwner;
+    } catch {
+      vaultOwnerAuthorized = false;
+    }
+  }
+
   const sponsorAuthorized = Boolean(
     signerAddress && trialSponsor && signerAddress === trialSponsor
   );
@@ -240,23 +318,44 @@ export async function getTrialPoolReclaimStatus(
   const canReclaimHint =
     trialEnded && !reclaimFinalized && poolFunded && (screeningDistributed || noParticipants);
 
+  const canAbandonedReclaim =
+    vaultOwnerAuthorized &&
+    trialEnded &&
+    gracePeriodElapsed &&
+    poolFunded &&
+    !reclaimFinalized &&
+    trialSponsor != null &&
+    !sponsorVerified &&
+    pendingReclaimWeiBn === 0n;
+
+  const shared = {
+    poolFunded,
+    participantCount,
+    screeningDistributed,
+    reclaimFinalized,
+    trialEnded,
+    gracePeriodElapsed,
+    sponsorVerified,
+    canReclaimHint,
+    vaultOwnerAuthorized,
+    canAbandonedReclaim,
+    trialSponsor,
+    pendingReclaimWei,
+    pendingReclaimEth,
+    pendingReclaimRecipient,
+    privacyNote,
+  };
+
   if (!sponsorAuthorized) {
     return {
-      poolFunded,
-      participantCount,
-      screeningDistributed,
-      reclaimFinalized,
-      trialEnded,
-      canReclaimHint,
+      ...shared,
       sponsorAuthorized: false,
-      trialSponsor,
       totalDepositedWei: null,
       totalFunded: null,
       canReclaim: null,
       reclaimableWei: null,
       reclaimableEth: null,
       amountsRestrictedReason: "Connected signer is not the trial sponsor",
-      privacyNote,
     };
   }
 
@@ -264,34 +363,56 @@ export async function getTrialPoolReclaimStatus(
   const reclaimableWei =
     totalDepositedWei > 0n && !reclaimFinalized && noParticipants ? totalDepositedWei : 0n;
   const canReclaim =
+    sponsorVerified &&
     trialEnded &&
     !reclaimFinalized &&
     totalDepositedWei > 0n &&
     (screeningDistributed || noParticipants);
 
   return {
-    poolFunded,
-    participantCount,
-    screeningDistributed,
-    reclaimFinalized,
-    trialEnded,
-    canReclaimHint,
+    ...shared,
     sponsorAuthorized: true,
-    trialSponsor,
     totalDepositedWei: totalDepositedWei.toString(),
     totalFunded: ethers.formatEther(totalDepositedWei),
     canReclaim,
     reclaimableWei: reclaimableWei.toString(),
     reclaimableEth: ethers.formatEther(reclaimableWei),
     amountsRestrictedReason: null,
-    privacyNote,
   };
 }
 
-export async function reclaimUndistributedPool(signer: ethers.Signer, trialId: string) {
+export async function reclaimUndistributedPool(
+  signer: ethers.Signer,
+  trialId: string
+): Promise<{ scheduled: true; txHash: string }> {
   const vault = getSponsorIncentiveVault(signer);
   const tx = await vault.reclaimUndistributed(BigInt(trialId));
-  await tx.wait();
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("Reclaim schedule transaction failed");
+  return { scheduled: true, txHash: receipt.hash };
+}
+
+/** Owner-only: recover pool when trial sponsor was removed from SponsorRegistry (HIGH-1 / P2). */
+export async function reclaimAbandonedToOwnerPool(
+  signer: ethers.Signer,
+  trialId: string
+): Promise<{ scheduled: true; txHash: string }> {
+  const vault = getSponsorIncentiveVault(signer);
+  const tx = await vault.reclaimAbandonedToOwner(BigInt(trialId));
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("Abandoned reclaim schedule transaction failed");
+  return { scheduled: true, txHash: receipt.hash };
+}
+
+export async function claimReclaimedPool(
+  signer: ethers.Signer,
+  trialId: string
+): Promise<{ txHash: string }> {
+  const vault = getSponsorIncentiveVault(signer);
+  const tx = await vault.claimReclaimed(BigInt(trialId));
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("Claim reclaimed transaction failed");
+  return { txHash: receipt.hash };
 }
 
 export async function getTrialPoolAndMilestones(
@@ -392,10 +513,13 @@ export async function distributePartialMilestone(
   signer: ethers.Signer,
   trialId: string,
   milestoneIndex: number
-) {
+): Promise<{ txHash: string; creditFailures: ParticipantCreditFailure[] }> {
   const vault = getSponsorIncentiveVault(signer);
   const tx = await vault.distributePartialPaginated(trialId, milestoneIndex, 0, 50);
-  await tx.wait();
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("Distribution transaction failed");
+  const creditFailures = parseParticipantCreditFailures(receipt, await vault.getAddress());
+  return { txHash: receipt.hash, creditFailures };
 }
 
 export async function resetMilestonePagination(
@@ -446,6 +570,41 @@ export async function promoteAnonymousParticipantAndDistribute(
   return promoteParticipantAndDistribute(signer, trialId, patientAddress, milestoneIndex);
 }
 
+export async function pruneUnconfirmedSlots(
+  signer: ethers.Signer,
+  trialId: string,
+  milestoneIndex: number
+): Promise<{ txHash: string }> {
+  const vault = getSponsorIncentiveVault(signer);
+  const tx = await vault.pruneUnconfirmedSlots(BigInt(trialId), milestoneIndex);
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("pruneUnconfirmedSlots transaction failed");
+  return { txHash: receipt.hash };
+}
+
+export async function getParticipantPayoutStatus(
+  signer: ethers.Signer | ethers.Provider,
+  trialId: string,
+  participantAddress: string,
+  milestoneIndex: number
+) {
+  const vault = getSponsorIncentiveVault(signer);
+  const tid = BigInt(trialId);
+  const idx = BigInt(milestoneIndex);
+  const [entitlementStaged, confirmedPayout, stagedShareWei, challengeDeadline] = await Promise.all([
+    vault.entitlementStaged(tid, participantAddress, idx),
+    vault.confirmedPayout(tid, participantAddress, idx),
+    vault.getStagedShareWei(tid, participantAddress, idx),
+    vault.challengeDeadline(tid, participantAddress),
+  ]);
+  return {
+    entitlementStaged: Boolean(entitlementStaged),
+    confirmedPayout: Boolean(confirmedPayout),
+    stagedShareWei: BigInt(stagedShareWei),
+    challengeDeadline: BigInt(challengeDeadline),
+  };
+}
+
 export async function getAnonymousParticipantMilestoneState(
   signer: ethers.Signer,
   trialId: string,
@@ -460,20 +619,30 @@ export async function getAnonymousParticipantMilestoneState(
     return null;
   }
 
-  const [registered, progress, paid] = await Promise.all([
+  const [registered, progress, staged, confirmed] = await Promise.all([
     vault.isParticipantRegistered(BigInt(trialId), participant),
     mm.getParticipantProgress(trialId, participant),
     Promise.all(
       Array.from({ length: milestoneCount }, (_, index) =>
-        vault.participantMilestonePaid(BigInt(trialId), participant, index)
+        vault.entitlementStaged(BigInt(trialId), participant, index)
+      )
+    ),
+    Promise.all(
+      Array.from({ length: milestoneCount }, (_, index) =>
+        vault.confirmedPayout(BigInt(trialId), participant, index)
       )
     ),
   ]);
+
+  const stagedFlags = staged.map(Boolean);
+  const confirmedFlags = confirmed.map(Boolean);
 
   return {
     participant,
     registered: Boolean(registered),
     progress: Number(progress),
-    paid: paid.map(Boolean),
+    staged: stagedFlags,
+    confirmed: confirmedFlags,
+    paid: confirmedFlags,
   };
 }

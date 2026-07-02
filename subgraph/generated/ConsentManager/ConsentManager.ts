@@ -10,6 +10,62 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
+export class AclEpochRotated extends ethereum.Event {
+  get params(): AclEpochRotated__Params {
+    return new AclEpochRotated__Params(this);
+  }
+}
+
+export class AclEpochRotated__Params {
+  _event: AclEpochRotated;
+
+  constructor(event: AclEpochRotated) {
+    this._event = event;
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[0].value.toI32();
+  }
+
+  get newEpoch(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get newConsumer(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+}
+
+export class AclGranted extends ethereum.Event {
+  get params(): AclGranted__Params {
+    return new AclGranted__Params(this);
+  }
+}
+
+export class AclGranted__Params {
+  _event: AclGranted;
+
+  constructor(event: AclGranted) {
+    this._event = event;
+  }
+
+  get handle(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get consumer(): Address {
+    return this._event.parameters[1].value.toAddress();
+  }
+
+  get epoch(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get kind(): i32 {
+    return this._event.parameters[3].value.toI32();
+  }
+}
+
 export class ConsentChanged extends ethereum.Event {
   get params(): ConsentChanged__Params {
     return new ConsentChanged__Params(this);
@@ -101,6 +157,52 @@ export class ConsentManager extends ethereum.SmartContract {
     return new ConsentManager("ConsentManager", address);
   }
 
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  aclEpochForKind(kind: i32): BigInt {
+    let result = super.call(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_aclEpochForKind(kind: i32): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "aclEpochForKind",
+      "aclEpochForKind(uint8):(uint40)",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(kind))],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   confidentialProtocolId(): BigInt {
     let result = super.call(
       "confidentialProtocolId",
@@ -137,6 +239,29 @@ export class ConsentManager extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  consentGateChangeEta(): BigInt {
+    let result = super.call(
+      "consentGateChangeEta",
+      "consentGateChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_consentGateChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "consentGateChangeEta",
+      "consentGateChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   dataAccessLog(): Address {
@@ -353,6 +478,29 @@ export class ConsentManager extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  pendingConsentGate(): Address {
+    let result = super.call(
+      "pendingConsentGate",
+      "pendingConsentGate():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingConsentGate(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingConsentGate",
+      "pendingConsentGate():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   pendingOwner(): Address {
     let result = super.call("pendingOwner", "pendingOwner():(address)", []);
 
@@ -421,6 +569,32 @@ export class AcceptOwnershipCall__Outputs {
   _call: AcceptOwnershipCall;
 
   constructor(call: AcceptOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyConsentGateCall extends ethereum.Call {
+  get inputs(): ApplyConsentGateCall__Inputs {
+    return new ApplyConsentGateCall__Inputs(this);
+  }
+
+  get outputs(): ApplyConsentGateCall__Outputs {
+    return new ApplyConsentGateCall__Outputs(this);
+  }
+}
+
+export class ApplyConsentGateCall__Inputs {
+  _call: ApplyConsentGateCall;
+
+  constructor(call: ApplyConsentGateCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyConsentGateCall__Outputs {
+  _call: ApplyConsentGateCall;
+
+  constructor(call: ApplyConsentGateCall) {
     this._call = call;
   }
 }
@@ -565,6 +739,44 @@ export class ProposeOwnershipCall__Outputs {
   }
 }
 
+export class RecordConsentGrantCall extends ethereum.Call {
+  get inputs(): RecordConsentGrantCall__Inputs {
+    return new RecordConsentGrantCall__Inputs(this);
+  }
+
+  get outputs(): RecordConsentGrantCall__Outputs {
+    return new RecordConsentGrantCall__Outputs(this);
+  }
+}
+
+export class RecordConsentGrantCall__Inputs {
+  _call: RecordConsentGrantCall;
+
+  constructor(call: RecordConsentGrantCall) {
+    this._call = call;
+  }
+
+  get _patient(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get _consent(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+}
+
+export class RecordConsentGrantCall__Outputs {
+  _call: RecordConsentGrantCall;
+
+  constructor(call: RecordConsentGrantCall) {
+    this._call = call;
+  }
+}
+
 export class RevokeAllConsentCall extends ethereum.Call {
   get inputs(): RevokeAllConsentCall__Inputs {
     return new RevokeAllConsentCall__Inputs(this);
@@ -617,6 +829,70 @@ export class RevokeConsentCall__Outputs {
   _call: RevokeConsentCall;
 
   constructor(call: RevokeConsentCall) {
+    this._call = call;
+  }
+}
+
+export class RotateTrustedContractCall extends ethereum.Call {
+  get inputs(): RotateTrustedContractCall__Inputs {
+    return new RotateTrustedContractCall__Inputs(this);
+  }
+
+  get outputs(): RotateTrustedContractCall__Outputs {
+    return new RotateTrustedContractCall__Outputs(this);
+  }
+}
+
+export class RotateTrustedContractCall__Inputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+
+  get kind(): i32 {
+    return this._call.inputValues[0].value.toI32();
+  }
+
+  get newConsumer(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+}
+
+export class RotateTrustedContractCall__Outputs {
+  _call: RotateTrustedContractCall;
+
+  constructor(call: RotateTrustedContractCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleConsentGateCall extends ethereum.Call {
+  get inputs(): ScheduleConsentGateCall__Inputs {
+    return new ScheduleConsentGateCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleConsentGateCall__Outputs {
+    return new ScheduleConsentGateCall__Outputs(this);
+  }
+}
+
+export class ScheduleConsentGateCall__Inputs {
+  _call: ScheduleConsentGateCall;
+
+  constructor(call: ScheduleConsentGateCall) {
+    this._call = call;
+  }
+
+  get _gate(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleConsentGateCall__Outputs {
+  _call: ScheduleConsentGateCall;
+
+  constructor(call: ScheduleConsentGateCall) {
     this._call = call;
   }
 }

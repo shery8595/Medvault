@@ -66,6 +66,13 @@ describe("MedVaultSDK", () => {
         },
         commitment: "99",
         permitRecipient: "0x0000000000000000000000000000000000000001",
+        deadline: "1000",
+        permitSignature: "0xpermit",
+        consentWallet: "0x0000000000000000000000000000000000000002",
+        consentWalletSignature: "0xconsent",
+        noirProof: "0xproof",
+        publicInputs: ["0x1"],
+        eligible: true,
         stageTxHash: "0xstage",
       });
       assert.equal(txHash, "0xabc");
@@ -73,6 +80,15 @@ describe("MedVaultSDK", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("exposes patient module for MED-3 pool enrollment", () => {
+    const sdk = MedVaultSDK.create({
+      rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
+      subgraphUrl: "https://example.com/subgraph",
+    });
+    assert.equal(typeof sdk.patient.enrollInRewardPool, "function");
+    assert.equal(typeof (sdk.sponsor as { registerAnonymousParticipant?: unknown }).registerAnonymousParticipant, "undefined");
   });
 
   it("relayer.health parses JSON from fetch", async () => {
@@ -125,9 +141,56 @@ describe("MedVaultSDK", () => {
             },
             commitment: "99",
             permitRecipient: "0x0000000000000000000000000000000000000001",
+            deadline: "9999999999",
+            permitSignature: "0x",
           }),
         /Invalid proof/
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("finalizeApply forwards full finalize payload", async () => {
+    const originalFetch = globalThis.fetch;
+    let postedBody: Record<string, unknown> | undefined;
+    globalThis.fetch = mock.fn(async (_url, init) => {
+      postedBody = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ success: true, txHash: "0xabc" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    try {
+      const sdk = MedVaultSDK.create({
+        relayerUrl: "https://relayer.test",
+        subgraphUrl: "https://example.com/subgraph",
+      });
+      await sdk.relayer.finalizeApply({
+        trialId: 1,
+        proof: {
+          merkleTreeDepth: 20,
+          merkleTreeRoot: "1",
+          nullifier: "2",
+          message: "3",
+          scope: "4",
+          points: ["0", "0", "0", "0", "0", "0", "0", "0"],
+        },
+        commitment: "99",
+        permitRecipient: "0x0000000000000000000000000000000000000001",
+        deadline: "1000",
+        permitSignature: "0xpermit",
+        consentWallet: "0x0000000000000000000000000000000000000002",
+        consentWalletSignature: "0xconsent",
+        noirProof: "0xproof",
+        publicInputs: ["0x1"],
+        eligible: true,
+        stageTxHash: "0xstage",
+      });
+      assert.equal(postedBody?.noirProof, "0xproof");
+      assert.equal(postedBody?.eligible, true);
+      assert.equal(postedBody?.consentWallet, "0x0000000000000000000000000000000000000002");
     } finally {
       globalThis.fetch = originalFetch;
     }

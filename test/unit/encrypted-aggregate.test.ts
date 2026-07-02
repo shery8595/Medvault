@@ -27,7 +27,7 @@ describe("Unit: encrypted aggregate analytics", function () {
     it("AGG-01: finalize increments homomorphic aggregate count", async function () {
         const stack = await deployMedVaultStack();
         const id = new Identity();
-        await registerPatientOnRegistry(
+        const { profileSalt } = await registerPatientOnRegistry(
             stack,
             stack.patient,
             id.commitment,
@@ -60,6 +60,7 @@ describe("Unit: encrypted aggregate analytics", function () {
             commitment: id.commitment,
             trialId,
             profile: ELIGIBLE_PROFILE,
+            profileSalt,
             eligible: true,
             fheStageHandle: finalCt,
         });
@@ -73,8 +74,7 @@ describe("Unit: encrypted aggregate analytics", function () {
                 stack.patient.address,
                 stack.patient.address,
                 proofBytes,
-                publicInputs,
-                true
+                publicInputs
             );
 
         const countCt = await stack.encryptedScoreLeaderboard.getAggregateApplicantCount(trialId);

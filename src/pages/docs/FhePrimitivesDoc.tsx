@@ -65,7 +65,7 @@ export function FhePrimitivesDoc() {
                         { label: "Encrypted Types", value: "6+", icon: <Lock className="w-5 h-5" />, color: "teal" },
                         { label: "FHE Operations", value: "12+", icon: <Zap className="w-5 h-5" />, color: "purple" },
                         { label: "Branching Allowed", value: "None", icon: <GitBranch className="w-5 h-5" />, color: "rose" },
-                        { label: "Data Revealed On-Chain", value: "Zero", icon: <Binary className="w-5 h-5" />, color: "amber" },
+                        { label: "Data Revealed On-Chain", value: "Patient PHI: none", icon: <Binary className="w-5 h-5" />, color: "amber" },
                     ].map((s) => (
                         <div
                             key={s.label}
@@ -84,6 +84,13 @@ export function FhePrimitivesDoc() {
                 </div>
 
                 <hr className="my-8 border-slate-200" />
+
+                <p>
+                    Sponsor trial bounds use FHE handles via <code>createTrialWithEncryptedCriteria</code> in production;
+                    legacy <code>createTrial</code> stores plaintext bounds but is <strong>Hardhat-only</strong> (gated by
+                    <code>chainid == 31337</code>; reverts on Sepolia/mainnet), retained for fixtures and unit tests. Patient vitals
+                    are always encrypted regardless of sponsor path.
+                </p>
 
                 <h2>I. Encrypted Integer Types (e-Types)</h2>
                 <p>

@@ -7,6 +7,7 @@ import { Identity } from "@semaphore-protocol/identity";
 import { registerPatientOnRegistry } from "../../test-support/deployments";
 import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
 import { registerPatient, walletApplyWithConsent } from "../../test-support/journey";
+import { parseClaimInitiatedLog } from "../../test-support/vaultEvents";
 import { AAVE_POOL_SEPOLIA, AWETH_SEPOLIA, WETH_GATEWAY_SEPOLIA } from "../../test-support/constants";
 
 describe("Unit: privacy-safe events", function () {
@@ -32,6 +33,12 @@ describe("Unit: privacy-safe events", function () {
 
     it("PRIV-02: StakingManager Staked event omits amount", async function () {
         const stack = await deployMedVaultStack();
+        const MockAave = await ethers.getContractFactory("MockAave");
+        const mockAave = await MockAave.deploy();
+        await mockAave.waitForDeployment();
+        const mockCode = await ethers.provider.getCode(await mockAave.getAddress());
+        await ethers.provider.send("hardhat_setCode", [WETH_GATEWAY_SEPOLIA, mockCode]);
+        await ethers.provider.send("hardhat_setCode", [AWETH_SEPOLIA, mockCode]);
         const StakingManager = await ethers.getContractFactory("StakingManager");
         const staking = await StakingManager.deploy(
             await stack.confidentialETH.getAddress(),
@@ -89,34 +96,27 @@ describe("Unit: privacy-safe events", function () {
         await time.increase(DEFAULT_TRIAL_PARAMS.duration + 1);
         await stack.sponsorIncentiveVault.connect(stack.sponsor).distribute(trialId);
 
-        const units = 1;
-        const { createEncryptedClaimUnits } = await import("../../test-support/withdraw");
-        const encrypted = await createEncryptedClaimUnits(
-            await stack.confidentialETH.getAddress(),
-            await stack.sponsorIncentiveVault.getAddress(),
+        const { confirmStagedReceipt } = await import("../../test-support/claimReceipt");
+        await confirmStagedReceipt(stack.sponsorIncentiveVault, trialId, 0n, stack.patient);
+
+        const { patientConfidentialBalanceUnits } = await import("../../test-support/journey");
+        const units = await patientConfidentialBalanceUnits(stack, stack.patient.address);
+        expect(units).to.be.gt(0n);
+        const { claimParticipantRewardsTx } = await import("../../test-support/withdraw");
+        const tx = await claimParticipantRewardsTx(
+            stack.confidentialETH,
+            stack.sponsorIncentiveVault,
+            stack.patient,
+            trialId,
+            nullifier,
+            stack.patient.address,
             units
         );
-        const tx = await stack.sponsorIncentiveVault
-            .connect(stack.patient)
-            .claimParticipantRewards(
-                trialId,
-                nullifier,
-                stack.patient.address,
-                encrypted.handle,
-                encrypted.inputProof
-            );
         const rc = await tx.wait();
-        const ev = rc?.logs
-            .map((l) => {
-                try {
-                    return stack.sponsorIncentiveVault.interface.parseLog(l);
-                } catch {
-                    return null;
-                }
-            })
-            .find((p) => p?.name === "ClaimInitiated");
-        expect(ev?.args.trialId).to.equal(trialId);
-        expect(ev?.args.permitHolder).to.properAddress;
+        const ev = parseClaimInitiatedLog(rc);
+        expect(ev).to.not.equal(undefined);
+        expect(ev!.args.trialId).to.equal(trialId);
+        expect(ev!.args.permitHolder).to.properAddress;
         expect(ev?.args.sufficientHandle).to.be.a("string");
         expect(ev?.args.destination).to.equal(undefined);
         expect(ev?.args.nullifier).to.equal(undefined);
@@ -130,5 +130,46 @@ describe("Unit: privacy-safe events", function () {
             stack.consentManager.connect(stack.stranger).hasConsentRecord(stack.patient.address, trialId),
             /Not authorized/
         );
+    });
+
+    it("SUF-06: withdraw/stake request events expose transferableHandle (not sufficientHandle)", async function () {
+        const cEth = await ethers.getContractFactory("ConfidentialETH7984");
+        const cEthIface = cEth.interface;
+        const withdrawEv = cEthIface.getEvent("WithdrawRequested");
+        expect(withdrawEv?.inputs.some((i) => i.name === "transferableHandle")).to.equal(true);
+        expect(withdrawEv?.inputs.some((i) => i.name === "sufficientHandle")).to.equal(false);
+        expect(cEthIface.getEvent("WithdrawAmountRevealed")).to.equal(null);
+
+        const staking = await ethers.getContractFactory("StakingManager");
+        const stakingIface = staking.interface;
+        for (const name of ["ConfidentialStakeRequested", "PrivateUnstakeRequested", "PublicUnstakeRequested"]) {
+            const ev = stakingIface.getEvent(name);
+            expect(ev?.inputs.some((i) => i.name === "transferableHandle")).to.equal(true);
+            expect(ev?.inputs.some((i) => i.name === "sufficientHandle")).to.equal(false);
+        }
+    });
+
+    it("ACL-05: revokeAllConsent increments epoch; getActiveConsent is encrypted-false", async function () {
+        const stack = await deployMedVaultStack();
+        const trialId = await createTrialForSponsor(stack);
+        await grantConsentLegacy(stack.consentManager.connect(stack.patient), trialId);
+
+        await stack.consentManager.connect(stack.patient).revokeAllConsent();
+        expect(
+            await stack.consentManager.connect(stack.patient).getPatientConsentEpoch(stack.patient.address)
+        ).to.equal(1n);
+
+        await expectRevert(
+            stack.consentManager
+                .connect(stack.patient)
+                .getEncryptedConsent(stack.patient.address, trialId),
+            "Consent revoked or superseded"
+        );
+
+        const { coerceFheHandle } = await import("../../test-support/fhe");
+        const active = await stack.consentManager
+            .connect(stack.patient)
+            .getActiveConsent(stack.patient.address, trialId);
+        expect(coerceFheHandle(active)).to.be.gt(0n);
     });
 });

@@ -3,7 +3,9 @@
 //
 // Public inputs: scope, nullifier, profile_commitment, result_hash, eligible,
 //                fhe_stage_handle_hash, criteria_schema_hash, + 9 trial criteria fields,
-//                criteria_mode (0 = plaintext criteria, 1 = encrypted criteria echo binding).
+//                criteria_mode (0 = plaintext criteria, 1 = encrypted criteria echo binding),
+//                + 8 document binding fields (doc_cid_hash, aes_key_ct_hash, 4x aes_key_fhe_handle_hash,
+//                doc_schema_hash, has_document).
 
 use poseidon::poseidon::bn254;
 
@@ -21,6 +23,7 @@ fn profile_commitment_hash(
     hb_level: u16,
     is_smoker: bool,
     has_hypertension: bool,
+    profile_salt: Field,
 ) -> Field {
     let a = age as Field;
     let g = bool_field(gender);
@@ -33,7 +36,8 @@ fn profile_commitment_hash(
     let left = bn254::hash_3([commitment, a, g]);
     let mid = bn254::hash_3([w, h, d]);
     let right = bn254::hash_3([hb, s, bp]);
-    bn254::hash_3([left, mid, right])
+    let salted_right = bn254::hash_3([right, profile_salt, 0]);
+    bn254::hash_3([left, mid, salted_right])
 }
 
 fn compute_eligible(
@@ -85,9 +89,16 @@ fn main(
     hb_level: u16,
     is_smoker: bool,
     has_hypertension: bool,
+    profile_salt: Field,
     staged_fhe_handle: Field,
     decrypted_eligible: Field,
     criteria_binding_hash: Field,
+    staged_aes_key_chunk_0: Field,
+    staged_aes_key_chunk_1: Field,
+    staged_aes_key_chunk_2: Field,
+    staged_aes_key_chunk_3: Field,
+    doc_cid_hash_witness: Field,
+    aes_key_ct_hash_witness: Field,
     scope: pub Field,
     nullifier: pub Field,
     profile_commitment: pub Field,
@@ -105,6 +116,14 @@ fn main(
     requires_non_smoker: pub Field,
     requires_normal_bp: pub Field,
     criteria_mode: pub Field,
+    doc_cid_hash: pub Field,
+    aes_key_ct_hash: pub Field,
+    aes_key_fhe_handle_hash_0: pub Field,
+    aes_key_fhe_handle_hash_1: pub Field,
+    aes_key_fhe_handle_hash_2: pub Field,
+    aes_key_fhe_handle_hash_3: pub Field,
+    doc_schema_hash: pub Field,
+    has_document: pub Field,
 ) {
     let computed_profile = profile_commitment_hash(
         commitment,
@@ -116,6 +135,7 @@ fn main(
         hb_level,
         is_smoker,
         has_hypertension,
+        profile_salt,
     );
     assert(computed_profile == profile_commitment);
 
@@ -156,7 +176,14 @@ fn main(
         let eligible_field = bool_field(eligibility_result);
         assert(eligible == eligible_field);
     } else {
-        // Encrypted criteria: FHE is compute authority; bind echo of on-chain criteria hash at index 7.
+        // Encrypted criteria: FHE is compute authority on-chain; bind echo of on-chain criteria hash at index 7.
+        //
+        // BINDING DEFERRAL (Phase 2): The contract is NOT yet the binding authority for `decrypted_eligible`.
+        // This branch trusts the prover's witness - a dishonest client could lie about the decrypted bit.
+        // On-chain `FHE.checkSignatures` binding was deferred because Zama SDK exposes a KMS `decryptionProof`
+        // only via public decrypt (`makePubliclyDecryptable`), which would re-leak eligibility pre-finalize.
+        // Prerequisite to revive binding: user-decrypt to PublicDecryptVerification signature API, or
+        // `FHE.requestDecryption` async-callback pattern. Until then, frontend + relayer are trusted.
         assert(eligible == decrypted_eligible);
         assert(min_age == criteria_binding_hash);
     }
@@ -164,9 +191,28 @@ fn main(
     let computed_result_hash = bn254::hash_3([eligible, scope, secret]);
     assert(computed_result_hash == result_hash);
 
-    // FHE-bound attestation: witness must know the staged Zama ebool handle field.
-    assert(staged_fhe_handle == fhe_stage_handle_hash);
-    let _ = criteria_schema_hash;
+  // FHE-bound attestation: witness must know the staged Zama ebool handle field.
+  assert(staged_fhe_handle == fhe_stage_handle_hash);
+  let _ = criteria_schema_hash;
+
+  if has_document == 1 {
+    assert(staged_aes_key_chunk_0 == aes_key_fhe_handle_hash_0);
+    assert(staged_aes_key_chunk_1 == aes_key_fhe_handle_hash_1);
+    assert(staged_aes_key_chunk_2 == aes_key_fhe_handle_hash_2);
+    assert(staged_aes_key_chunk_3 == aes_key_fhe_handle_hash_3);
+    assert(doc_cid_hash_witness == doc_cid_hash);
+    assert(aes_key_ct_hash_witness == aes_key_ct_hash);
+    let _ = doc_schema_hash;
+  } else {
+    assert(has_document == 0);
+    assert(doc_cid_hash == 0);
+    assert(aes_key_ct_hash == 0);
+    assert(aes_key_fhe_handle_hash_0 == 0);
+    assert(aes_key_fhe_handle_hash_1 == 0);
+    assert(aes_key_fhe_handle_hash_2 == 0);
+    assert(aes_key_fhe_handle_hash_3 == 0);
+    assert(doc_schema_hash == 0);
+  }
 }
 
 #[test]
@@ -183,12 +229,13 @@ fn test_valid_eligible_attestation() {
     let hb_level: u16 = 140;
     let is_smoker = false;
     let has_hypertension = false;
+    let profile_salt: Field = 7777;
     let fhe_stage: Field = 999;
     let schema: Field = 1;
 
     let nullifier = bn254::hash_2([scope_internal, secret]);
     let profile_commitment = profile_commitment_hash(
-        commitment, age, gender, weight, height, has_diabetes, hb_level, is_smoker, has_hypertension,
+        commitment, age, gender, weight, height, has_diabetes, hb_level, is_smoker, has_hypertension, profile_salt,
     );
     let elig_field: Field = 1;
     let result_hash = bn254::hash_3([elig_field, scope, secret]);
@@ -205,7 +252,14 @@ fn test_valid_eligible_attestation() {
         hb_level,
         is_smoker,
         has_hypertension,
+        profile_salt,
         fhe_stage,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
         0,
         0,
         scope,
@@ -219,6 +273,14 @@ fn test_valid_eligible_attestation() {
         65,
         0,
         120,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
         0,
         0,
         0,
@@ -242,13 +304,14 @@ fn test_valid_encrypted_criteria_attestation() {
     let hb_level: u16 = 140;
     let is_smoker = false;
     let has_hypertension = false;
+    let profile_salt: Field = 7777;
     let fhe_stage: Field = 999;
     let schema: Field = 1;
     let binding_hash: Field = 424242;
 
     let nullifier = bn254::hash_2([scope_internal, secret]);
     let profile_commitment = profile_commitment_hash(
-        commitment, age, gender, weight, height, has_diabetes, hb_level, is_smoker, has_hypertension,
+        commitment, age, gender, weight, height, has_diabetes, hb_level, is_smoker, has_hypertension, profile_salt,
     );
     let elig_field: Field = 1;
     let result_hash = bn254::hash_3([elig_field, scope, secret]);
@@ -265,9 +328,16 @@ fn test_valid_encrypted_criteria_attestation() {
         hb_level,
         is_smoker,
         has_hypertension,
+        profile_salt,
         fhe_stage,
         elig_field,
         binding_hash,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
         scope,
         nullifier,
         profile_commitment,
@@ -285,5 +355,13 @@ fn test_valid_encrypted_criteria_attestation() {
         0,
         0,
         1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
     );
 }

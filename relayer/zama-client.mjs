@@ -40,6 +40,7 @@ function toHandleHex(value) {
 
 /**
  * KMS public decrypt for handles marked `makePubliclyDecryptable` on-chain.
+ * Returns uint64 transferable units (0 when insufficient).
  * @param {ZamaSDK} sdk
  * @param {string | bigint} handle
  */
@@ -47,11 +48,18 @@ export async function publicDecryptProof(sdk, handle) {
     const handleHex = toHandleHex(handle);
     const result = await sdk.decryption.decryptPublicValues([handleHex]);
     const first = Object.values(result.clearValues)[0];
-    const eligible =
-        typeof first === "boolean" ? first : Boolean(Number(first));
+    const units =
+        typeof first === "boolean"
+            ? first
+                ? 1n
+                : 0n
+            : BigInt(first);
 
     return {
-        eligible,
+        units,
+        /** @deprecated use `units > 0n` — kept for watcher compatibility */
+        eligible: units > 0n,
+        transferable: units > 0n,
         cleartexts: result.abiEncodedClearValues,
         proof: result.decryptionProof,
     };

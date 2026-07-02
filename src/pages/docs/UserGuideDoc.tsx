@@ -177,7 +177,7 @@ export function UserGuideDoc() {
                         { step: "A", title: "Off-Chain KYC", desc: "Submit organizational credentials, wallet address, and legal documentation to MedVault protocol admins via an off-chain submission form.", color: "blue" },
                         { step: "B", title: "On-Chain Allowlist", desc: "The MedVault admin multisig executes `addSponsor(address, name)` on the `SponsorRegistry`. The Subgraph indexes the event, unlocking trial creation in the UI.", color: "teal" },
                         { step: "C", title: "Trial Management", desc: "Sponsors create trials with encrypted requirements, review anonymized applicant counts via Subgraph, and issue accept/reject decisions which send encrypted messages.", color: "purple" },
-                        { step: "D", title: "Automated Rewards", desc: "Upon acceptance, patients are automatically enrolled in the SponsorIncentiveVault. When the trial's end time is reached, Chainlink Automation automatically distributes the initial Milestone 0 screening reward without manual intervention.", color: "emerald" },
+                        { step: "D", title: "Phased rewards", desc: "Upon acceptance, patients enroll in SponsorIncentiveVault. After trial end, automation or the sponsor stages milestone entitlements via distributePartial*. Patients confirmReceipt (KMS proof) to receive cETH, then claim to their wallet.", color: "emerald" },
                     ].map(s => {
                         const styles = colorStyles[s.color];
                         return (
@@ -196,7 +196,46 @@ export function UserGuideDoc() {
 
                 <hr className="my-12 border-slate-200" />
 
-                <h2>III. Edge Cases & Known Behavior</h2>
+                <h2>III. Patient workflows (UI)</h2>
+                <h3>Medical vault &amp; FHIR import</h3>
+                <p>
+                    On <code>/patient/medical-vault</code>, patients register encrypted health metrics via{" "}
+                    <code>PatientRecordForm</code>. Optional <strong>FHIR R4 JSON import</strong> (
+                    <code>fhirImport.ts</code>) maps Patient/Observation resources into form fields — always review before
+                    encrypting. Optional <strong>Reclaim</strong> attestation can preflight uploads (
+                    <code>ReclaimUploadPreflight</code>).
+                </p>
+                <h3>Hybrid document upload</h3>
+                <p>
+                    When applying anonymously to a trial, <code>HybridDocumentUploader</code> encrypts a supporting document
+                    (AES-256-GCM), pins ciphertext to IPFS, and stores a pending record locally. After the apply stage
+                    completes, <code>recordHybridDocumentOnChain</code> records the CID on{" "}
+                    <code>PatientDocumentStore</code> with FHE-wrapped key chunks bound into the Noir eligibility proof.
+                </p>
+                <h3>Indexer health</h3>
+                <p>
+                    <code>IndexerHealthBanner</code> on the patient dashboard compares subgraph indexed block height to live
+                    Sepolia <code>eth_blockNumber</code>. A lag warning means UI lists may be stale while on-chain state
+                    remains authoritative.
+                </p>
+                <h3>Reward claim (pull model)</h3>
+                <p>
+                    On <strong>Applied Trials</strong>, accepted patients who are enrolled in the reward pool see{" "}
+                    <strong>Claim Rewards</strong> after the sponsor stages entitlements. The wizard runs:
+                </p>
+                <ol>
+                    <li><code>prepareEntitlementProof</code> + <code>confirmReceipt</code> — ephemeral permit holder proves staged entitlement via KMS public decrypt</li>
+                    <li><code>claimParticipantRewards</code> — moves confidential cETH into the withdraw-to pipeline</li>
+                    <li>Relayer <code>completeWithdrawTo</code> — ETH arrives at the patient&apos;s main wallet</li>
+                </ol>
+                <p>
+                    Helpers: <code>src/lib/confirmReceiptFlow.ts</code>, <code>src/lib/claimFlow.ts</code>,{" "}
+                    <code>ClaimModal</code>. The ephemeral address needs gas for confirm txs; the connected wallet runs FHE public decrypt.
+                </p>
+
+                <hr className="my-12 border-slate-200" />
+
+                <h2>IV. Edge Cases & Known Behavior</h2>
                 <p>
                     Due to the unique nature of FHE-based blockchain applications, several non-obvious behaviors must be accounted for at the UI and contract level.
                 </p>

@@ -32,11 +32,6 @@
           "internalType": "uint256",
           "name": "_nullifier",
           "type": "uint256"
-        },
-        {
-          "internalType": "euint8",
-          "name": "_score",
-          "type": "bytes32"
         }
       ],
       "name": "addToAggregate",

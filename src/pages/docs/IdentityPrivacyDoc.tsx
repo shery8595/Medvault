@@ -103,8 +103,9 @@ export function IdentityPrivacyDoc() {
                     </li>
                 </ul>
                 <p>
-                    Authorize the relayer on <code>ConfidentialETH</code> via <code>authorizeContract</code> when using{" "}
-                    <code>revealWithdrawAmountFor</code> / <code>revealWithdrawToAmountFor</code> for claim auto-completion.
+                    Authorize the relayer on <code>ConfidentialETH</code> via{" "}
+                    <code>scheduleContractAuth</code> / <code>applyContractAuth</code> when using auto{" "}
+                    <code>completeWithdrawTo</code> for claim payouts (single transferable KMS proof).
                     See <Link to="/docs/private-withdrawals" className="font-semibold text-[#00685f]">Private withdrawals</Link>.
                 </p>
                 <p>
@@ -130,13 +131,47 @@ export function IdentityPrivacyDoc() {
 
                 <h2>Reclaim (attestations)</h2>
                 <p>
-                    <code>src/lib/reclaim.ts</code> integrates Reclaim&rsquo;s flow when you need off-chain or OAuth-style
-                    attestations bridged to the chain. Proofs must be checked against the verifier addresses you deploy
-                    (see <code>addresses.json</code> and Reclaim&rsquo;s address book for your chain).
+                    <code>src/lib/reclaim.ts</code> integrates Reclaim&apos;s flow when you need off-chain or OAuth-style
+                    attestations bridged to the chain. The patient vault can surface{" "}
+                    <code>ReclaimUploadPreflight</code> before uploading health records — the user proves data came from a
+                    configured health provider session without exposing credentials to MedVault servers.
                 </p>
+                <ul>
+                    <li>
+                        <strong>Client:</strong> <code>ReclaimUploadPreflight.tsx</code> — provider selection, session
+                        handshake, proof callback.
+                    </li>
+                    <li>
+                        <strong>Verification:</strong> proofs checked against verifier addresses in{" "}
+                        <code>addresses.json</code> and Reclaim&apos;s address book for your chain.
+                    </li>
+                    <li>
+                        <strong>Env:</strong> <code>VITE_RECLAIM_APP_ID</code> (and optional secret for server-side flows
+                        only — never ship secrets in APK builds).
+                    </li>
+                </ul>
+
+                <h2>FHIR R4 import (patient vault)</h2>
+                <p>
+                    <code>PatientVaultPage</code> accepts a FHIR R4 JSON bundle or loose resources via hidden file input.
+                    <code>src/lib/fhirImport.ts</code> maps Patient + Observation (+ optional Condition) subsets into{" "}
+                    <code>FhirMappedProfile</code> fields that prefill <code>PatientRecordForm</code>.
+                </p>
+                <ul>
+                    <li>
+                        Import is <strong>assistive only</strong> — the user must review mapped values before{" "}
+                        <code>@zama-fhe/sdk</code> encrypts metrics on-chain.
+                    </li>
+                    <li>
+                        Unmapped or ambiguous fields surface as <code>FhirImportIssue</code> notes in the UI.
+                    </li>
+                    <li>
+                        Does not replace Semaphore identity or on-chain registration; it only speeds manual data entry.
+                    </li>
+                </ul>
 
                 <Callout type="info" title="Noir depth">
-                    Attestation circuit, 16 public inputs, FHE stage binding, and{" "}
+                    Attestation circuit, 25 public inputs, FHE stage binding, and{" "}
                     <code>attestationReceipt</code> are documented on{" "}
                     <Link to="/docs/noir" className="font-semibold text-[#00685f]">Noir compliance attestation</Link>.
                 </Callout>

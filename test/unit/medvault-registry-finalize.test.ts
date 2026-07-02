@@ -37,6 +37,7 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
             commitment: patient.commitment,
             trialId,
             profile: patient.profile,
+            profileSalt: patient.profileSalt,
             eligible: true,
             fheStageHandle: staged.finalCt,
         });
@@ -56,7 +57,7 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
         );
         await expect(
             stack.medVaultRegistry
-                .connect(stack.patient)
+                .connect(stack.relayer)
                 .finalizeAnonymousApplyWithProof(
                     trialId,
                     proofFresh,
@@ -67,9 +68,8 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
                     applyArgs.permitSignature,
                     applyArgs.consentWalletSignature,
                     proofBytes,
-                    publicInputs,
-                    true
-                )
+                    publicInputs
+            )
         ).to.emit(stack.medVaultRegistry, "AnonymousApplication");
     });
 
@@ -98,7 +98,7 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
         );
         await expectRevert(
             stack.medVaultRegistry
-                .connect(stack.patient)
+                .connect(stack.relayer)
                 .finalizeAnonymousApplyWithProof(
                     trialId,
                     proof,
@@ -109,9 +109,8 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
                     applyArgs.permitSignature,
                     applyArgs.consentWalletSignature,
                     proofBytes,
-                    publicInputs,
-                    true
-                ),
+                    publicInputs
+            ),
             /Nothing staged|reverted/
         );
     });
@@ -144,7 +143,7 @@ describe("Unit: MedVaultRegistry v0.9 finalize", function () {
         const staged = await stageSemaphoreApply(stack, trialId, patient);
         await cancelAnonymousApplyStage(
             stack.medVaultRegistry,
-            stack.patient,
+            stack.relayer,
             trialId,
             patient.identity,
             stack.patient.address

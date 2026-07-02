@@ -1,6 +1,6 @@
 # MedVault Android APK
 
-Build an installable **Android demo APK** from the existing Vite React dapp using [Capacitor](https://capacitorjs.com/). The APK bundles the same Privy + Zama FHE + Semaphore + Noir stack as the web app inside an Android WebView.
+Build an installable **Android demo APK** from the existing Vite React dapp using [Capacitor 8](https://capacitorjs.com/). The APK bundles the same Privy + Zama FHE + Semaphore + Noir stack as the web app inside an Android WebView.
 
 **Scope:** internal/demo sideload distribution — not Google Play production (yet).
 
@@ -225,6 +225,7 @@ Rename for testers: `MedVault-demo-0.1.0-android.apk`.
 - [ ] Relayer `/health` reachable from device
 - [ ] Android back button navigates in-app; minimizes at dashboard root
 - [ ] Offline banner when network disabled
+- [ ] Crypto fallback banner appears only when WebCrypto AES-GCM unavailable (document encrypt still works)
 - [ ] Logout clears session
 
 ---
@@ -252,7 +253,7 @@ Rename for testers: `MedVault-demo-0.1.0-android.apk`.
 | [`capacitor.config.ts`](../capacitor.config.ts) | App id `xyz.medvault.app`, `webDir: dist`, `androidScheme: https` |
 | [`vite.config.ts`](../vite.config.ts) | `CAPACITOR_BUILD` → `base: './'` |
 | [`src/lib/mobile.ts`](../src/lib/mobile.ts) | Native detection, relayer URL resolution |
-| [`src/components/mobile/`](../src/components/mobile/) | Back button, offline banner, native hints |
+| [`src/components/mobile/`](../src/components/mobile/) | Back button, offline banner, launch redirect, crypto fallback |
 | [`android/gradle.properties`](../android/gradle.properties) | JDK 21 path for Gradle |
 | [`android/local.properties`](../android/local.properties) | SDK path (gitignored, per machine) |
 | [`scripts/android-apk.mjs`](../scripts/android-apk.mjs) | Cross-platform CLI APK builder |

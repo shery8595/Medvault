@@ -3,7 +3,8 @@ import { ethers } from "hardhat";
 import { assertFhevmMock, buildPatientProfileInputs } from "../../test-support/fhe";
 import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
 import { deployMedVaultStack } from "../../test-support/deployments";
-import { computeProfileCommitment } from "../../test-support/profileCommitment";
+import { authorizeRelayer } from "../../test-support/timelock";
+import { computeProfileCommitment, randomProfileSalt, profileSaltCommitment } from "../../test-support/profileCommitment";
 import { Identity } from "@semaphore-protocol/identity";
 
 describe("Integration: relayer registration privacy", function () {
@@ -14,13 +15,19 @@ describe("Integration: relayer registration privacy", function () {
     it("REL-REG-01: relayer path does not store walletToCommitment", async function () {
         const stack = await deployMedVaultStack();
         const relayer = stack.stranger;
-        await stack.medVaultRegistry.connect(stack.owner).setTrustedRelayer(relayer.address);
+        await authorizeRelayer(stack.medVaultRegistry, stack.owner, relayer.address);
 
         const id = new Identity();
         const mvrAddr = await stack.medVaultRegistry.getAddress();
         const aprAddr = await stack.anonymousPatientRegistry.getAddress();
         const inputs = await buildPatientProfileInputs(aprAddr, mvrAddr, ELIGIBLE_PROFILE);
-        const profileCommitment = computeProfileCommitment(id.commitment, ELIGIBLE_PROFILE);
+        const profileSalt = randomProfileSalt();
+        const profileCommitment = computeProfileCommitment(
+            id.commitment,
+            ELIGIBLE_PROFILE,
+            profileSalt
+        );
+        const saltCommitment = profileSaltCommitment(profileSalt);
         const nonce = await stack.medVaultRegistry.registerNonces(stack.patient.address);
 
         const healthDataHash = await stack.medVaultRegistry.computeHealthDataHash(
@@ -69,6 +76,7 @@ describe("Integration: relayer registration privacy", function () {
             id.commitment,
             stack.patient.address,
             value.profileCommitment,
+            saltCommitment,
             inputs.age.handle,
             inputs.gender.handle,
             inputs.weight.handle,

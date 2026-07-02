@@ -4,7 +4,7 @@ import { ArrowRight, Loader2, Lock, ShieldCheck, Stethoscope, Sparkles } from "l
 import { Button } from "../ui/Button";
 import { useWeb3 } from "../../lib/Web3Context";
 import { buildPatientProfileInputs, yieldToMain } from "../../lib/fhe";
-import { getOrCreateIdentity, isMemberRegistered, isPatientRegistered, forceNewIdentity, registerPatientWithHealthData } from "../../lib/semaphore";
+import { friendlyContractError } from "../../lib/contractErrors";
 import { getContractAddressForChain, getDataAccessLog } from "../../lib/contracts";
 import { storePatientProfilePlain } from "../../lib/profileStorage";
 import { cn } from "../../lib/utils";
@@ -225,10 +225,8 @@ export function PatientRecordForm({ onSuccess, onCancel, reclaimAttestation, pre
             }, 1600);
         } catch (err: any) {
             console.error("Submission failed:", err);
-            let errorMsg = err.reason || err.message || "Encryption failed";
+            let errorMsg = friendlyContractError(err);
 
-            // Detect the cross-contract "missing revert data" estimateGas error and provide
-            // actionable guidance instead of the raw ethers.js dump.
             if (
                 errorMsg.includes("missing revert data") ||
                 (err.code === "CALL_EXCEPTION" && err.data === null)

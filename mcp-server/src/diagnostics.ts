@@ -71,6 +71,8 @@ export const READ_TOOL_NAMES = [
   "medvault_get_sponsor_overview",
   "medvault_preview_fund_trial_pool",
   "medvault_get_trial_operations_timeline",
+  "medvault_ai_extract_criteria",
+  "medvault_ai_audit_logs",
 ] as const;
 
 export const WRITE_TOOL_NAMES = [
@@ -82,6 +84,8 @@ export const WRITE_TOOL_NAMES = [
   "medvault_distribute_milestone",
   "medvault_register_anonymous_participant",
   "medvault_reclaim_trial_pool",
+  "medvault_reclaim_abandoned_pool",
+  "medvault_claim_reclaimed_pool",
 ] as const;
 
 async function buildExists(): Promise<boolean> {
@@ -176,6 +180,8 @@ export function listCapabilities(ctx: MedVaultMcpContext, signerAddress: string 
       "MCP_AUDIT_LOG",
       "MCP_HTTP_PORT",
       "MCP_HTTP_HOST",
+      "AI_SERVICE_URL",
+      "VITE_AI_SERVICE_URL",
     ],
   };
 }

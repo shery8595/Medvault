@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import "@semaphore-protocol/contracts/interfaces/ISemaphore.sol";
 import "@semaphore-protocol/contracts/interfaces/ISemaphoreGroups.sol";
-import {ebool, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, ebool, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -12,6 +12,7 @@ interface IAnonymousPatientRegistry {
         uint256 _commitment,
         address _permitRecipient,
         bytes32 _profileCommitment,
+        bytes32 _profileSaltCommitment,
         externalEuint8 _age,
         externalEbool _gender,
         externalEuint16 _weight,
@@ -40,9 +41,19 @@ interface IEligibilityEngine {
         address _permitRecipient,
         address _consentWallet,
         bytes calldata _proof,
-        bytes32[] calldata _publicInputs,
-        bool _eligible
+        bytes32[] calldata _publicInputs
     ) external returns (ebool);
+    function finalizeAnonymousEligibilityWithConsent(
+        uint256 _commitment,
+        uint256 _nullifier,
+        uint256 _trialId,
+        address _permitRecipient,
+        address _consentWallet,
+        ebool _consent,
+        bytes calldata _proof,
+        bytes32[] calldata _publicInputs
+    ) external returns (ebool);
+    function getAnonymousApplicationStatus(uint256 _nullifier, uint256 _trialId) external view returns (ApplicationStatus);
     function checkAnonymousEligibilityWithConsent(
         uint256 _commitment,
         uint256 _trialId,
@@ -80,8 +91,12 @@ contract MedVaultRegistry is ZamaEthereumConfig {
     address public owner;
     address public pendingOwner;
 
-    /// @notice Gasless registration relayer — tx.sender is relayer, not patient wallet.
-    address public trustedRelayer;
+    /// @notice P3.1: Multi-relayer allowlist — gasless registration/cancel; patients choose among authorized relayers.
+    mapping(address => bool) public authorizedRelayers;
+    /// @notice Timelock before adding/removing authorized relayers.
+    uint256 public constant RELAYER_AUTH_DELAY = 6 hours;
+    mapping(address => bool) public pendingRelayerAuth;
+    mapping(address => uint256) public relayerAuthChangeEta;
 
     bytes32 public constant REGISTER_VIA_RELAYER_TYPEHASH = keccak256(
         "RegisterViaRelayer(address patientWallet,uint256 identityCommitment,address viewPermitRecipient,bytes32 profileCommitment,bytes32 healthDataHash,uint256 nonce,uint256 deadline)"
@@ -102,6 +117,11 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         "ConsentWalletBinding(uint256 nullifier,uint256 trialId,address consentWallet,uint256 deadline)"
     );
 
+    /// @notice H-1: Patient authorizes encrypted consent ciphertext before registry forwards to engine.
+    bytes32 public constant CONSENT_GRANT_TYPEHASH = keccak256(
+        "ConsentGrant(bytes32 consentHandle,uint256 trialId,address consentWallet,uint256 deadline)"
+    );
+
     mapping(address => uint256) public registerNonces;
     mapping(uint256 => uint256) public anonymousApplyDeadlines;
 
@@ -111,6 +131,9 @@ contract MedVaultRegistry is ZamaEthereumConfig {
 
     // Track applications: trialId => nullifier => applied
     mapping(uint256 => mapping(uint256 => bool)) public trialApplications;
+
+    /// @dev AUDIT-FIX-M-4: monotonic stage deadline per nullifier/trial — blocks re-stage griefing with same permit.
+    mapping(uint256 => mapping(uint256 => uint256)) private lastStageDeadline;
 
     // FINDING 4: consentConsent mapping removed - consent is now encoded in the Semaphore proof signal
     // This prevents on-chain linkage between wallet and trialId
@@ -127,7 +150,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
     // FINDING 4: AnonymousConsentGranted event removed - no longer needed
     event OwnershipProposed(address indexed proposedOwner); // FINDING 11
     event OwnershipAccepted(address indexed newOwner); // FINDING 11
-    event TrustedRelayerUpdated(address indexed relayer);
+    event AuthorizedRelayerUpdated(address indexed relayer, bool authorized);
     event PatientRegisteredViaRelayer(address indexed relayer, uint256 indexed commitment);
 
     constructor(address _semaphore, address _patientRegistry, address _eligibilityEngine) {
@@ -175,14 +198,28 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         semaphore.updateGroupMerkleTreeDuration(patientGroupId, newDuration);
     }
 
-    function setTrustedRelayer(address _relayer) external onlyOwner {
-        require(_relayer != address(0), "Zero relayer");
-        trustedRelayer = _relayer;
-        emit TrustedRelayerUpdated(_relayer);
+    function setTrustedRelayer(address) external onlyOwner {
+        revert("Use scheduleRelayerAuth + applyRelayerAuth");
     }
 
-    modifier onlyTrustedRelayer() {
-        require(msg.sender == trustedRelayer, "Only trusted relayer");
+    function scheduleRelayerAuth(address _relayer, bool _authorize) external onlyOwner {
+        require(_relayer != address(0), "Zero relayer");
+        pendingRelayerAuth[_relayer] = _authorize;
+        relayerAuthChangeEta[_relayer] = block.timestamp + RELAYER_AUTH_DELAY;
+    }
+
+    function applyRelayerAuth(address _relayer) external onlyOwner {
+        require(
+            relayerAuthChangeEta[_relayer] != 0 && block.timestamp >= relayerAuthChangeEta[_relayer],
+            "Timelock active"
+        );
+        authorizedRelayers[_relayer] = pendingRelayerAuth[_relayer];
+        relayerAuthChangeEta[_relayer] = 0;
+        emit AuthorizedRelayerUpdated(_relayer, authorizedRelayers[_relayer]);
+    }
+
+    modifier onlyAuthorizedRelayer() {
+        require(authorizedRelayers[msg.sender], "Only authorized relayer");
         _;
     }
 
@@ -191,6 +228,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         uint256 identityCommitment,
         address _viewPermitRecipient,
         bytes32 _profileCommitment,
+        bytes32 _profileSaltCommitment,
         externalEuint8 _age,
         externalEbool _gender,
         externalEuint16 _weight,
@@ -219,6 +257,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
             identityCommitment,
             _viewPermitRecipient,
             _profileCommitment,
+            _profileSaltCommitment,
             _age,
             _gender,
             _weight,
@@ -250,6 +289,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         uint256 identityCommitment,
         address _viewPermitRecipient,
         bytes32 _profileCommitment,
+        bytes32 _profileSaltCommitment,
         externalEuint8 _age,
         externalEbool _gender,
         externalEuint16 _weight,
@@ -265,6 +305,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
             identityCommitment,
             _viewPermitRecipient,
             _profileCommitment,
+            _profileSaltCommitment,
             _age,
             _gender,
             _weight,
@@ -288,6 +329,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         uint256 identityCommitment,
         address _viewPermitRecipient,
         bytes32 _profileCommitment,
+        bytes32 _profileSaltCommitment,
         externalEuint8 _age,
         externalEbool _gender,
         externalEuint16 _weight,
@@ -300,7 +342,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature
-    ) external onlyTrustedRelayer {
+    ) external onlyAuthorizedRelayer {
         require(patientWallet != address(0), "Zero patient wallet");
         require(nonce == registerNonces[patientWallet], "Invalid nonce");
         require(block.timestamp <= deadline, "Signature expired");
@@ -341,6 +383,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
             identityCommitment,
             _viewPermitRecipient,
             _profileCommitment,
+            _profileSaltCommitment,
             _age,
             _gender,
             _weight,
@@ -464,6 +507,23 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         require(recovered == permitRecipient, "Invalid permit recipient signature");
     }
 
+    function _verifyConsentGrantSignature(
+        bytes32 consentHandle,
+        uint256 trialId,
+        address consentWallet,
+        uint256 deadline,
+        bytes calldata signature
+    ) internal view {
+        require(consentWallet != address(0), "Zero consent wallet");
+        require(block.timestamp <= deadline, "Consent grant signature expired");
+        bytes32 structHash = keccak256(
+            abi.encode(CONSENT_GRANT_TYPEHASH, consentHandle, trialId, consentWallet, deadline)
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
+        address recovered = _recoverSigner(digest, signature);
+        require(recovered == consentWallet, "Invalid consent grant signature");
+    }
+
     function _verifyConsentWalletBinding(
         uint256 nullifier,
         uint256 trialId,
@@ -504,6 +564,9 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
         require(!trialApplications[trialId][proof.nullifier], "Already applied to this trial");
         require(address(eligibilityEngine) != address(0), "Eligibility engine not set");
+        // AUDIT-FIX-M-4: require a fresh permit deadline after cancel — same signature cannot re-stage.
+        require(deadline > lastStageDeadline[trialId][proof.nullifier], "Stale stage permit");
+        lastStageDeadline[trialId][proof.nullifier] = deadline;
 
         bytes32 finalCt = eligibilityEngine.stageAnonymousEligibility(
             commitment,
@@ -520,6 +583,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
 
     /**
      * @notice Phase 2b: finalize with Noir proof after local FHE decrypt (no KMS public decrypt).
+     * @dev HIGH-1: Only authorized relayers may finalize; relayer re-decrypts staged ciphertext (P0.2).
      */
     function finalizeAnonymousApplyWithProof(
         uint256 trialId,
@@ -531,9 +595,8 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         bytes calldata permitSignature,
         bytes calldata consentWalletSignature,
         bytes calldata noirProof,
-        bytes32[] calldata publicInputs,
-        bool eligible
-    ) external {
+        bytes32[] calldata publicInputs
+    ) external onlyAuthorizedRelayer {
         _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
         _verifyConsentWalletBinding(
             proof.nullifier,
@@ -552,14 +615,109 @@ contract MedVaultRegistry is ZamaEthereumConfig {
             permitRecipient,
             consentWallet,
             noirProof,
-            publicInputs,
-            eligible
+            publicInputs
         );
+
+        if (
+            eligibilityEngine.getAnonymousApplicationStatus(proof.nullifier, trialId) ==
+            IEligibilityEngine.ApplicationStatus.None
+        ) {
+            return;
+        }
 
         trialApplications[trialId][proof.nullifier] = true;
 
         bytes32 blindedRef = keccak256(abi.encodePacked(proof.nullifier, trialId));
         emit AnonymousApplication(trialId, proof.nullifier, blindedRef);
+    }
+
+    function finalizeAnonymousApplyWithConsent(
+        uint256 trialId,
+        ISemaphore.SemaphoreProof calldata proof,
+        uint256 commitment,
+        address permitRecipient,
+        address consentWallet,
+        uint256 deadline,
+        bytes calldata permitSignature,
+        bytes calldata consentWalletSignature,
+        externalEbool consent,
+        bytes calldata proofConsent,
+        uint256 consentDeadline,
+        bytes calldata consentGrantSignature,
+        bytes calldata noirProof,
+        bytes32[] calldata publicInputs
+    ) external onlyAuthorizedRelayer {
+        _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
+        _verifyConsentWalletBinding(
+            proof.nullifier,
+            trialId,
+            consentWallet,
+            deadline,
+            consentWalletSignature
+        );
+        _completeAnonymousApplyWithConsent(
+            trialId,
+            proof.nullifier,
+            commitment,
+            permitRecipient,
+            consentWallet,
+            consent,
+            proofConsent,
+            consentDeadline,
+            consentGrantSignature,
+            noirProof,
+            publicInputs
+        );
+    }
+
+    function _completeAnonymousApplyWithConsent(
+        uint256 trialId,
+        uint256 nullifier,
+        uint256 commitment,
+        address permitRecipient,
+        address consentWallet,
+        externalEbool consent,
+        bytes calldata proofConsent,
+        uint256 consentDeadline,
+        bytes calldata consentGrantSignature,
+        bytes calldata noirProof,
+        bytes32[] calldata publicInputs
+    ) private {
+        require(!trialApplications[trialId][nullifier], "Already applied to this trial");
+        require(address(eligibilityEngine) != address(0), "Eligibility engine not set");
+
+        ebool consentCt = FHE.fromExternal(consent, proofConsent);
+        _verifyConsentGrantSignature(
+            ebool.unwrap(consentCt),
+            trialId,
+            consentWallet,
+            consentDeadline,
+            consentGrantSignature
+        );
+        FHE.allowThis(consentCt);
+        FHE.allow(consentCt, address(eligibilityEngine));
+
+        eligibilityEngine.finalizeAnonymousEligibilityWithConsent(
+            commitment,
+            nullifier,
+            trialId,
+            permitRecipient,
+            consentWallet,
+            consentCt,
+            noirProof,
+            publicInputs
+        );
+
+        if (
+            eligibilityEngine.getAnonymousApplicationStatus(nullifier, trialId) ==
+            IEligibilityEngine.ApplicationStatus.None
+        ) {
+            return;
+        }
+
+        trialApplications[trialId][nullifier] = true;
+        bytes32 blindedRef = keccak256(abi.encodePacked(nullifier, trialId));
+        emit AnonymousApplication(trialId, nullifier, blindedRef);
     }
 
     /**
@@ -578,7 +736,7 @@ contract MedVaultRegistry is ZamaEthereumConfig {
         uint256 deadline,
         bytes calldata permitSignature,
         bytes calldata cancelSignature
-    ) external {
+    ) external onlyAuthorizedRelayer {
         _verifyAnonymousApplyProof(trialId, proof, commitment, permitRecipient, deadline, permitSignature);
         require(!trialApplications[trialId][proof.nullifier], "Already applied to this trial");
         require(address(eligibilityEngine) != address(0), "Eligibility engine not set");

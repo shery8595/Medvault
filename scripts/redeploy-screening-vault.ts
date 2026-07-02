@@ -10,6 +10,18 @@ import hre from "hardhat";
 import { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
+import {
+  advanceTimelockIfHardhat,
+  ensureCethContractAuth,
+  wireAutomationVault,
+  wireEngineReader,
+  wireMilestoneManagerVault,
+  wireTrialManagerAutomation,
+  wireVaultAutomation,
+  wireVaultMilestoneManager,
+  ENGINE_READER_ROLES,
+} from "./lib/timelockWiring";
+import { ensureDataAccessLogger } from "./data-access-log-wiring";
 
 function networkKey(): string {
   return hre.network.name === "sepolia" ? "sepolia" : hre.network.name;
@@ -49,45 +61,52 @@ async function main() {
   const deployBlock = deployReceipt?.blockNumber ?? (await ethers.provider.getBlockNumber());
   console.log(`✓ SponsorIncentiveVault → ${vaultAddress} (block ${deployBlock})`);
 
+  await advanceTimelockIfHardhat();
+
   await (await vault.setDataAccessLog(DAL)).wait();
-  await (await vault.setMilestoneManager(MILESTONE_MANAGER)).wait();
-  await (await vault.setAutomationContract(AUTOMATION)).wait();
+  await wireVaultMilestoneManager(vault, MILESTONE_MANAGER);
+  await wireVaultAutomation(vault, AUTOMATION);
   console.log("✓ Vault wired (DAL, milestone manager, automation)");
 
   const milestoneManager = await ethers.getContractAt("TrialMilestoneManager", MILESTONE_MANAGER);
-  await (await milestoneManager.setVault(vaultAddress)).wait();
-  console.log("✓ TrialMilestoneManager.setVault");
+  await wireMilestoneManagerVault(milestoneManager, vaultAddress);
 
   const ceth = await ethers.getContractAt("ConfidentialETH", CETH);
   if (OLD_VAULT) {
     try {
-      await (await ceth.deauthorizeContract(OLD_VAULT)).wait();
-      console.log(`✓ ConfidentialETH deauthorized old vault`);
+      await ensureCethContractAuth(ceth, OLD_VAULT, false);
+      console.log("✓ ConfidentialETH deauthorized old vault");
     } catch (e) {
       console.warn("  (skip deauthorize old vault — may already be unset)", e);
     }
   }
-  await (await ceth.authorizeContract(vaultAddress)).wait();
+  await ensureCethContractAuth(ceth, vaultAddress, true);
   console.log("✓ ConfidentialETH authorized new vault");
 
   const dal = await ethers.getContractAt("DataAccessLog", DAL);
   if (OLD_VAULT) {
     try {
-      await (await dal.setAuthorizedLogger(OLD_VAULT, false)).wait();
+      await ensureDataAccessLogger(dal, OLD_VAULT, false);
     } catch {
       /* ignore */
     }
   }
-  await (await dal.setAuthorizedLogger(vaultAddress, true)).wait();
+  await ensureDataAccessLogger(dal, vaultAddress, true);
   console.log("✓ DataAccessLog logger updated");
 
   const automation = await ethers.getContractAt("MedVaultAutomation", AUTOMATION);
-  await (await automation.setVault(vaultAddress)).wait();
-  console.log("✓ MedVaultAutomation.setVault");
+  await wireAutomationVault(automation, vaultAddress);
 
   const trialManager = await ethers.getContractAt("TrialManager", TRIAL_MANAGER);
-  await (await trialManager.setAutomationContract(AUTOMATION)).wait();
-  console.log("✓ TrialManager.setAutomationContract (idempotent)");
+  await wireTrialManagerAutomation(trialManager, AUTOMATION);
+
+  const engine = await ethers.getContractAt("EligibilityEngine", ENGINE);
+  await wireEngineReader(
+    engine,
+    ENGINE_READER_ROLES.sponsorIncentiveVault,
+    vaultAddress,
+    "EligibilityEngine sponsorIncentiveVault"
+  );
 
   allAddresses[key].SponsorIncentiveVault = vaultAddress;
   fs.writeFileSync(addressesPath, `${JSON.stringify(allAddresses, null, 4)}\n`);
@@ -102,6 +121,7 @@ async function main() {
   console.log("  1. npm run sync-abis");
   console.log("  2. npm run subgraph:deploy -- 0.1.24  (reindexes RewardsDistributed → milestone 0)");
   console.log("  3. Fund new vault + re-register participants for in-flight trials (old pool ETH stays on old vault).");
+  console.log("  4. After 6 hours on live network: npx hardhat run scripts/finish-wiring.ts --network sepolia");
 }
 
 main().catch((error) => {

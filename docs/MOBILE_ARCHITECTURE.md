@@ -1,6 +1,8 @@
-# Mobile architecture (Capacitor Android)
+# Mobile architecture (Capacitor 8 Android)
 
 How the MedVault Android APK relates to the Vite web dapp — what is shared, what changes at runtime, and where mobile-specific code lives.
+
+**Stack:** Capacitor **8.x** (`@capacitor/core` ^8.4), React 19, same Vite bundle as web.
 
 ---
 
@@ -90,9 +92,12 @@ Components under [`src/components/mobile/`](../src/components/mobile/):
 | `MobileAppShell` | Android back button → router back / minimize app; status bar; splash hide |
 | `MobileNetworkBanner` | Sticky offline warning via `@capacitor/network` |
 | `MobileLaunchRedirect` | Native app skips marketing landing → `/patient/dashboard` |
+| `CryptoFallbackBanner` | Shown when WebCrypto AES-GCM unavailable; `@noble/ciphers` AES fallback still encrypts documents |
 | `MobileNativeHints` | Wallet/FHE setup guidance in dashboard shell |
 
-Wired in [`src/App.tsx`](../src/App.tsx) inside `MobileAppShell` wrapper.
+Wired in [`src/App.tsx`](../src/App.tsx): provider tree ends with `BrowserRouter` → `MobileAppShell` → routes.
+
+`CryptoFallbackBanner` renders on **web and native** when `isUsingCryptoFallback()` detects missing WebCrypto AES-GCM (common on older WebViews). Hybrid document upload still uses AES-256-GCM via the noble fallback.
 
 CSS safe-area insets: `.native-safe` in [`src/index.css`](../src/index.css).
 

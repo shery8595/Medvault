@@ -16,6 +16,9 @@ Optional (set in shell or IDE env, not inline in config files):
 - `MCP_MAX_ETH_PER_TX` — cap `medvault_fund_trial_pool` amounts
 - `MEDVAULT_RELAYER_URL` — for `medvault_relayer_health`
 - `MCP_READ_ONLY=true` — disable write tools even if a key is set
+- `AI_SERVICE_URL` or `VITE_AI_SERVICE_URL` — for `medvault_ai_extract_criteria` / `medvault_ai_audit_logs`
+- `MCP_HTTP_PORT` / `MCP_HTTP_HOST` — HTTP transport bind (default `127.0.0.1:3100`)
+- `MCP_AUDIT_LOG=false` — disable write audit log; `MCP_AUDIT_LOG_PATH` to override file location
 
 ## Env interpolation by client
 
@@ -68,3 +71,13 @@ Tunnel only for clients that cannot reach localhost. Do not tunnel with `MCP_PRI
 - "Summarize my sponsor trials and application counts."
 
 Regenerate: `npm run mcp:export-config`
+
+## Service READMEs
+
+| Service | Doc |
+|---------|-----|
+| MCP server | [mcp-server/README.md](../../mcp-server/README.md) |
+| Core library | [packages/medvault-core/README.md](../../packages/medvault-core/README.md) |
+| Relayer | [relayer/README.md](../../relayer/README.md) |
+| AI service | [ai-service/README.md](../../ai-service/README.md) |
+| Indexer | [indexer/README.md](../../indexer/README.md) |

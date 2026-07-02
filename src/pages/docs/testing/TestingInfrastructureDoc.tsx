@@ -12,9 +12,36 @@ export function TestingInfrastructureDoc() {
                 <DocsPageHeaderForRoute />
 
                 <p>
-                    Shared test code lives under <code>test-support/</code> (imported as{" "}
-                    <code>../../test-support/...</code> from test files). Hardhat loads TypeScript via{" "}
-                    <code>ts-node</code> with CommonJS in <code>hardhat.config.ts</code>.
+                    Shared test code lives under <code>test-support/</code> — <strong>19 helper modules</strong>{" "}
+                    (imported as <code>../../test-support/...</code> from test files; not executed as tests).
+                    Hardhat loads TypeScript via <code>ts-node</code> with CommonJS in <code>hardhat.config.ts</code>.
+                </p>
+
+                <h2>test-support/ modules</h2>
+                <ul className="columns-2 gap-x-6 text-sm">
+                    <li><code>deployments.ts</code> — full stack deploy</li>
+                    <li><code>timelock.ts</code> — schedule/apply helpers</li>
+                    <li><code>fhe.ts</code> — Zama encrypt/decrypt mocks</li>
+                    <li><code>journey.ts</code> — apply/stage/claim flows</li>
+                    <li><code>withdraw.ts</code> — withdraw-to EIP-712</li>
+                    <li><code>vaultEip712.ts</code> — claim authorization</li>
+                    <li><code>consent.ts</code> — grantConsent disambiguation</li>
+                    <li><code>signers.ts</code> — impersonateAccount</li>
+                    <li><code>semaphore.ts</code> — MockSemaphore proofs</li>
+                    <li><code>assertions.ts</code> — expectRevert</li>
+                    <li><code>constants.ts</code> — trial params, chain IDs</li>
+                    <li><code>fixtures/profiles.ts</code> — ELIGIBLE_PROFILE presets</li>
+                    <li><code>documentCrypto.ts</code> — hybrid doc AES helpers</li>
+                    <li><code>documentBinding.ts</code> — IPFS binding hashes</li>
+                    <li><code>anonymousApply.ts</code> — Semaphore apply helpers</li>
+                    <li><code>noirProof.ts</code> — attestation proof fixtures</li>
+                    <li><code>profileCommitment.ts</code> — salted commitment + <code>randomProfileSalt</code></li>
+                    <li><code>staking.ts</code> — stake/unstake helpers</li>
+                    <li><code>transfer.ts</code> — confidential transfer helpers</li>
+                </ul>
+                <p>
+                    <code>contracts/test/</code> holds <strong>5 Solidity helpers/mocks</strong> (e.g.{" "}
+                    <code>MockSemaphore.sol</code>) — not Foundry test contracts.
                 </p>
 
                 <h2>deployMedVaultStack()</h2>
@@ -23,14 +50,16 @@ export function TestingInfrastructureDoc() {
                     configures cross-contract permissions in one call:
                 </p>
                 <ul>
-                    <li>Authorizes <code>EligibilityEngine</code>, <code>MedVaultRegistry</code>, and APR on DataAccessLog</li>
+                    <li>Authorizes loggers on DataAccessLog via schedule/apply (timelock)</li>
+                    <li>Wires EligibilityEngine readers, TrialManager automation, vault milestone manager, cETH contract auth</li>
                     <li>Sets <code>consentManager.setEligibilityEngine</code> for FHE consent composition</li>
                     <li>Pre-approves <code>stack.sponsor</code> on SponsorRegistry for trial creation on chain 31337</li>
+                    <li>Uses <code>test-support/timelock.ts</code> — <code>scheduleAndApply</code> fast-forwards 2 days on Hardhat</li>
                 </ul>
                 <p>Signers exposed on the stack:</p>
                 <CodeBlock
                     language="typescript"
-                    code={`owner, patient, sponsor, sponsor2, stranger`}
+                    code={`owner, patient, sponsor, sponsor2, stranger, relayer`}
                 />
                 <p>Helpers:</p>
                 <ul>
@@ -40,7 +69,11 @@ export function TestingInfrastructureDoc() {
                     </li>
                     <li>
                         <code>registerPatientOnRegistry(stack, patientSigner, commitment, permitRecipient, profile)</code>{" "}
-                        — encrypts health fields and calls <code>MedVaultRegistry.registerPatient</code>
+                        — encrypts health fields, uses <code>randomProfileSalt()</code> + <code>profileSaltCommitment()</code> from{" "}
+                        <code>test-support/profileCommitment.ts</code>
+                    </li>
+                    <li>
+                        Anonymous apply finalize/cancel via <code>stack.relayer</code> (<code>onlyTrustedRelayer</code>)
                     </li>
                 </ul>
 
@@ -64,6 +97,11 @@ export function TestingInfrastructureDoc() {
                         <li>
                             <code>SponsorRegistry.requestSponsorship</code> → sponsor calls directly → use{" "}
                             <strong>sponsor address</strong>
+                        </li>
+                        <li>
+                            <code>confirmReceipt</code> (pull-claim) → permit holder calls vault; KMS{" "}
+                            <code>mockPublicDecryptProof</code> on staged entitlement ebool — see{" "}
+                            <code>test-support/claimReceipt.ts</code>
                         </li>
                         <li>
                             <code>claimParticipantRewards</code> → <code>requestWithdrawTo</code> → use{" "}
@@ -93,6 +131,14 @@ assertFhevmMock()             // require hre.fhevm.isMock in unit tests
 mockPublicDecrypt(handle)     // v0.9 completion proofs`}
                 />
 
+                <h2>Timelock helpers (test-support/timelock.ts)</h2>
+                <CodeBlock
+                    language="typescript"
+                    code={`advanceTimelock()                    // +2 days on Hardhat
+scheduleAndApply(scheduleFn, applyFn)  // schedule → advance → apply
+authorizeCethContract(cETH, owner, addr, true)  // scheduleContractAuth / applyContractAuth`}
+                />
+
                 <h2>Withdraw helpers (test-support/withdraw.ts)</h2>
                 <p>
                     Encrypted staging and completion for v0.9 withdraw flows. See also{" "}
@@ -103,10 +149,11 @@ mockPublicDecrypt(handle)     // v0.9 completion proofs`}
                 </p>
                 <CodeBlock
                     language="typescript"
-                    code={`requestEncryptedWithdraw(cEth, patient, units)
-completeEncryptedWithdraw(cEth, patient, stageReceipt)
-requestEncryptedWithdrawTo(cEth, vaultSigner, user, destination, units)
-completePublicExit(cEth, relayer, owner, stageReceipt, stealth, exitMode)
+                    code={`buildWithdrawToAuthorization(cEth, user, destination, enc)
+confirmStagedReceipt(vault, trialId, milestoneIndex, participant)  // P0-1 pull claim
+claimParticipantRewardsTx(vault, patient, trialId, enc, withdrawToArgs)
+requestEncryptedWithdraw(cEth, patient, units)
+completeEncryptedWithdraw(cEth, vaultSigner, user, stageReceipt)  // vault must call completeWithdrawTo
 createEncryptedClaimUnits(cEthAddress, vaultAddress, units)
 signPublicExitAuthorization(owner, { contractAddress, chainId, ... })`}
                 />

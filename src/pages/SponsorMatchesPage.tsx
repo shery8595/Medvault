@@ -39,6 +39,8 @@ import { ZkCertifyBadge } from "../components/zk/ZkCertifyBadge";
 import { Match } from "../types";
 import { formatRelativeTimeFromUnix } from "../lib/formatRelativeTime";
 import { AnimatePresence, motion } from "framer-motion";
+import { SponsorDocumentPanel } from "../components/sponsor/SponsorDocumentPanel";
+import { useMatchHasDocument } from "../hooks/useMatchHasDocument";
 
 function fheMatchLabel(match: Match): { text: string; dotClass: string } {
   if (!match.isAnonymous) {
@@ -69,6 +71,12 @@ function MatchRow({
   onSelect: (match: Match) => void;
 }) {
   const { provider, chainId } = useWeb3();
+  const { hasDocument } = useMatchHasDocument(
+    provider ?? undefined,
+    match.isAnonymous ? match.nullifier : undefined,
+    trialId,
+    match.isAnonymous
+  );
   const { certified, eligible, fheCommitted } = useAnonymousCertification(
     match.isAnonymous ? match.nullifier : undefined,
     match.isAnonymous ? trialId : undefined,
@@ -130,6 +138,7 @@ function MatchRow({
           </p>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {match.isAnonymous ? "Anonymous" : "Verified"}
+            {hasDocument ? " · Doc" : ""}
           </p>
           {certified ? (
             <div className="mt-1 flex flex-col gap-0.5">
@@ -500,6 +509,15 @@ export function SponsorMatchesPage() {
                     />
                   </div>
                 )}
+
+                {selectedMatch.isAnonymous && selectedMatch.nullifier ? (
+                  <SponsorDocumentPanel
+                    nullifier={selectedMatch.nullifier}
+                    trialId={selectedMatch.trialId}
+                    status={selectedMatch.status}
+                    isAnonymous
+                  />
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3">
                   <Button

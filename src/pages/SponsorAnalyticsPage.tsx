@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Scale,
   Landmark,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { DONUT_SLICE_FILL, countTrialMatches } from "../lib/sponsorChartData";
@@ -49,6 +50,8 @@ import { SponsorHeroCenterArt } from "../components/sponsor/SponsorHeroCenterArt
 import { useAaveYield } from "../hooks/useAaveYield";
 import { useStaking } from "../hooks/useStaking";
 import { useEncryptedTrialAggregates } from "../hooks/useEncryptedTrialAggregates";
+import { useAuditLogs } from "../hooks/useAuditLogs";
+import { useAiLogSummary } from "../hooks/useAiLogSummary";
 
 const ACCENT = "#1D2634";
 const TEAL = "#0d9488";
@@ -89,6 +92,14 @@ export function SponsorAnalyticsPage() {
     decryptError: fheAggError,
     decryptAggregates,
   } = useEncryptedTrialAggregates(trialIds);
+  const { totalLogCount, logs: auditLogs } = useAuditLogs();
+  const {
+    summary: aiSummary,
+    loading: aiSummaryLoading,
+    error: aiSummaryError,
+    configured: aiConfigured,
+    refresh: refreshAiSummary,
+  } = useAiLogSummary(trialIds, auditLogs);
 
   const pipelineData = useMemo(() => {
     return charts.donutChart.map((slice) => ({
@@ -216,6 +227,73 @@ export function SponsorAnalyticsPage() {
           artClassName={sponsorHeroComponentArtClassCompact}
         />
       </SponsorHeroBanner>
+
+      <Card className={cn(sponsorCardShell, "border-0 overflow-hidden")}>
+        <CardHeader className={cn(sponsorCardHeader, "px-5 py-4")}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+              <div>
+                <CardTitle className="font-display text-base font-semibold text-slate-900">
+                  AI compliance summary
+                </CardTitle>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Anonymized DataAccessLog funnel analysis — read-only assist, no auto-transact
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refreshAiSummary()}
+              disabled={aiSummaryLoading || !aiConfigured}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-50"
+            >
+              {aiSummaryLoading ? "Analyzing…" : "Refresh"}
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 space-y-3">
+          {!aiConfigured ? (
+            <p className="text-sm text-slate-600">
+              Configure <code className="text-xs">VITE_AI_SERVICE_URL</code> and run{" "}
+              <code className="text-xs">npm run ai:start</code> for AI audit summaries.
+            </p>
+          ) : aiSummaryError ? (
+            <p className="text-sm text-amber-800">{aiSummaryError}</p>
+          ) : aiSummary ? (
+            <>
+              <p className="text-sm leading-relaxed text-slate-700">{aiSummary.narrative}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-500">Match rate</p>
+                  <p className="text-lg font-bold text-teal-700">{aiSummary.matchRatePercent}%</p>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-500">Events</p>
+                  <p className="text-lg font-bold text-slate-900">{aiSummary.totalEvents}</p>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-500">Eligibility</p>
+                  <p className="text-lg font-bold text-slate-900">{aiSummary.eligibilityChecked}</p>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-2">
+                  <p className="text-[10px] font-bold uppercase text-slate-500">Consents</p>
+                  <p className="text-lg font-bold text-slate-900">{aiSummary.consentsGranted}</p>
+                </div>
+              </div>
+              {aiSummary.bottleneckCriteria.length > 0 && (
+                <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                  {aiSummary.bottleneckCriteria.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-slate-600">No audit events to summarize yet.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className={cn(sponsorCardShell, "border-0 overflow-hidden")}>
         <CardHeader className={cn(sponsorCardHeader, "px-5 py-4")}>
@@ -391,6 +469,9 @@ export function SponsorAnalyticsPage() {
         <Kpi title="Active trials" value={stats.activeTrials} hint="Live protocols" />
         <Kpi title="Pending review" value={stats.pendingApplications} hint="In queue" />
         <Kpi title="Match rate" value={`${stats.avgMatchRate}%`} hint="Eligibility / consent" />
+        {totalLogCount != null && (
+          <Kpi title="Audit events" value={totalLogCount} hint="On-chain total (all protocols)" />
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">

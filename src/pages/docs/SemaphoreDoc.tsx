@@ -37,8 +37,8 @@ export function SemaphoreDoc() {
                 <ul className="text-sm">
                     <li>
                         <strong>Registration (linkable):</strong> Patient wallet signs{" "}
-                        <code>MedVaultRegistry.registerPatient</code> with a public <strong>identity commitment</strong>{" "}
-                        and Zama FHE-encrypted profile fields.
+                        <code>MedVaultRegistry.registerPatient</code> with identity commitment,{" "}
+                        <code>profileSaltCommitment</code> (random salt — store off-chain for Noir proofs), and Zama FHE-encrypted profile fields.
                     </li>
                     <li>
                         <strong>Anonymous apply (unlinkable):</strong> A Semaphore proof shows the caller is in the
@@ -86,6 +86,30 @@ export function SemaphoreDoc() {
                     Primary module: <code>src/lib/semaphore.ts</code> (uses <code>@semaphore-protocol/identity</code>,{" "}
                     <code>group</code>, <code>proof</code>).
                 </p>
+                <ul className="text-sm">
+                    <li>
+                        <strong>Identity persistence:</strong> Semaphore identity serialized to{" "}
+                        <code>localStorage</code> under <code>medvault_identity</code> via <code>identity.export()</code>.
+                    </li>
+                    <li>
+                        <strong>Ephemeral decrypt wallet:</strong> Deterministic EOA per identity (
+                        <code>keccak256(&quot;medvault:ephemeral:&quot; + secret)</code>) — receives{" "}
+                        <code>FHE.allow</code> for anonymous scores, not the main Privy wallet.
+                    </li>
+                    <li>
+                        <strong>Nullifier tracking:</strong> Per-trial nullifiers stored in{" "}
+                        <code>medvault_anon_nullifiers</code> after apply for UI and Noir witness alignment.
+                    </li>
+                    <li>
+                        <strong>Merkle duration:</strong> <code>MedVaultRegistry.MERKLE_TREE_DURATION = 30 days</code>{" "}
+                        (vs Semaphore default 1h) — reduces root expiry during patient inactivity.
+                    </li>
+                    <li>
+                        <strong>Relayer path:</strong> <code>POST /relay/apply-stage</code> and{" "}
+                        <code>/relay/apply-finalize</code> pay gas without storing wallet↔commitment on-chain; relayer
+                        never receives Semaphore secrets or ephemeral private keys.
+                    </li>
+                </ul>
 
                 <CodeBlock
                     language="typescript"
@@ -121,7 +145,7 @@ export function getIdentityCommitment(identity: Identity): bigint {
                 <p className="text-sm">
                     This address is encoded in the Semaphore proof <strong>signal</strong> as{" "}
                     <code>permitRecipient</code> and receives decrypt rights for staged ciphertexts during{" "}
-                    <code>finalizeAnonymousApply</code>.
+                    <code>finalizeAnonymousApplyWithProof</code> via trusted relayer (<code>POST /relay/apply-finalize</code>).
                 </p>
 
                 <Callout type="warning" title="Same browser profile">
@@ -162,19 +186,21 @@ export function getIdentityCommitment(identity: Identity): bigint {
                         <code>ebool</code> (see <Link to="/docs/zama-fhe">Zama doc</Link>).
                     </li>
                     <li>
-                        <strong>Finalize:</strong> Submit plaintext boolean + permit signature to mark application
-                        applied (relayer may pay gas via <code>POST /relay/apply-finalize</code>). Optionally bundle a
-                        Noir attestation via <code>finalizeAnonymousApplyWithProof</code> to bind the Zama{" "}
-                        <code>finalCt</code> stage handle.
+                        <strong>Finalize (relayer-only on production):</strong> Patient EOA cannot call{" "}
+                        <code>finalizeAnonymousApplyWith*</code> or <code>cancelAnonymousApplyStage</code> — trusted relayer
+                        submits after browser decrypt + optional Noir proof via{" "}
+                        <code>POST /relay/apply-finalize</code>. Ineligible staging cancels via{" "}
+                        <code>POST /relay/cancel-stage</code>.
                     </li>
                 </ol>
 
-                <h2>HTTP relayer (optional gas sponsorship)</h2>
+                <h2>HTTP relayer (required for finalize/cancel)</h2>
                 <p className="text-sm">
                     <code>src/lib/relayer.ts</code> posts to <code>/relay/apply-stage</code> then{" "}
-                    <code>/relay/apply-finalize</code>. The relayer holds a hot wallet; it never receives the
-                    patient&apos;s Semaphore secret or ephemeral private key. Deprecated <code>POST /relay/apply</code>{" "}
-                    returns HTTP 410.
+                    <code>/relay/apply-finalize</code> (or <code>/relay/cancel-stage</code> when ineligible). The relayer
+                    wallet must match <code>MedVaultRegistry.trustedRelayer</code>. It never receives the patient&apos;s
+                    Semaphore secret or ephemeral private key. Deprecated <code>POST /relay/apply</code> returns HTTP 410;
+                    patient-wallet finalize reverts with <code>onlyTrustedRelayer</code> on production.
                 </p>
 
                 <h2>Security properties</h2>
@@ -183,7 +209,7 @@ export function getIdentityCommitment(identity: Identity): bigint {
                         ["Unlinkability", "Apply tx sender ≠ registration wallet; commitment hidden in proof."],
                         ["Nullifier uniqueness", "One active application per (identity, trial scope) on-chain."],
                         ["Consent in signal", "Encrypted consent bound to proof path for gate checks."],
-                        ["Merkle root expiry", "Registry sets longer merkleTreeDuration than Semaphore default 1h."],
+                        ["Merkle root expiry", "Registry sets 30-day merkleTreeDuration (vs Semaphore default 1h)."],
                     ].map(([t, d]) => (
                         <div key={t} className="rounded-lg border border-slate-200 bg-white p-3">
                             <p className="font-bold text-slate-900 m-0 text-xs">{t}</p>

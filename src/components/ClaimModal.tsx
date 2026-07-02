@@ -21,12 +21,13 @@ import { motion } from "framer-motion";
 import { useAaveYield } from "../hooks/useAaveYield";
 import { useStaking } from "../hooks/useStaking";
 import { useWeb3 } from "../lib/Web3Context";
-import { getStakingManager } from "../lib/contracts";
+import { getStakingManager, getSponsorIncentiveVault } from "../lib/contracts";
 import { cn } from "../lib/utils";
 import { reencryptUint64WithEphemeral } from "../lib/fhe";
 import { getConfidentialETH } from "../lib/contracts";
 import { resolveAnonymousNullifier, getStoredIdentity, getEphemeralSigner, generateEphemeralAddress } from "../lib/semaphore";
 import { claimRewardsWithCompletion, type ClaimWizardStep } from "../lib/claimFlow";
+import { getParticipantReceiptStatus } from "../lib/confirmReceiptFlow";
 import { ClaimWizard } from "./claim/ClaimWizard";
 
 const formatMicroEth = (units: number) => (units / 1_000_000).toFixed(6);
@@ -49,13 +50,16 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
     const [previewEth, setPreviewEth] = useState<string | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
+    const [confirmTxHash, setConfirmTxHash] = useState<string | null>(null);
     const [completeTxHash, setCompleteTxHash] = useState<string | null>(null);
+    const [hasStagedEntitlement, setHasStagedEntitlement] = useState(false);
 
     const loadEphemeralRewardPreview = useCallback(async () => {
         if (!signer) return;
         const identity = getStoredIdentity();
         if (!identity) {
             setPreviewEth(null);
+            setHasStagedEntitlement(false);
             return;
         }
         const provider = signer.provider;
@@ -66,10 +70,26 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             const ephemeralAddress = await generateEphemeralAddress(identity);
             const cETH = getConfidentialETH(signer);
             const contractAddress = await cETH.getAddress();
+            const vault = getSponsorIncentiveVault(signer);
+
+            const receiptStatus = await getParticipantReceiptStatus(signer, trialId, ephemeralAddress, 0);
+            setHasStagedEntitlement(receiptStatus.entitlementStaged && !receiptStatus.confirmedPayout);
+
+            if (receiptStatus.entitlementStaged && !receiptStatus.confirmedPayout && receiptStatus.stagedShareWei > 0n) {
+                setPreviewEth((Number(receiptStatus.stagedShareWei) / 1e18).toFixed(6));
+                return;
+            }
+
             const handle = await cETH.getBalance(ephemeralAddress);
             const handleStr = handle.toString();
             if (!handleStr || BigInt(handleStr) === 0n) {
-                setPreviewEth("0.000000");
+                const stagedWei = await vault.getStagedShareWei(BigInt(trialId), ephemeralAddress, 0);
+                if (BigInt(stagedWei) > 0n) {
+                    setPreviewEth((Number(stagedWei) / 1e18).toFixed(6));
+                    setHasStagedEntitlement(true);
+                } else {
+                    setPreviewEth("0.000000");
+                }
                 return;
             }
 
@@ -82,10 +102,11 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             setPreviewEth(formatMicroEth(Number(decrypted)));
         } catch {
             setPreviewEth(null);
+            setHasStagedEntitlement(false);
         } finally {
             setPreviewLoading(false);
         }
-    }, [signer]);
+    }, [signer, trialId]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -94,7 +115,9 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
             setStatus(null);
             setWizardStep("preview");
             setClaimTxHash(null);
+            setConfirmTxHash(null);
             setCompleteTxHash(null);
+            setHasStagedEntitlement(false);
             return;
         }
         void loadEphemeralRewardPreview();
@@ -123,30 +146,32 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
         const cETH = getConfidentialETH(signer);
         const handle = await cETH.getBalance(ephemeralAddress);
         const handleStr = handle.toString();
+        let units = 0;
 
-        if (!handleStr || BigInt(handleStr) === 0n) {
-            throw new Error("Ephemeral rewards balance is empty.");
+        if (handleStr && BigInt(handleStr) !== 0n) {
+            const decrypted = await reencryptUint64WithEphemeral(
+                ephemeralSigner,
+                await cETH.getAddress(),
+                handleStr
+            );
+            units = Number(decrypted);
         }
 
-        const decrypted = await reencryptUint64WithEphemeral(
-            ephemeralSigner,
-            await cETH.getAddress(),
-            handleStr
-        );
-        const units = Number(decrypted);
+        if (units <= 0 && !hasStagedEntitlement) {
+            throw new Error("No staged entitlement or cETH balance to claim.");
+        }
 
-        if (units <= 0) throw new Error("Ephemeral rewards balance is empty.");
-
-        setWizardStep("claiming");
+        setWizardStep(hasStagedEntitlement && units <= 0 ? "confirming" : "claiming");
         const result = await claimRewardsWithCompletion(
             signer,
             trialId,
             resolvedNullifier,
             account,
-            units,
+            units > 0 ? units : 1,
             (p) => {
                 setWizardStep(p.step);
                 setStatus(p.message);
+                if (p.confirmTxHash) setConfirmTxHash(p.confirmTxHash);
                 if (p.claimTxHash) setClaimTxHash(p.claimTxHash);
                 if (p.completeTxHash) setCompleteTxHash(p.completeTxHash);
             },
@@ -220,7 +245,7 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                             Claim Compensation
                         </DialogTitle>
                         <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium mt-2">
-                            Move rewards from your ephemeral payout address through claimParticipantRewards and relayer completeWithdrawTo.
+                            Confirm staged entitlements, then move confidential cETH to your main wallet via claimParticipantRewards and relayer completeWithdrawTo.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -230,6 +255,7 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                         destination={account ?? ""}
                         previewEth={previewEth}
                         previewLoading={previewLoading}
+                        confirmTxHash={confirmTxHash}
                         claimTxHash={claimTxHash}
                         completeTxHash={completeTxHash}
                         statusMessage={status}
@@ -304,7 +330,9 @@ export function ClaimModal({ isOpen, onClose, trialId, nullifier }: ClaimModalPr
                     <div className="mt-6 flex items-start gap-2 text-slate-400">
                         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                         <p className="text-[10px] leading-relaxed italic">
-                            Main Wallet runs claimParticipantRewards → completeWithdrawTo via the relayer KMS proof.
+                            {hasStagedEntitlement
+                                ? "Staged rewards require confirmReceipt before claim. Your ephemeral key submits confirm txs; the main wallet runs FHE public decrypt."
+                                : "Main Wallet runs confirmReceipt → claimParticipantRewards → completeWithdrawTo via the relayer KMS proof."}
                         </p>
                     </div>
                 </div>

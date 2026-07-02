@@ -26,6 +26,7 @@ export async function signClaimAuthorizationForTest(
         permitHolder: string;
         destination: string;
         units: bigint;
+        encryptedAmountCommitment: string;
         nonce: bigint;
         deadline: bigint;
     }
@@ -45,6 +46,7 @@ export async function signClaimAuthorizationForTest(
                 { name: "permitHolder", type: "address" },
                 { name: "destination", type: "address" },
                 { name: "units", type: "uint256" },
+                { name: "encryptedAmountCommitment", type: "bytes32" },
                 { name: "nonce", type: "uint256" },
                 { name: "deadline", type: "uint256" },
             ],
@@ -55,6 +57,7 @@ export async function signClaimAuthorizationForTest(
             permitHolder: params.permitHolder,
             destination: params.destination,
             units: params.units,
+            encryptedAmountCommitment: params.encryptedAmountCommitment,
             nonce: params.nonce,
             deadline: params.deadline,
         }

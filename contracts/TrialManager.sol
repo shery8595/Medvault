@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {FHE, euint8, euint16, ebool, externalEuint8, externalEuint16, externalEbool} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {FheAclEpochLib} from "./lib/FheAclEpochLib.sol";
 
 /**
  * @title TrialManager
@@ -52,6 +53,8 @@ contract TrialManager is ZamaEthereumConfig {
     address public pendingOwner;
     address public eligibilityEngine;
 
+    FheAclEpochLib.EpochState private _aclEpoch;
+
     bool public immutable isTestnet;
 
     uint256 private constant BN254_FIELD_ORDER =
@@ -77,6 +80,14 @@ contract TrialManager is ZamaEthereumConfig {
 
     uint256 public constant MAX_TRIAL_DURATION = 365 days * 5;
     uint256 public constant MAX_STRING_LENGTH = 256;
+    uint256 public constant READER_CHANGE_DELAY = 6 hours;
+
+    address public pendingAutomationContract;
+    uint256 public automationContractChangeEta;
+    address public pendingSponsorRegistry;
+    uint256 public sponsorRegistryChangeEta;
+    address public pendingEligibilityEngine;
+    uint256 public eligibilityEngineChangeEta;
 
     constructor(address _sponsorRegistry, bool _isTestnet) {
         isTestnet = _isTestnet;
@@ -112,18 +123,82 @@ contract TrialManager is ZamaEthereumConfig {
         emit OwnershipAccepted(owner);
     }
 
+    function rotateTrustedContract(uint8 kind, address newConsumer) external onlyOwner {
+        require(newConsumer != address(0), "Zero address");
+        FheAclEpochLib.rotateKind(_aclEpoch, kind, newConsumer);
+    }
+
+    function aclEpochForKind(uint8 kind) external view returns (uint40) {
+        return FheAclEpochLib.currentEpoch(_aclEpoch, kind);
+    }
+
+    function _recordCriteriaAcl(bytes32 handle, address consumer) private {
+        FheAclEpochLib.recordGrant(
+            _aclEpoch,
+            handle,
+            consumer,
+            uint8(FheAclEpochLib.GrantKind.TrialManager)
+        );
+    }
+
     function setAutomationContract(address _automation) external onlyOwner {
+        revert("Use scheduleAutomationContract + applyAutomationContract");
+    }
+
+    function scheduleAutomationContract(address _automation) external onlyOwner {
         require(_automation != address(0), "Zero address");
-        automationContract = _automation;
+        pendingAutomationContract = _automation;
+        automationContractChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    function applyAutomationContract() external onlyOwner {
+        require(
+            automationContractChangeEta != 0 && block.timestamp >= automationContractChangeEta,
+            "Timelock active"
+        );
+        automationContract = pendingAutomationContract;
+        automationContractChangeEta = 0;
+        pendingAutomationContract = address(0);
     }
 
     function setSponsorRegistry(address _registry) external onlyOwner {
-        _validateAndSetRegistry(_registry);
+        revert("Use scheduleSponsorRegistry + applySponsorRegistry");
+    }
+
+    function scheduleSponsorRegistry(address _registry) external onlyOwner {
+        require(_registry != address(0), "Zero address");
+        pendingSponsorRegistry = _registry;
+        sponsorRegistryChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    function applySponsorRegistry() external onlyOwner {
+        require(
+            sponsorRegistryChangeEta != 0 && block.timestamp >= sponsorRegistryChangeEta,
+            "Timelock active"
+        );
+        _validateAndSetRegistry(pendingSponsorRegistry);
+        sponsorRegistryChangeEta = 0;
+        pendingSponsorRegistry = address(0);
     }
 
     function setEligibilityEngine(address _engine) external onlyOwner {
+        revert("Use scheduleEligibilityEngine + applyEligibilityEngine");
+    }
+
+    function scheduleEligibilityEngine(address _engine) external onlyOwner {
         require(_engine != address(0), "Zero address");
-        eligibilityEngine = _engine;
+        pendingEligibilityEngine = _engine;
+        eligibilityEngineChangeEta = block.timestamp + READER_CHANGE_DELAY;
+    }
+
+    function applyEligibilityEngine() external onlyOwner {
+        require(
+            eligibilityEngineChangeEta != 0 && block.timestamp >= eligibilityEngineChangeEta,
+            "Timelock active"
+        );
+        eligibilityEngine = pendingEligibilityEngine;
+        eligibilityEngineChangeEta = 0;
+        pendingEligibilityEngine = address(0);
     }
 
     function setSponsorName(string calldata _name) external {
@@ -227,7 +302,8 @@ contract TrialManager is ZamaEthereumConfig {
         bool _requiresNormalBP,
         uint256 _duration
     ) external returns (uint256) {
-        require(_minAge < _maxAge, "Invalid age range");
+        require(block.chainid == 31337, "Use createTrialWithEncryptedCriteria on mainnet/testnet");
+        require(_minAge <= _maxAge, "Invalid age range");
         (uint256 trialId, uint256 endTime) = _storeTrialMetadata(
             _name,
             _phase,
@@ -271,6 +347,8 @@ contract TrialManager is ZamaEthereumConfig {
         bytes calldata inputProof,
         uint256 _duration
     ) external returns (uint256) {
+        // AUDIT-FIX-M-2: encrypted criteria require engine ACL at creation time.
+        require(eligibilityEngine != address(0), "Engine not set");
         (uint256 trialId, uint256 endTime) = _storeTrialMetadata(
             _name,
             _phase,
@@ -318,6 +396,15 @@ contract TrialManager is ZamaEthereumConfig {
             FHE.allow(maxWeightCt, eligibilityEngine);
             FHE.allow(requiresNonSmokerCt, eligibilityEngine);
             FHE.allow(requiresNormalBPCt, eligibilityEngine);
+            _recordCriteriaAcl(euint8.unwrap(minAgeCt), eligibilityEngine);
+            _recordCriteriaAcl(euint8.unwrap(maxAgeCt), eligibilityEngine);
+            _recordCriteriaAcl(ebool.unwrap(requiresDiabetesCt), eligibilityEngine);
+            _recordCriteriaAcl(euint16.unwrap(minHbCt), eligibilityEngine);
+            _recordCriteriaAcl(euint8.unwrap(genderReqCt), eligibilityEngine);
+            _recordCriteriaAcl(euint8.unwrap(minHeightCt), eligibilityEngine);
+            _recordCriteriaAcl(euint16.unwrap(maxWeightCt), eligibilityEngine);
+            _recordCriteriaAcl(ebool.unwrap(requiresNonSmokerCt), eligibilityEngine);
+            _recordCriteriaAcl(ebool.unwrap(requiresNormalBPCt), eligibilityEngine);
         }
 
         encryptedCriteriaByTrial[trialId] = EncryptedCriteria({

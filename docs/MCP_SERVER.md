@@ -29,6 +29,10 @@ Committed files under `config/mcp/` are **portable templates** (`<REPO_ROOT>` or
 | `MEDVAULT_RELAYER_URL` | No | Base URL for `medvault_relayer_health` |
 | `MCP_READ_ONLY` | No | `true` disables write tools even if a key is set |
 | `MCP_AUDIT_LOG` | No | Set `false` to disable local write audit log (default: on) |
+| `MCP_AUDIT_LOG_PATH` | No | Override default `.mcp-audit.log` path |
+| `MCP_HTTP_PORT` / `MCP_HTTP_HOST` | No | HTTP transport bind (default `127.0.0.1:3100`) |
+| `AI_SERVICE_URL` / `VITE_AI_SERVICE_URL` | No | Base URL for AI proxy tools |
+| `MEDVAULT_NETWORK` | No | `sepolia` (default) or `hardhat` |
 
 ## Pool privacy
 
@@ -43,7 +47,9 @@ Trial incentive pool **amounts are sponsor-private** on-chain.
 
 `medvault_read_contract_view` blocklists `getTotalDeposited` and other sensitive vault views.
 
-## Tools
+## Tools (33 total)
+
+**23 read** + **10 write** (writes disabled when `MCP_READ_ONLY=true`). Full parameter reference: [mcp-server/README.md](../mcp-server/README.md).
 
 ### Read / diagnostic
 
@@ -56,6 +62,7 @@ Trial incentive pool **amounts are sponsor-private** on-chain.
 - `medvault_read_contract_view`, `medvault_relayer_health`
 - `medvault_doctor`, `medvault_list_capabilities`, `medvault_get_client_config_help`, `medvault_get_protocol_health`
 - `medvault_get_sponsor_overview`, `medvault_preview_fund_trial_pool`, `medvault_get_trial_operations_timeline`
+- `medvault_ai_extract_criteria`, `medvault_ai_audit_logs` — read-only proxies to `@medvault/ai` (PHI redacted before LLM)
 
 ### Write (sponsor only, disabled when `MCP_READ_ONLY=true`)
 
@@ -64,6 +71,7 @@ Requires verified sponsor (or open-access flag) and `MCP_PRIVATE_KEY`:
 - `medvault_create_trial`, `medvault_set_trial_milestones`, `medvault_fund_trial_pool`
 - `medvault_update_application_status`, `medvault_deactivate_trial`, `medvault_distribute_milestone`
 - `medvault_register_anonymous_participant`, `medvault_reclaim_trial_pool`
+- `medvault_reclaim_abandoned_pool` (vault owner), `medvault_claim_reclaimed_pool` (scheduled recipient)
 
 Patient/FHE writes are **not** included.
 
@@ -79,6 +87,8 @@ npm run mcp:http
 ```
 
 Use `config/mcp/chatgpt-http.mcp.json` or `antigravity-http.mcp.json` for URL-based clients. Do not tunnel with write-capable keys unless you trust the network.
+
+Full tool reference: [mcp-server/README.md](../mcp-server/README.md).
 
 ## Security
 

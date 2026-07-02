@@ -150,8 +150,7 @@ score = FHE.add(score, FHE.cmux(ageOk, FHE.asEuint8(40), FHE.asEuint8(0)));
                 <h2>Noir attestation (optional seal)</h2>
                 <p className="text-sm">
                     FHE scoring is authoritative. After staging/finalize, patients may call{" "}
-                    <code>verifyEligibilityProof</code> or use{" "}
-                    <code>finalizeAnonymousEligibilityWithProof</code> to record a public compliance receipt bound to
+                    <code>finalizeAnonymousApplyWithProof</code> (via MedVaultRegistry) to record a public compliance receipt bound to
                     the staged <code>finalCt</code> handle, Semaphore nullifier, and criteria schema version.
                 </p>
                 <ul className="text-sm">
@@ -159,8 +158,14 @@ score = FHE.add(score, FHE.cmux(ageOk, FHE.asEuint8(40), FHE.asEuint8(0)));
                         <code>attestationReceipt(nullifier, trialId)</code> — sponsor-safe metadata (no PHI).
                     </li>
                     <li>
-                        <code>ELIGIBILITY_PUBLIC_INPUT_COUNT = 16</code> — includes{" "}
-                        <code>fhe_stage_handle_hash</code> and <code>criteria_schema_hash</code>.
+                        <code>ELIGIBILITY_PUBLIC_INPUT_COUNT = 25</code> — scope, nullifier, profile commitment,
+                        result hash, eligible bit, FHE stage handle hash, criteria schema hash, 9 trial criteria
+                        fields, <code>criteria_mode</code>, and 8 document-binding fields when{" "}
+                        <code>has_document = 1</code>.
+                    </li>
+                    <li>
+                        On-chain <code>HonkVerifier.NUMBER_OF_PUBLIC_INPUTS = 33</code> = 25 user-facing inputs + 8
+                        Barretenberg pairing points (not additional application fields).
                     </li>
                     <li>
                         See <Link to="/docs/noir" className="font-semibold text-[#00685f]">Noir compliance attestation</Link>{" "}

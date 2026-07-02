@@ -30,6 +30,7 @@ import { SecurityPage } from "./pages/SecurityPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
 import AdminSponsorsPage from "./pages/AdminSponsorsPage";
+import AdminWiringPage from "./pages/AdminWiringPage";
 import { SponsorGuard } from "./components/layout/SponsorGuard";
 import { DocsLayout } from "./pages/docs/DocsLayout";
 import { IntroductionDoc } from "./pages/docs/IntroductionDoc";
@@ -43,6 +44,7 @@ import { SubgraphIndexingDoc } from "./pages/docs/SubgraphIndexingDoc";
 import { FrontendArchitectureDoc } from "./pages/docs/FrontendArchitectureDoc";
 import { UserGuideDoc } from "./pages/docs/UserGuideDoc";
 import { DeploymentGuideDoc } from "./pages/docs/DeploymentGuideDoc";
+import { TimelockWiringDoc } from "./pages/docs/TimelockWiringDoc";
 import { AndroidApkDoc } from "./pages/docs/AndroidApkDoc";
 import { PrivateStakingDoc } from "./pages/docs/PrivateStakingDoc";
 import { PrivateWithdrawalsDoc } from "./pages/docs/PrivateWithdrawalsDoc";
@@ -233,6 +235,14 @@ function MedVaultRoutes() {
                 </DashboardLayout>
               }
             />
+            <Route
+              path="/admin/wiring"
+              element={
+                <DashboardLayout role="sponsor">
+                  <AdminWiringPage />
+                </DashboardLayout>
+              }
+            />
 
             {/* Documentation Routes */}
             <Route
@@ -344,6 +354,14 @@ function MedVaultRoutes() {
               element={
                 <DocsLayout>
                   <DeploymentGuideDoc />
+                </DocsLayout>
+              }
+            />
+            <Route
+              path="/docs/timelock-wiring"
+              element={
+                <DocsLayout>
+                  <TimelockWiringDoc />
                 </DocsLayout>
               }
             />

@@ -43,3 +43,79 @@ jobs:
         run: npm run test:crypto
         env:
           TEST_SUITE: crypto
+
+      - name: Fuzz and invariant tests
+        run: npm run test:fuzz
+        env:
+          TEST_SUITE: fuzz
+
+  fork:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile contracts
+        run: npm run compile
+
+      - name: Sepolia fork tests
+        run: npm run test:fork
+        env:
+          TEST_SUITE: fork
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile contracts
+        run: npm run compile
+
+      - name: Coverage with gate (>=85% new contracts)
+        run: npm run test:coverage:gate
+
+  sepolia-smoke:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: ${{ secrets.SEPOLIA_RPC_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sepolia FHE demo smoke
+        run: npm run demo:fhe -- --smoke
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          DEMO_PRIVATE_KEY: ${{ secrets.SEPOLIA_DEMO_PRIVATE_KEY }}
+
+      - name: Sepolia smoke tests (optional txs)
+        if: ${{ secrets.SEPOLIA_DEMO_PRIVATE_KEY != '' }}
+        run: npm run test:sepolia
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          SEPOLIA_DEMO_PRIVATE_KEY: ${{ secrets.SEPOLIA_DEMO_PRIVATE_KEY }}
+          DEMO_RUN_TXS: "1"
+          TEST_SUITE: sepolia

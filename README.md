@@ -2,15 +2,25 @@
 
 [![Zama](https://img.shields.io/badge/Powered%20By-Zama-teal?style=for-the-badge)](https://docs.zama.org)
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-blue?style=for-the-badge)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-265%20Cases-emerald?style=for-the-badge)](docs/TEST_MATRIX.md)
+[![Tests](https://img.shields.io/badge/Tests-483%20Cases-emerald?style=for-the-badge)](docs/TEST_MATRIX.md)
 [![Network](https://img.shields.io/badge/Network-Ethereum%20Sepolia-2D374B?style=for-the-badge)](https://sepolia.etherscan.io/)
 [![Chainlink](https://img.shields.io/badge/Automation-Chainlink-375BD2?style=for-the-badge)](https://chain.link/automation)
+[![npm](https://img.shields.io/badge/npm-@medvault%2Fsdk-red?style=for-the-badge)](https://www.npmjs.com/package/@medvault/sdk)
 
-**MedVault** is a **Zama FHE reference dApp** on **Ethereum Sepolia**: homomorphic trial matching on encrypted patient vitals **and encrypted sponsor criteria**, encrypted aggregate analytics, FHE-bound attestation seals, and local decrypt via `@zama-fhe/sdk`.
+## Judges — start here
 
-**Live app:** [https://med-vault.xyz](https://med-vault.xyz) (hosted on [Vercel](https://vercel.com); see [Deployment](#deployment)).  
-**Repo:** [github.com/shery8595/Med-Vault](https://github.com/shery8595/Med-Vault)  
-**FHE audit map (judges):** [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md)
+| Resource | Link |
+|----------|------|
+| **Live app** | [https://med-vault.xyz](https://med-vault.xyz) |
+| **Demo video** | [YouTube walkthrough](https://www.youtube.com/watch?v=1wR01KflBOM&t=88s) |
+| **Pitch deck outline** | [docs/PITCH_DECK.md](docs/PITCH_DECK.md) |
+| **Lightpaper** | [docs/LIGHTPAPER.md](docs/LIGHTPAPER.md) |
+| **FHE audit map** | [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md) — primitive → contract → test |
+| **Terminal demo** | `npm run demo:fhe` ([scripts/demo-fhe-lifecycle.mjs](scripts/demo-fhe-lifecycle.mjs)) |
+| **Repo** | [github.com/shery8595/Med-Vault](https://github.com/shery8595/Med-Vault) |
+| **SDK** | `npm install @medvault/sdk ethers@6.16.0` |
+
+> **MedVault** homomorphically matches **encrypted patient vitals** against **encrypted sponsor trial criteria** on Ethereum Sepolia using **fhEVM** — with optional Semaphore anonymity and Noir identity/policy attestation (compliance seal). Sponsors encrypt inclusion bounds; patients encrypt vitals; validators and indexers never see plaintext PHI. *(Semaphore, Noir, Chainlink, subgraph, relayer, SDK, and Android extend the core FHE story — see [Appendix: platform depth](#appendix-platform-depth-optional-layers).)*
 
 ### What is encrypted vs public
 
@@ -23,7 +33,20 @@
 | Trial name, phase, sponsor address | Public metadata |
 | Native ETH `msg.value` on fund/deposit | Public at tx layer |
 
-> **Augmentation layers** (optional, not required for the FHE story): Semaphore anonymous apply, Noir FHE-bound attestation seal, Chainlink Automation expiry, The Graph indexing, gasless relayer, TypeScript SDK, MCP server, Android APK — see [Appendix: augmentation layers](#appendix-augmentation-layers).
+---
+
+## Limitations & Trust Model
+
+MedVault uses strong cryptography, but not every layer proves the same thing. This is an honest summary for integrators, sponsors, and patients.
+
+| Layer | What it guarantees | What it does **not** guarantee |
+|-------|-------------------|-------------------------------|
+| **Zama FHE** (`EligibilityEngine._computeEligibility`) | Homomorphic matching on ciphertext — validators and indexers never see plaintext vitals during on-chain scoring | Off-chain PHI handling (IPFS documents, AI service, indexer caches); wallet linkage on non-relayer registration; L1 native ETH visibility at deposit/withdraw |
+| **Noir + Honk** | **Identity and policy attestation** — Semaphore nullifier, profile commitment, staged FHE handle binding, encrypted-criteria echo binding | fhEVM homomorphic correctness; the compliance seal is **not** a proof that you passed eligibility — only that your witness matches your registered profile and staged handle |
+| **Trusted relayer** | Gasless staging/finalize/cancel; **interim** re-decrypt of staged eligibility before finalize (P0.2) as defense-in-depth | Payout integrity is ciphertext-gated via `FHE.select` (P2, shipped — see P5-SELECT tests); relayer honesty is no longer the payout-integrity anchor |
+| **Compliance posture** | Privacy-by-design for on-chain clinical matching | **Not HIPAA-compliant today** — off-chain PHI (IPFS, AI pre-screening, indexer), optional wallet linkage, and settlement-layer ETH visibility remain |
+
+See [SECURITY.md](SECURITY.md), [docs/REGULATORY_POSTURE.md](docs/REGULATORY_POSTURE.md), [internal-docs/threat-model.md](internal-docs/threat-model.md), and in-app **Docs → Security Model** for residual risks and mitigations.
 
 ---
 
@@ -31,23 +54,19 @@
 
 1. [Zama FHE — the core of MedVault](#zama-fhe--the-core-of-medvault)
 2. [What MedVault does](#what-medvault-does)
-3. [Privacy stack: Semaphore & Noir](#privacy-stack-semaphore--noir)
+3. [How MedVault compares](#how-medvault-compares)
 4. [Architecture](#architecture)
 5. [Smart contracts](#smart-contracts)
 6. [Repository layout](#repository-layout)
 7. [Getting started](#getting-started)
 8. [Environment variables](#environment-variables)
 9. [Testing](#testing)
-10. [Noir circuit & Honk verifier](#noir-circuit--honk-verifier)
-11. [Semaphore (anonymous trials)](#semaphore-anonymous-trials)
-12. [Chainlink Automation](#chainlink-automation)
-13. [The Graph subgraph](#the-graph-subgraph)
-14. [Gasless relayer](#gasless-relayer)
-15. [TypeScript SDK](#typescript-sdk)
-16. [MCP server (AI tools)](#mcp-server-ai-tools)
-17. [Deployment](#deployment)
-18. [Android demo APK](#android-demo-apk-capacitor)
-19. [Documentation](#documentation)
+10. [TypeScript SDK](#typescript-sdk)
+11. [Business model](#business-model)
+12. [Deployment](#deployment)
+13. [Documentation](#documentation)
+14. [Tech stack (summary)](#tech-stack-summary)
+15. [Appendix: platform depth (optional layers)](#appendix-platform-depth-optional-layers)
 
 ---
 
@@ -58,6 +77,14 @@
 MedVault is a **reference dApp for Zama on Ethereum Sepolia**: encrypted profiles, homomorphic eligibility scoring, encrypted consent gates, confidential incentive accounting, and local decrypt — all through the official Zama SDK and `FHE.sol` contracts.
 
 ### What runs on Zama in this repo
+
+Real logic from `EligibilityEngine._computeEligibility` — every operand is an encrypted handle; no plaintext ever loads on-chain:
+
+```solidity
+ebool ageOk = FHE.and(FHE.ge(patient.age, c.minAge), FHE.le(patient.age, c.maxAge));
+ebool diabetesOk = FHE.eq(patient.hasDiabetes, FHE.asEbool(true));
+ebool eligible = FHE.and(ageOk, diabetesOk);   // computed entirely on ciphertext
+```
 
 | MedVault capability | Zama primitive |
 |---------------------|------------------|
@@ -74,6 +101,16 @@ MedVault is a **reference dApp for Zama on Ethereum Sepolia**: encrypted profile
 **Semaphore** hides *who* applied; **Noir** seals a public compliance receipt bound to the Zama FHE stage — but **every clinical comparison happens in Zama ciphertext space.**
 
 ### Zama FHE architecture (four layers)
+
+Data never exists in plaintext on-chain; only ACL-approved patients decrypt the final match.
+
+```mermaid
+flowchart LR
+  P["Patient encrypted profile\n(euint8/euint16/ebool)"] --> EE["EligibilityEngine\nFHE.sol ops"]
+  S["Sponsor encrypted criteria\n(createTrialWithEncryptedCriteria)"] --> EE
+  EE --> R["Encrypted score result\n(ebool + euint8)"]
+  R -->|FHE.allow + @zama-fhe/sdk| D["Patient decrypts locally"]
+```
 
 ```mermaid
 sequenceDiagram
@@ -135,7 +172,7 @@ await client
 
 ```bash
 npm run compile          # Hardhat + Zama FHE types
-npm run test:unit        # 148 cases with @fhevm/hardhat-plugin mocks
+npm run test:unit        # 395 passing (+ 6 pending) with @fhevm/hardhat-plugin mocks (see testSuiteData.ts)
 ```
 
 Shared helpers: `test-support/fhe.ts` (`buildPatientProfileInputs`, `mockDecryptBool`).  
@@ -152,68 +189,23 @@ Shared helpers: `test-support/fhe.ts` (`buildPatientProfileInputs`, `mockDecrypt
 
 | Role | Capabilities |
 |------|----------------|
-| **Patient** | Register an encrypted medical profile (Zama FHE), discover trials, apply with wallet or **anonymous Semaphore** identity, grant consent, decrypt eligibility locally, optional **compliance seal** (Noir attestation bound to the Zama FHE stage). |
-| **Sponsor** | Create protocols, fund incentive pools, review aggregate matches (no plaintext PHI), audit trail, milestone payouts via vault + Chainlink automation. |
+| **Patient** | Register an encrypted medical profile (Zama FHE), discover trials, apply with wallet or **anonymous Semaphore** identity, grant consent, decrypt eligibility locally, optional **identity and policy attestation** (Noir compliance seal bound to the Zama FHE stage — not a proof of fhEVM execution). |
+| **Sponsor** | Create protocols (encrypted criteria via FHE), fund incentive pools, **upload protocol PDF → AI-extracted encrypted criteria**, review aggregate matches (no plaintext PHI), audit trail, milestone payouts via vault + Chainlink automation. |
 | **Compliance** | `DataAccessLog` records anonymized hashes; consent scoped per `(patient, trial)`; Reclaim attestation optional on profile upload. |
 
 Recent product areas: FHIR JSON prefill, sponsor representation monitoring, encrypted propensity signals (subgraph), fast audit log via `DetailedActionLogged` events, patient wallet gating when logged out.
 
 ---
 
-## Privacy stack: Semaphore & Noir
+## How MedVault compares
 
-**Zama FHE is the primary privacy layer** — see [Zama FHE — the core of MedVault](#zama-fhe--the-core-of-medvault). Semaphore and Noir extend that foundation:
+MedVault closes three gaps common in Zama/FHE hackathon repos (Circux, Covalent parity):
 
-```mermaid
-flowchart TB
-  subgraph Star["⭐ Zama FHE"]
-    P[Encrypted profile] --> EE[EligibilityEngine]
-    EE --> R[Encrypted match handle]
-  end
-  subgraph Augment["Augmentation layers"]
-    ID[Semaphore] --> ANON[Anonymous apply]
-    R --> NOIR[Noir + Honk]
-  end
-  ANON --> EE
-  NOIR --> HV[HonkVerifier]
-```
-
-### Semaphore v4 (anonymous identity)
-
-- **Purpose:** Apply to trials without linking the application to the patient’s main wallet on-chain.
-- **Libraries:** `@semaphore-protocol/identity`, `group`, `proof`; on-chain `Semaphore` + `MedVaultRegistry`.
-- **Flow:** Ephemeral identity in browser → Merkle proof → `AnonymousApplication` / staged apply → FHE eligibility with consent gate.
-- **Code:** `src/lib/semaphore.ts`, `contracts/MedVaultRegistry.sol`, `contracts/AnonymousPatientRegistry.sol`.
-- **Tests:** `test-support/semaphore.ts`, `MockSemaphore.sol`, integration tests `MVR-*`, `INT-EE-*`.
-
-### Noir + Honk (public attestation seal)
-
-- **Role:** Narrow compliance layer — binds Semaphore nullifier, profile commitment, trial scope, criteria schema version, and **Zama FHE stage handle** to a public receipt. **Zama FHE remains the compute authority** for eligibility and scoring.
-- **Circuit:** `circuits/eligibility_proof/` — 16 public inputs including `fhe_stage_handle_hash` and `criteria_schema_hash`.
-- **Verifier:** `contracts/HonkVerifier.sol` generated with **Keccak transcript** (`evm-no-zk`) to match `@aztec/bb.js` in the browser.
-- **Client:** `@noir-lang/noir_js` + bundled `eligibility_proof.json`; UI “Seal FHE result” / compliance seal step.
-- **On-chain:** `attestationReceipt(nullifier, trialId)` for sponsor audit (no PHI). Subgraph indexes attestation hashes only.
-- **Tests:** `test/unit/attestation-binding.test.ts`, `test/crypto/noir-nullifier.test.ts` (CI); `test/crypto/honk-pipeline.test.ts` (optional, slow).
-
-**Residual caveat:** The Noir seal cryptographically binds the witness to the staged `fhe_stage_handle_hash` (private `staged_fhe_handle` assert in circuit + on-chain hash check). Full proof that FHE ciphertext plaintext equals the Noir witness still requires Zama input-proof primitives in-circuit (future).
-
-### Known privacy limits (honest disclosure)
-
-- **Registration:** Direct `registerPatient` links wallet ↔ commitment in one tx. Use `registerPatientViaRelayer` (EIP-712 + `POST /relay/register`) so `tx.from` is the relayer, not the patient wallet. `registered[wallet]` is still set for UX; `walletToCommitment` is not stored on the relayer path.
-- **Native ETH:** `msg.value` on `deposit`, `fundTrial`, and `stake` is visible at the transaction layer even when contract events omit amounts.
-- **ERC-20 / aWETH:** Aave supply and withdraw paths emit standard token transfer events with amounts.
-- **Pool size:** `getTotalDeposited` is sponsor-only; participants should use encrypted pool handles, not public totals.
-- **Reward claim:** `ClaimInitiated` omits destination and nullifier; claim amounts are encrypted (`externalEuint64`). ETH still arrives at the chosen address when withdraw completes (amount visible at settlement).
-- **Withdrawal staging:** `WithdrawRequested` / `WithdrawToRequested` expose only `sufficientHandle`, not plaintext amounts. Pending withdraw state is `euint64`.
-- **Public exit:** `completePublicExit` sends native ETH to a signed stealth recipient; final transfer value is public. Relayer submission hides gas payer; batching improves timing unlinkability only.
-- **Private unstake:** Returns encrypted stake to cETH without Aave ERC-20 events. Public `requestPublicUnstake` remains an explicit visible exit.
-- **Subgraph:** Wallet↔commitment links are not reconstructed from `transaction.from`; consent wallet↔trial rows are not indexed.
-
-| Layer | Role | Hides on-chain |
-|-------|------|----------------|
-| **Zama FHE** | **Encrypted compute + storage** | Plaintext vitals & criteria |
-| Semaphore | Identity | Wallet ↔ application link |
-| Noir | Attestation seal | Forged identity vs Semaphore nullifier; replay across trials/stages |
+| Capability | MedVault |
+|------------|----------|
+| **Confidential token standard** | `ConfidentialETH7984` subclasses OpenZeppelin **ERC-7984** (`@openzeppelin/confidential-contracts ^0.5.1`) while preserving native-ETH deposit, multi-phase withdraw, EIP-712 public exit, and KMS-gated `transferEncrypted`. See [docs/FHE_AUDIT_README.md — ERC-7984 conformance](docs/FHE_AUDIT_README.md). |
+| **One-command local setup** | `docker compose up --build` → frontend on `:3000` against Sepolia; optional `--profile relayer` and `--profile graph`. See [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md). |
+| **Formal internal docs** | SRS, DFD, threat model, Zama integration guide, architecture in [internal-docs/](internal-docs/README.md). |
 
 ---
 
@@ -222,76 +214,136 @@ flowchart TB
 ```mermaid
 graph TD
   subgraph Frontend
-    A[React 19 + Vite] --> B[Zama SDK]
+    A[React 19 + Vite] --> B[@zama-fhe/sdk]
     A --> S[Semaphore.js]
     A --> N[Noir.js / bb.js]
     A --> G[GraphQL subgraph]
   end
-  subgraph Chain Ethereum Sepolia
-    EE[EligibilityEngine]
-    MVR[MedVaultRegistry]
-    CM[ConsentManager]
-    SIV[SponsorIncentiveVault]
-    DAL[DataAccessLog]
-    HV[HonkVerifier]
+  subgraph Chain["Ethereum Sepolia — no upgrade proxies"]
+    subgraph FHE["ZamaEthereumConfig base"]
+      TM[TrialManager]
+      MVR[MedVaultRegistry]
+      APR[AnonymousPatientRegistry]
+      EE[EligibilityEngine]
+      CM[ConsentManager]
+      ECG[EncryptedConsentGate]
+      ESL[EncryptedScoreLeaderboard]
+      PDS[PatientDocumentStore]
+      SR[SponsorRegistry]
+    end
+    subgraph Finance["ERC7984 + EIP712"]
+      CET[ConfidentialETH7984]
+      CE[ConfidentialETH alias]
+      SM[StakingManager]
+      SIV[SponsorIncentiveVault]
+    end
+    subgraph Ops["Automation & audit"]
+      TMM[TrialMilestoneManager]
+      MVA[MedVaultAutomation]
+      DAL[DataAccessLog]
+    end
+    subgraph ZK["Honk abstract base"]
+      HV[HonkVerifier]
+    end
   end
   B --> EE
   S --> MVR
   N --> HV
   G -.-> A
-  EE --> DAL
+  MVR --> APR
+  MVR --> EE
+  EE --> APR
+  EE --> TM
+  EE --> CM
+  EE --> ECG
+  EE --> PDS
+  EE --> HV
+  SIV --> CET
+  SM --> CET
+  MVA --> SIV
   MVR --> DAL
+  EE --> DAL
+  CE -.->|inherits| CET
 ```
 
 **Indexing:** The Graph (`subgraph/`) for trials, applications, consents, anonymous submissions, incentive pools — not for all audit data until `DataAccessLog` is deployed to Studio.
 
-**Automation:** [Chainlink Automation](#chainlink-automation) finalizes expired trials via `MedVaultAutomation` (not indexed by subgraph).
+**Automation:** [Chainlink Automation](#chainlink-automation) (appendix) finalizes expired trials via `MedVaultAutomation` (not indexed by subgraph).
 
 ---
 
 ## Smart contracts
 
+**17 production Solidity files** (15 protocol + `HonkVerifier` + `ConfidentialETH` deploy alias). Canonical catalog: `src/lib/protocolContracts.ts` · in-app reference: `/docs/contracts`.
+
 Deployed addresses: `src/lib/contracts/addresses.json` (`sepolia`).
 
-| Contract | Role |
-|----------|------|
-| `MedVaultRegistry` | Patient registration, anonymous apply staging/finalize |
-| `AnonymousPatientRegistry` | Commitment-based profiles + data access events |
-| `EligibilityEngine` | FHE matching, applications, anonymous eligibility |
-| `ConsentManager` / `EncryptedConsentGate` | Consent records + encrypted gate |
-| `TrialManager` | Trial metadata lifecycle |
-| `SponsorRegistry` | Sponsor verification |
-| `SponsorIncentiveVault` | Trial incentive pools & payouts |
-| `TrialMilestoneManager` | Milestone weights & completion |
-| `MedVaultAutomation` | Chainlink Automation — trial expiry finalization |
-| `DataAccessLog` | Immutable audit entries (`ActionLogged` / `DetailedActionLogged`) |
-| `HonkVerifier` | Noir Honk proof verification |
-| `ConfidentialETH` / `StakingManager` | Encrypted balances; dual staking/unstake paths; EIP-712 public exit |
-| `EncryptedScoreLeaderboard` | Encrypted propensity commits |
+| # | Contract | Role |
+|---|----------|------|
+| 01 | `TrialManager.sol` | Trial lifecycle; public metadata + encrypted criteria via `createTrialWithEncryptedCriteria` |
+| 02 | `MedVaultRegistry.sol` | Patient registration, Semaphore bridge, anonymous apply staging/finalize |
+| 03 | `AnonymousPatientRegistry.sol` | Commitment-keyed encrypted profiles + data access events |
+| 04 | `EligibilityEngine.sol` | FHE matching, applications, anonymous eligibility, document hooks |
+| 05 | `ConsentManager.sol` | Per-trial encrypted consent ACL |
+| 06 | `SponsorRegistry.sol` | Sponsor verification allowlist |
+| 07 | `EncryptedConsentGate.sol` | Consent + eligibility encrypted gate |
+| 08 | `EncryptedScoreLeaderboard.sol` | Encrypted propensity commits & aggregates |
+| 09 | `SponsorIncentiveVault.sol` | Trial incentive pools, claims, phased payouts |
+| 10 | `TrialMilestoneManager.sol` | Milestone weights & completion |
+| 11 | `StakingManager.sol` | Public Aave stake + confidential cETH stake/unstake |
+| 12 | `ConfidentialETH7984.sol` | **IERC7984** canonical implementation — encrypted balances, deposit, withdraw/exit, EIP-712 |
+| 13 | `ConfidentialETH.sol` | **Deploy alias** — `contract ConfidentialETH is ConfidentialETH7984 {}` |
+| 14 | `MedVaultAutomation.sol` | Chainlink Automation — trial expiry finalization |
+| 15 | `DataAccessLog.sol` | Immutable audit entries (`ActionLogged` / `DetailedActionLogged`) |
+| 16 | `PatientDocumentStore.sol` | Hybrid IPFS CID + FHE-wrapped AES document keys |
+| 17 | `HonkVerifier.sol` | Noir Honk — plaintext criteria attestation (`eligibilityVerifier`) |
+| 18 | `HonkVerifierEncrypted.sol` | Noir Honk — encrypted criteria attestation (`eligibilityVerifierEncrypted`) |
 
-Compile: `npm run compile` · ABIs synced to frontend/subgraph: `npm run sync-abis`
+Compile: `npm run compile` · ABIs synced to frontend/subgraph: `npm run sync-abis` · Deeper docs: [docs/README.md](docs/README.md) · `/docs/contracts`
 
 ---
 
 ## Repository layout
 
+### Monorepo map
+
+| Area | Path | npm workspace? |
+|------|------|----------------|
+| **Frontend** (root app `medvault-zama`) | `src/`, `android/`, `capacitor.config.ts` | No — root package |
+| **Core library** | `packages/medvault-core/` | Yes (`@medvault/core`) |
+| **Integrator SDK** | `packages/medvault-sdk/` | Yes (`@medvault/sdk`) |
+| **MCP server** | `mcp-server/` | Yes (`@medvault/mcp-server`) |
+| **Indexer API** | `indexer/` | Yes (`@medvault/indexer`) |
+| **AI service** | `ai-service/` | Yes (`@medvault/ai`) |
+| **Gasless relayer** | `relayer/` | Standalone |
+| **Subgraph** | `subgraph/` | Standalone |
+| **Sepolia faucet** | `sepolia-faucet/` | Standalone |
+
+> **Not product features** — empty or stub directories (`faucet-server/`, `New Frontend Reference/`, `src/components/applications/`, `src/styles/`) are not referenced in docs or CI.
+
 ```
 medvault/
-├── contracts/              # Solidity 0.8.27 (FHE, Semaphore, Noir verifier)
-├── circuits/eligibility_proof/  # Noir circuit (Nargo)
-├── src/                    # React dApp (patient + sponsor portals)
+├── contracts/              # 17 production Solidity files (FHE, Semaphore, Noir verifier)
+├── circuits/
+│   ├── eligibility_plaintext/   # Noir — plaintext criteria attestation (25 public inputs)
+│   └── eligibility_encrypted/   # Noir — encrypted criteria binding (15 public inputs)
+├── src/                    # React dApp (patient + sponsor portals) — root frontend
 ├── android/                # Capacitor Android project (demo APK)
-├── capacitor.config.ts     # Capacitor app id + webDir
-├── subgraph/               # The Graph schema + mappings
-├── relayer/                # Optional gasless finalize server
-├── packages/medvault-sdk/  # @medvault/sdk — integrator facade (trials, sponsor, relayer client)
-├── packages/medvault-core/ # Protocol helpers (contracts, subgraph, sponsor ops)
+├── packages/
+│   ├── medvault-core/      # Protocol helpers (contracts, subgraph, sponsor ops)
+│   └── medvault-sdk/       # @medvault/sdk — integrator facade
 ├── mcp-server/             # Local MCP server (stdio + optional HTTP)
+├── indexer/                # Mongo/Redis indexer API (optional Docker profile)
+├── ai-service/             # Sponsor criteria extraction + log audit API
+├── relayer/                # Optional gasless finalize server (standalone)
+├── subgraph/               # The Graph schema + mappings (standalone)
+├── sepolia-faucet/         # Testnet ETH drip helper (standalone)
 ├── config/mcp/             # MCP client config snippets (Cursor, Codex, …)
 ├── test/                   # Hardhat tests (see Testing)
 ├── test-support/           # deployMedVaultStack, FHE, Semaphore helpers
 ├── scripts/                # Deploy, circuit build, subgraph, wiring
-└── docs/                   # TESTING_GUIDE, ANDROID_APK, MOBILE_ARCHITECTURE, …
+├── docs/                   # Markdown guides (index: docs/README.md)
+└── internal-docs/          # SRS, DFD, threat model (engineering specs)
 ```
 
 ---
@@ -319,6 +371,19 @@ npm run compile              # contracts (needed for typechain / some scripts)
 npm run dev                  # http://localhost:3000
 ```
 
+### Docker Compose (one command)
+
+```bash
+cp .env.docker.example .env.local   # set VITE_PRIVY_APP_ID
+docker compose up --build           # http://localhost:3000
+```
+
+Optional: `--profile relayer` (local HTTP relayer), `--profile graph` (local Graph Node), `--profile indexer` (Mongo/Redis + indexer API). See [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
+
+### Internal documentation
+
+Formal SRS, DFD, threat model, and Zama integration guide: [internal-docs/](internal-docs/README.md).
+
 Vite proxies `/relay` → relayer when configured; Zama FHE VRF via `/api/relayer` in `vercel.json`.
 
 ---
@@ -331,7 +396,7 @@ Copy `.env.example` → `.env.local` (never commit secrets).
 |----------|---------|
 | `VITE_PRIVY_APP_ID` | Required — login / embedded wallet |
 | `VITE_SUBGRAPH_URL` | The Graph Studio query URL (must match Playground) |
-| `GRAPH_SUBGRAPH_SLUG` | Studio slug (e.g. `medvault-final`) |
+| `GRAPH_SUBGRAPH_SLUG` | Studio slug — canonical: `medvault` (see `.env.example`) |
 | `VITE_RECLAIM_*` | Optional profile attestation (Reclaim Protocol) |
 | `VITE_RECLAIM_ALLOW_SKIP` | `true` = skip Reclaim in dev |
 | `VITE_RELAYER_URL` | Gasless finalize (default: same-origin `/relay`) |
@@ -339,7 +404,7 @@ Copy `.env.example` → `.env.local` (never commit secrets).
 | `SEPOLIA_RPC_URL` | Hardhat / scripts |
 | `PRIVATE_KEY` | Deploy scripts only — **never** commit |
 
-**MCP server** (local IDE only — see [MCP server](#mcp-server-ai-tools)): `MEDVAULT_SUBGRAPH_URL`, `MCP_PRIVATE_KEY`, optional `MEDVAULT_SPONSOR_OPEN_ACCESS`, `MCP_MAX_ETH_PER_TX`. Documented in `.env.example`; not required for the web app.
+**MCP server** (local IDE only — see [Appendix: MCP server](#mcp-server-ai-tools)): `MEDVAULT_SUBGRAPH_URL`, `MCP_PRIVATE_KEY`, optional `MEDVAULT_SPONSOR_OPEN_ACCESS`, `MCP_MAX_ETH_PER_TX`. Documented in `.env.example`; not required for the web app.
 
 Relayer (`relayer/.env.example`): `REGISTRY_ADDRESS`, `SEMAPHORE_ADDRESS`, `RELAYER_PRIVATE_KEY`, `RPC_URL`, optional batch exit `MIN_BATCH_SIZE` / `MAX_WAIT_MS`. Authorize relayer on `ConfidentialETH` for withdraw completion helpers.
 
@@ -349,15 +414,19 @@ Private withdrawals: see [docs/PRIVATE_WITHDRAWALS.md](docs/PRIVATE_WITHDRAWALS.
 
 ## Testing
 
-MedVault uses **Hardhat 2**, **Mocha/Chai**, and **`@fhevm/hardhat-plugin`** (Zama FHE mocks). Default CI run: **265 passing** (+ 2 pending, 1 optional Honk).
+MedVault uses **Hardhat 2**, **Mocha/Chai**, and **`@fhevm/hardhat-plugin`** (Zama FHE mocks).
+
+> **Canonical counts** — sourced from [`src/lib/docsStats.ts`](src/lib/docsStats.ts) and [`src/pages/docs/testing/testSuiteData.ts`](src/pages/docs/testing/testSuiteData.ts) (methodology in [`docs/AUDIT.md`](docs/AUDIT.md)).
+
+Default CI run: **483 passing** (+ 6 pending, 1 optional Honk). Full registered matrix: **~2,020** cases across **96** test files (incl. **832** parametric fuzz expansions).
 
 | Suite | Cases | Command |
 |-------|-------|---------|
-| Smoke + unit + staking | ~184 | `npm run test:unit` |
-| Integration | 62 | `npm run test:integration` |
+| Smoke + unit + staking | 395 | `npm run test:unit` |
+| Integration | 85 | `npm run test:integration` |
 | Crypto (Noir nullifier alignment) | 3 | `npm run test:crypto` |
 | Honk full pipeline (slow) | 1 | `npm run test:honk` |
-| **Default** | **265** | `npm test` |
+| **Default** | **483** | `npm test` |
 
 ```bash
 npm run compile
@@ -370,8 +439,8 @@ npm run test:coverage    # solidity-coverage
 ```
 test/
   smoke/           # deployMedVaultStack + Zama FHE smoke (4)
-  unit/            # Per-contract tests (~140)
-  integration/     # Cross-contract + E2E (40)
+  unit/            # Per-contract tests (59 files; incl. timelock-wiring TL-*, sponsor-registry-auditor SRA-*)
+  integration/     # Cross-contract + E2E (14 files)
   staking/         # StakingManager + MockAave (8)
   crypto/          # Noir nullifier + optional Honk
 
@@ -385,8 +454,12 @@ test-support/
 
 ### CI
 
+Four GitHub Actions workflows (see `docsStats.ts` → `ciWorkflows`):
+
 - **Contracts:** `.github/workflows/contracts-test.yml` — `compile` → `test:unit` → `test:integration` → `test:crypto` (Honk excluded).
-- **Production app:** `.github/workflows/vercel-prebuilt.yml` — build on `main` push, `vercel deploy --prebuilt --prod`.
+- **Frontend:** `.github/workflows/frontend.yml` — Vite build + unit tests.
+- **Docker smoke:** `.github/workflows/docker-smoke.yml` — Compose frontend health check.
+- **MCP/SDK:** `.github/workflows/mcp.yml` — core + SDK + MCP server build.
 
 ### In-app docs
 
@@ -396,167 +469,17 @@ Open the dApp → **Docs → Tests & verification** (`/docs/testing`) for overvi
 
 ---
 
-## Noir circuit & Honk verifier
-
-**Circuit:** `circuits/eligibility_proof/src/main.nr` — compliance attestation mirror, not a second eligibility engine.
-
-Public inputs (16): `scope`, `nullifier`, `profile_commitment`, `result_hash`, `eligible`, `fhe_stage_handle_hash`, `criteria_schema_hash`, plus nine trial criteria fields.  
-Private: Semaphore `secret`, `scope_internal`, profile fields used to recompute commitments.
-
-**Build (WSL recommended on Windows):**
-
-```bash
-npm run build:circuit
-# Runs scripts/compile-circuit.js → nargo compile + bb Keccak Honk →
-#   circuits/eligibility_proof/target/eligibility_proof.json
-#   contracts/HonkVerifier.sol
-#   src/lib/circuits/eligibility_proof.json
-```
-
-**Redeploy verifier on testnet:**
-
-```bash
-npx hardhat compile
-npx hardhat run scripts/deploy-verifier.ts --network sepolia
-# Wire engine: scripts in repo (e.g. finish-wiring.ts) as needed
-```
-
-After circuit or verifier changes: restart `npm run dev` and hard-refresh before **Seal FHE result**.
-
-**Optional:** `npm run test:honk` after `build:circuit` (~3–5 min).
-
----
-
-## Semaphore (anonymous trials)
-
-1. **Identity** — `createIdentity()` / localStorage (`src/lib/semaphore.ts`).
-2. **Group** — commitments from `MedVaultRegistry` `PatientRegistered` events.
-3. **Proof** — `generateAnonymousProof()` for trial scope (trial id → scope field).
-4. **On-chain** — `stageAnonymousApply` → FHE eligibility + consent → `finalize` (wallet or **relayer**).
-
-**Ephemeral Zama FHE permit:** Derived from identity secret so decryption keys stay off the main wallet.
-
-**Nullifier storage:** Per-trial nullifiers in localStorage to prevent double-apply in the UI.
-
-Contracts: `Semaphore` + `MedVaultRegistry` addresses in `addresses.json`.  
-Tests: `test/integration/medvault-registry.test.ts`, `test/integration/eligibility-anonymous.test.ts`.
-
----
-
-## Chainlink Automation
-
-MedVault uses **[Chainlink Automation](https://chain.link/automation)** on **Ethereum Sepolia** so expired clinical protocols finalize **without a sponsor manually clicking “distribute & close.”** This is separate from FHE matching (Zama FHE) and from **milestone** payouts (`TrialMilestoneManager`), which sponsors trigger during an active trial.
-
-### What `MedVaultAutomation.sol` does
-
-| Step | On-chain action |
-|------|-----------------|
-| **`checkUpkeep`** | Scans **active** trial IDs (tracked when `TrialManager` creates/deactivates trials). Returns `true` when `block.timestamp >= trial.endTime` and the trial is not yet finalized. |
-| **`performUpkeep`** (task type `1`) | Marks trial finalized → calls `SponsorIncentiveVault.distribute(trialId)` → calls `TrialManager.deactivateTrial(trialId)`. |
-
-```mermaid
-sequenceDiagram
-    participant CL as Chainlink Automation
-    participant MVA as MedVaultAutomation
-    participant TM as TrialManager
-    participant SIV as SponsorIncentiveVault
-
-    loop Each upkeep round
-        CL->>MVA: checkUpkeep()
-        alt Trial past endTime and not finalized
-            CL->>MVA: performUpkeep(type=1, trialId)
-            MVA->>SIV: distribute(trialId)
-            MVA->>TM: deactivateTrial(trialId)
-        end
-    end
-```
-
-### Security model
-
-- **`onlyForwarder`** — `performUpkeep` accepts calls only from the configured **Chainlink forwarder** (or `owner` for testing).
-- **`setChainlinkForwarder`** — Owner sets the forwarder address from the Chainlink Automation UI after registering upkeep.
-- **Two-step ownership** — Same pattern as other admin contracts (`proposeOwnership` / `acceptOwnership`).
-
-### Related Chainlink usage
-
-| Component | Chainlink feature |
-|-----------|-------------------|
-| `MedVaultAutomation` | **Automation** — expiry finalization |
-| `TrialManager` | **Price feeds** (optional) — ETH/USD style compensation helpers where configured |
-
-### Operator setup (testnet)
-
-1. Deploy stack (`scripts/deploy.ts`, `finish-wiring.ts`) so `MedVaultAutomation` points at `TrialManager` + `SponsorIncentiveVault`.
-2. Register an upkeep in the [Chainlink Automation app](https://automation.chain.link/) for `MedVaultAutomation` on Ethereum Sepolia (`checkUpkeep` / `performUpkeep`).
-3. Set the forwarder on-chain (required — upkeep simulations revert until this is set):
-
-```bash
-CHAINLINK_FORWARDER=0xYourForwarderFromChainlinkUI \
-  npm run deploy:chainlink-forwarder:sepolia
-```
-
-4. Diagnose wiring:
-
-```bash
-npx hardhat run scripts/diagnose-automation-upkeep.ts --network sepolia
-```
-
-### Tests & docs
-
-- Hardhat: `test/unit/medvault-automation.test.ts` (case IDs `MVA-01`–`MVA-06` in [docs/TEST_MATRIX.md](docs/TEST_MATRIX.md))
-- In-app: **Docs → Chainlink Automation** (`/docs/automation`)
-
----
-
-## The Graph subgraph
-
-- **Schema:** `subgraph/schema.graphql` — `Trial`, `Application`, `Consent`, `AnonymousSubmission`, `IncentivePool`, `AuditLog`, …
-- **Network:** `sepolia`
-- **Config:** `subgraph/subgraph.yaml` — includes `DataAccessLog` → `ActionLogged` (redeploy required for audit entities in Studio)
-
-```bash
-npm run sync-abis
-npm run subgraph:prepare          # codegen + build
-npm run subgraph:deploy           # default label from package.json
-# Or near head (smaller sync):
-npm run subgraph:deploy:near-head -- 0.1.3
-```
-
-Set in frontend:
-
-```env
-VITE_SUBGRAPH_URL=https://api.studio.thegraph.com/query/<id>/medvault-final/<version>
-```
-
-**Audit logs in UI:** Hybrid — fast `DetailedActionLogged` `eth_getLogs` + subgraph trial scoping (`src/lib/auditLogFetch.ts`). Full subgraph-only audit needs a Studio deploy that indexes `DataAccessLog`.
-
-**Ops guide:** [docs/SUBGRAPH_SYNC.md](docs/SUBGRAPH_SYNC.md)
-
----
-
-## Gasless relayer
-
-Optional service for **`finalizeAnonymousApplication`** and **`registerPatientViaRelayer`** when the patient should not pay gas or should not link wallet in `tx.from`.
-
-```bash
-cd relayer
-cp .env.example .env
-npm install
-node server.js
-```
-
-Configure `VITE_RELAYER_URL` or use Vite dev proxy to `/relay`.  
-Production example in `.env.example` (Railway).
-
----
-
 ## TypeScript SDK
 
-**`@medvault/sdk`** — TypeScript library for integrators and scripts. **No hosting required** (unlike the relayer). Wraps `@medvault/core` with `MedVaultSDK.create()` and modules for trials, sponsor ops, protocol metadata, and relayer HTTP.
+**`@medvault/sdk`** — published TypeScript library for integrators and scripts. Wraps `@medvault/core` with `MedVaultSDK.create()` and modules for trials, sponsor ops, protocol metadata, and relayer HTTP.
+
+```bash
+npm install @medvault/sdk ethers@6.16.0
+```
 
 | Item | Location |
 |------|----------|
-| Package | `packages/medvault-sdk/` |
+| Package | `packages/medvault-sdk/` · [npm](https://www.npmjs.com/package/@medvault/sdk) |
 | Package README | [packages/medvault-sdk/README.md](packages/medvault-sdk/README.md) |
 | In-app docs | [/docs/mcp/sdk](https://med-vault.xyz/docs/mcp/sdk) |
 
@@ -584,34 +507,25 @@ await sdk.relayer.health();
 
 ---
 
-## MCP server (AI tools)
+## Business model
 
-Local **[Model Context Protocol](https://modelcontextprotocol.io)** server for **developers** and **sponsors** — query trials, matches, audit logs, and run **sponsor transactions** from Cursor, Codex, Claude Code, ChatGPT Desktop, Google Antigravity, or OpenClaw. **Not hosted** on Vercel; each user runs it from the repo. Uses `@medvault/sdk` for config addresses.
+MedVault has **no token**. Revenue is service + protocol fees on real clinical-trial workflows (projections below are illustrative, not guarantees):
 
-| Item | Location |
-|------|----------|
-| Server | `mcp-server/` |
-| SDK | `packages/medvault-sdk/` |
-| Core | `packages/medvault-core/` |
-| Client configs | `config/mcp/` (run `npm run mcp:export-config`) |
-| In-app docs | [/docs/mcp](https://med-vault.xyz/docs/mcp) · [SDK](https://med-vault.xyz/docs/mcp/sdk) |
-| Maintainer guide | [docs/MCP_SERVER.md](docs/MCP_SERVER.md) |
+| Stream | Model | Notes |
+|--------|-------|-------|
+| **Sponsor SaaS** | Per-trial creation + verification fee | Verified sponsors on `SponsorRegistry`; KYC on mainnet |
+| **Protocol fee** | % on `SponsorIncentiveVault` distributions | Framed at escrow settlement — not yet enforced on-chain in v0.1 |
+| **Enterprise** | Private trial deployments + SLA | Dedicated relayer/indexer, custom subgraph |
 
-```bash
-npm run mcp:build          # builds core + sdk + mcp-server
-npm run mcp:export-config
-npm run mcp:smoke          # optional sanity check
-```
+**2026 projections (illustrative):**
 
-Set on your machine (not `VITE_*` unless you export them into the shell before starting your IDE):
+| Scenario | Sponsor SaaS | Protocol fees | Enterprise | Total |
+|----------|-------------|---------------|------------|-------|
+| Conservative | $12K | $5K | $0 | **$17K** |
+| Base | $45K | $25K | $30K | **$100K** |
+| Optimistic | $120K | $80K | $100K | **$300K** |
 
-| Variable | Purpose |
-|----------|---------|
-| `SEPOLIA_RPC_URL` | JSON-RPC for reads/writes |
-| `MEDVAULT_SUBGRAPH_URL` | Same URL as `VITE_SUBGRAPH_URL` |
-| `MCP_PRIVATE_KEY` | Sponsor wallet for write tools only — never commit |
-
-**v1 scope:** read tools + sponsor writes. Patient/FHE flows stay in the browser dApp.
+See [docs/LIGHTPAPER.md](docs/LIGHTPAPER.md) for the full business model and roadmap.
 
 ---
 
@@ -636,9 +550,12 @@ npm run vercel:ship
 ### Contracts (Ethereum Sepolia)
 
 ```bash
-# Examples — see scripts/ for full wiring
-npx hardhat run scripts/deploy.ts --network sepolia
-npx hardhat run scripts/finish-wiring.ts --network sepolia
+# Deploy + schedule timelock wiring
+npm run deploy:sepolia
+npm run deploy:wire:sepolia          # if wiring incomplete
+
+# After ~6 hours
+npm run deploy:wiring:sepolia
 npm run deploy:check-wiring:sepolia
 ```
 
@@ -650,7 +567,7 @@ After deploy, register upkeep in the Chainlink UI and set the forwarder:
 CHAINLINK_FORWARDER=0x... npm run deploy:chainlink-forwarder:sepolia
 ```
 
-See [Chainlink Automation](#chainlink-automation) and `scripts/diagnose-automation-upkeep.ts`.
+See [Chainlink Automation](#chainlink-automation) in the appendix and `scripts/diagnose-automation-upkeep.ts`.
 
 ### Subgraph
 
@@ -681,18 +598,31 @@ See [docs/ANDROID_APK.md](docs/ANDROID_APK.md) and in-app [/docs/mobile/android-
 
 ## Documentation
 
+See also [docs/README.md](docs/README.md) for the full index.
+
 | Resource | Location |
 |----------|----------|
+| **Doc index** | [docs/README.md](docs/README.md) |
+| **Regulatory posture** | [docs/REGULATORY_POSTURE.md](docs/REGULATORY_POSTURE.md) — HIPAA/IRB/GDPR scope boundaries |
+| **External security audit** | [docs/EXTERNAL_AUDIT_SUMMARY.md](docs/EXTERNAL_AUDIT_SUMMARY.md) · [docs/EXTERNAL_AUDIT_SCOPE.md](docs/EXTERNAL_AUDIT_SCOPE.md) |
+| **Audit baseline** | [docs/AUDIT.md](docs/AUDIT.md) · `src/lib/docsStats.ts` |
+| **Local dev & Docker** | [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md) · [docs/DOCKER.md](docs/DOCKER.md) |
+| **Hybrid document storage** | [docs/HYBRID_STORAGE.md](docs/HYBRID_STORAGE.md) |
+| **Atomic flows** | [docs/ATOMIC_FLOWS.md](docs/ATOMIC_FLOWS.md) |
+| **Zero-revelation rewards** | [docs/ZERO_REVELATION_REWARDS.md](docs/ZERO_REVELATION_REWARDS.md) |
+| **IERC7984 cETH** | [docs/ERC7984_CONFIDENTIAL_TOKEN.md](docs/ERC7984_CONFIDENTIAL_TOKEN.md) · [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md) |
+| **Internal specs (SRS, DFD)** | [internal-docs/](internal-docs/README.md) |
 | In-app docs (architecture, **Zama FHE**, FHE primitives, Semaphore, Noir, **Chainlink Automation**, compliance) | `/docs` in the dApp |
 | **TypeScript SDK** | [/docs/mcp/sdk](https://med-vault.xyz/docs/mcp/sdk) · [packages/medvault-sdk/README.md](packages/medvault-sdk/README.md) |
 | **MCP server (AI tools)** | [/docs/mcp](https://med-vault.xyz/docs/mcp) · [docs/MCP_SERVER.md](docs/MCP_SERVER.md) |
 | Testing guide | [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) |
 | Test matrix (case IDs) | [docs/TEST_MATRIX.md](docs/TEST_MATRIX.md) |
+| Timelock wiring (deploy) | [docs/TIMELOCK_WIRING.md](docs/TIMELOCK_WIRING.md) · `/docs/timelock-wiring` |
+| Private withdrawals | [docs/PRIVATE_WITHDRAWALS.md](docs/PRIVATE_WITHDRAWALS.md) · `/docs/private-withdrawals` |
 | Verification snapshot | [docs/VERIFICATION_SNAPSHOT.md](docs/VERIFICATION_SNAPSHOT.md) |
 | Subgraph sync / versions | [docs/SUBGRAPH_SYNC.md](docs/SUBGRAPH_SYNC.md) |
 | **Android demo APK** | [/docs/mobile/android-apk](https://med-vault.xyz/docs/mobile/android-apk) · [docs/ANDROID_APK.md](docs/ANDROID_APK.md) · [docs/MOBILE_ARCHITECTURE.md](docs/MOBILE_ARCHITECTURE.md) |
-| New contracts guide | [docs/NEW_CONTRACTS_GUIDE.md](docs/NEW_CONTRACTS_GUIDE.md) |
-| Phased payouts & audit notes | [docs/UPGRADE_V1.1_PHASED_PAYOUTS_AND_AUDIT.md](docs/UPGRADE_V1.1_PHASED_PAYOUTS_AND_AUDIT.md) |
+| Archived design proposals | [docs/archive/](docs/archive/) (historical — contracts shipped) |
 
 ---
 
@@ -720,9 +650,9 @@ BSD-3-Clause-Clear — see [LICENSE](LICENSE).
 
 ---
 
-## Appendix: augmentation layers
+## Appendix: platform depth (optional layers)
 
-These extend MedVault but are **not required** to demonstrate Zama FHE:
+These extend MedVault but are **not required** to demonstrate Zama FHE core matching.
 
 | Layer | Role |
 |-------|------|
@@ -732,7 +662,66 @@ These extend MedVault but are **not required** to demonstrate Zama FHE:
 | The Graph | Indexing trials, applications, attestation metadata |
 | Gasless relayer | `POST /relay/apply-*`, `POST /relay/register` |
 | `@medvault/sdk` / MCP | Sponsor/dev tooling |
+| AI service | PHI-safe protocol PDF → encrypted criteria extraction |
 | Capacitor Android | Demo APK (WebView) |
+
+### Privacy stack: Semaphore & Noir
+
+**Why not ZK alone?** A Noir/Semaphore proof can attest that *a fixed* patient satisfies *a fixed* criterion at proof time, but it cannot perform **dynamic multi-party matching on changing on-chain state**. Zama FHE computes directly over ciphertext handles in contract storage. Semaphore and Noir are *augmentation* layers on top of FHE, not replacements.
+
+- **Semaphore:** `src/lib/semaphore.ts`, `contracts/MedVaultRegistry.sol` — anonymous apply flow.
+- **Noir + Honk:** dual circuits — `eligibility_plaintext` (25 inputs → `HonkVerifier`) and `eligibility_encrypted` (15 inputs → `HonkVerifierEncrypted`).
+- **Tests:** `test/integration/eligibility-anonymous.test.ts`, `test/unit/attestation-binding.test.ts`.
+
+### Chainlink Automation
+
+`MedVaultAutomation.sol` finalizes expired trials via Chainlink Automation on Sepolia. See in-app **Docs → Chainlink Automation** (`/docs/automation`) and [docs/TIMELOCK_WIRING.md](docs/TIMELOCK_WIRING.md).
+
+### The Graph subgraph
+
+Schema: `subgraph/schema.graphql`. Canonical Studio: slug `medvault`, version `v0.2.0`. Ops: [docs/SUBGRAPH_SYNC.md](docs/SUBGRAPH_SYNC.md).
+
+### Gasless relayer
+
+Optional service for gasless finalize/register. See [relayer/README.md](relayer/README.md).
+
+### MCP server (AI tools)
+
+Local MCP server for sponsors/devs — 31 tools. See [docs/MCP_SERVER.md](docs/MCP_SERVER.md) and [mcp-server/README.md](mcp-server/README.md).
+
+### Noir circuit build
+
+```bash
+npm run build:circuit   # nargo (both circuits) + bb.js → HonkVerifier + HonkVerifierEncrypted
+npm run test:honk       # optional slow pipeline
+```
+
+### Post-audit protocol changes (2026)
+
+Core contract remediations are documented in [SECURITY.md](SECURITY.md) and regression-tested in [`test/unit/remediation-vuln-fixes.test.ts`](test/unit/remediation-vuln-fixes.test.ts). Integrators should note:
+
+| Area | Change |
+|------|--------|
+| Anonymous finalize/cancel | **Trusted relayer required** — patient EOA finalize reverts |
+| Confidential stake | Use **`stakeAndLock`** — `requestConfidentialStake` / `completeConfidentialStake` revert |
+| Patient registration | **`profileSaltCommitment`** required; deterministic salt forbidden on production |
+| Pool enrollment | **Permit holder only** — sponsor cannot `registerAnonymousParticipant` |
+| Document rotation | **`rotateDocument`** + `DocumentLegacyHandleRevoked` (not `updateDocumentKey`) |
+| Large pool payouts | **`distributePartialPaginated`** when participant count > 20 |
+| Reward distribution | **Pull-claim:** `distributePartial*` stages entitlements; patients **`confirmReceipt`** before cETH; then **`claimParticipantRewards`** |
+| Unconfirmed slots | Sponsor **`pruneUnconfirmedSlots`** after **`CHALLENGE_WINDOW`** (7 days) |
+
+See also [docs/ATOMIC_FLOWS.md](docs/ATOMIC_FLOWS.md).
+
+### Known privacy limits (honest disclosure)
+
+- **Plaintext trial criteria** — legacy `createTrial` is Hardhat-only (chainid 31337); Sepolia/production require `createTrialWithEncryptedCriteria`.
+- **Noir–FHE binding** — encrypted-criteria eligibility still trusts the client `decrypted_eligible` witness for attestation; on-chain `FHE.checkSignatures` binding deferred (Zama SDK tooling gap). Mitigated by P0.2 relayer re-decrypt (defense-in-depth) and P2 `FHE.select` payout gating (shipped). See [docs/formal-verification/certora-halmos-results.md](docs/formal-verification/certora-halmos-results.md).
+- **Forward-only revocation** — sponsors who already decrypted hybrid documents may retain AES keys off-chain; epoch gating + `rotateDocument` block new reads; `DocumentLegacyHandleRevoked` enables best-effort IPFS unpin.
+- **Withdrawal staging** — sufficiency comparison is homomorphic (`FHE.select`); no pre-settlement boolean leak. Failed ETH sends escrow to `pendingFailedWithdrawWei` (claim via `claimFailedWithdraw`); failed `completePublicExit` credits the cETH owner, not the stealth recipient.
+- **Registration unlinkability** — direct wallet registration links `tx.from` ↔ commitment in one tx; use relayer path for stronger anonymity.
+
+See [SECURITY.md](SECURITY.md), [docs/PRIVATE_WITHDRAWALS.md](docs/PRIVATE_WITHDRAWALS.md), and [docs/HYBRID_STORAGE.md](docs/HYBRID_STORAGE.md).
 
 ---
 

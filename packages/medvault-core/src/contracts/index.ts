@@ -14,6 +14,7 @@ import StakingManagerAbi from "../../data/abis/StakingManager.json" with { type:
 import MedVaultRegistryAbi from "../../data/abis/MedVaultRegistry.json" with { type: "json" };
 import EncryptedScoreLeaderboardAbi from "../../data/abis/EncryptedScoreLeaderboard.json" with { type: "json" };
 import HonkVerifierAbi from "../../data/abis/HonkVerifier.json" with { type: "json" };
+import HonkVerifierEncryptedAbi from "../../data/abis/HonkVerifierEncrypted.json" with { type: "json" };
 
 export type ContractName =
   | "AnonymousPatientRegistry"
@@ -29,7 +30,8 @@ export type ContractName =
   | "StakingManager"
   | "MedVaultRegistry"
   | "EncryptedScoreLeaderboard"
-  | "HonkVerifier";
+  | "HonkVerifier"
+  | "HonkVerifierEncrypted";
 
 export { addresses };
 
@@ -42,7 +44,7 @@ export const resolveNetworkKey = (chainId?: bigint | number): "sepolia" | "hardh
   const normalized = typeof chainId === "number" ? BigInt(chainId) : chainId;
   if (normalized === 11155111n) return "sepolia";
   if (normalized === 31337n) return "hardhat";
-  return "sepolia";
+  throw new Error(`Unsupported chainId: ${normalized.toString()}`);
 };
 
 const getAbi = (abiData: unknown) => {
@@ -64,6 +66,7 @@ const abiMap: Record<ContractName, unknown> = {
   MedVaultRegistry: MedVaultRegistryAbi,
   EncryptedScoreLeaderboard: EncryptedScoreLeaderboardAbi,
   HonkVerifier: HonkVerifierAbi,
+  HonkVerifierEncrypted: HonkVerifierEncryptedAbi,
 };
 
 export const getContract = (
@@ -84,6 +87,9 @@ export const getContract = (
   const address = networkAddresses[contractName];
   if (!address) {
     throw new Error(`Address for ${contractName} not found on network: ${network}`);
+  }
+  if (!ethers.isAddress(address) || address === ethers.ZeroAddress) {
+    throw new Error(`Invalid or zero address for ${contractName} on network: ${network}`);
   }
   const abi = getAbi(abiMap[contractName]);
   return new ethers.Contract(address, abi as ethers.InterfaceAbi, signerOrProvider);

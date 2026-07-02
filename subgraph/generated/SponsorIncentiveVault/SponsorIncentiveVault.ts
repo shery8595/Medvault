@@ -10,54 +10,6 @@ import {
   BigInt,
 } from "@graphprotocol/graph-ts";
 
-export class AnonymousParticipantRegistered extends ethereum.Event {
-  get params(): AnonymousParticipantRegistered__Params {
-    return new AnonymousParticipantRegistered__Params(this);
-  }
-}
-
-export class AnonymousParticipantRegistered__Params {
-  _event: AnonymousParticipantRegistered;
-
-  constructor(event: AnonymousParticipantRegistered) {
-    this._event = event;
-  }
-
-  get trialId(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get nullifier(): BigInt {
-    return this._event.parameters[1].value.toBigInt();
-  }
-}
-
-export class ClaimInitiated extends ethereum.Event {
-  get params(): ClaimInitiated__Params {
-    return new ClaimInitiated__Params(this);
-  }
-}
-
-export class ClaimInitiated__Params {
-  _event: ClaimInitiated;
-
-  constructor(event: ClaimInitiated) {
-    this._event = event;
-  }
-
-  get trialId(): BigInt {
-    return this._event.parameters[0].value.toBigInt();
-  }
-
-  get permitHolder(): Address {
-    return this._event.parameters[1].value.toAddress();
-  }
-
-  get sufficientHandle(): Bytes {
-    return this._event.parameters[2].value.toBytes();
-  }
-}
-
 export class EIP712DomainChanged extends ethereum.Event {
   get params(): EIP712DomainChanged__Params {
     return new EIP712DomainChanged__Params(this);
@@ -91,6 +43,28 @@ export class IncentiveFunded__Params {
 
   get sponsor(): Address {
     return this._event.parameters[1].value.toAddress();
+  }
+}
+
+export class MilestoneDistributedPublicSignaled extends ethereum.Event {
+  get params(): MilestoneDistributedPublicSignaled__Params {
+    return new MilestoneDistributedPublicSignaled__Params(this);
+  }
+}
+
+export class MilestoneDistributedPublicSignaled__Params {
+  _event: MilestoneDistributedPublicSignaled;
+
+  constructor(event: MilestoneDistributedPublicSignaled) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get milestoneIndex(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
   }
 }
 
@@ -152,6 +126,36 @@ export class OwnershipProposed__Params {
   }
 }
 
+export class ParticipantCreditFailed extends ethereum.Event {
+  get params(): ParticipantCreditFailed__Params {
+    return new ParticipantCreditFailed__Params(this);
+  }
+}
+
+export class ParticipantCreditFailed__Params {
+  _event: ParticipantCreditFailed;
+
+  constructor(event: ParticipantCreditFailed) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get milestoneIndex(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get participant(): Address {
+    return this._event.parameters[2].value.toAddress();
+  }
+
+  get reason(): Bytes {
+    return this._event.parameters[3].value.toBytes();
+  }
+}
+
 export class RewardDustSkipped extends ethereum.Event {
   get params(): RewardDustSkipped__Params {
     return new RewardDustSkipped__Params(this);
@@ -184,6 +188,42 @@ export class RewardsDistributed__Params {
   _event: RewardsDistributed;
 
   constructor(event: RewardsDistributed) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+}
+
+export class StrandedCethRecovered extends ethereum.Event {
+  get params(): StrandedCethRecovered__Params {
+    return new StrandedCethRecovered__Params(this);
+  }
+}
+
+export class StrandedCethRecovered__Params {
+  _event: StrandedCethRecovered;
+
+  constructor(event: StrandedCethRecovered) {
+    this._event = event;
+  }
+
+  get recipient(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+}
+
+export class TrialPoolSizeMadePublic extends ethereum.Event {
+  get params(): TrialPoolSizeMadePublic__Params {
+    return new TrialPoolSizeMadePublic__Params(this);
+  }
+}
+
+export class TrialPoolSizeMadePublic__Params {
+  _event: TrialPoolSizeMadePublic;
+
+  constructor(event: TrialPoolSizeMadePublic) {
     this._event = event;
   }
 
@@ -265,6 +305,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return new SponsorIncentiveVault("SponsorIncentiveVault", address);
   }
 
+  CHALLENGE_WINDOW(): BigInt {
+    let result = super.call(
+      "CHALLENGE_WINDOW",
+      "CHALLENGE_WINDOW():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_CHALLENGE_WINDOW(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "CHALLENGE_WINDOW",
+      "CHALLENGE_WINDOW():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   DISTRIBUTE_BATCH_SIZE(): BigInt {
     let result = super.call(
       "DISTRIBUTE_BATCH_SIZE",
@@ -311,6 +374,52 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
+  PARTICIPANT_CLAIM_WINDOW(): BigInt {
+    let result = super.call(
+      "PARTICIPANT_CLAIM_WINDOW",
+      "PARTICIPANT_CLAIM_WINDOW():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_PARTICIPANT_CLAIM_WINDOW(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "PARTICIPANT_CLAIM_WINDOW",
+      "PARTICIPANT_CLAIM_WINDOW():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   RECLAIM_GRACE_PERIOD(): BigInt {
     let result = super.call(
       "RECLAIM_GRACE_PERIOD",
@@ -326,6 +435,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       "RECLAIM_GRACE_PERIOD",
       "RECLAIM_GRACE_PERIOD():(uint256)",
       [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  abandonedReclaimOpenedAt(param0: BigInt): BigInt {
+    let result = super.call(
+      "abandonedReclaimOpenedAt",
+      "abandonedReclaimOpenedAt(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_abandonedReclaimOpenedAt(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "abandonedReclaimOpenedAt",
+      "abandonedReclaimOpenedAt(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -355,6 +487,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  automationContractChangeEta(): BigInt {
+    let result = super.call(
+      "automationContractChangeEta",
+      "automationContractChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_automationContractChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "automationContractChangeEta",
+      "automationContractChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   cETH(): Address {
@@ -393,6 +548,52 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  confidentialFundingAccountingReady(): boolean {
+    let result = super.call(
+      "confidentialFundingAccountingReady",
+      "confidentialFundingAccountingReady():(bool)",
+      [],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_confidentialFundingAccountingReady(): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "confidentialFundingAccountingReady",
+      "confidentialFundingAccountingReady():(bool)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  confidentialFundingEnabled(): boolean {
+    let result = super.call(
+      "confidentialFundingEnabled",
+      "confidentialFundingEnabled():(bool)",
+      [],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_confidentialFundingEnabled(): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "confidentialFundingEnabled",
+      "confidentialFundingEnabled():(bool)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
   confidentialProtocolId(): BigInt {
     let result = super.call(
       "confidentialProtocolId",
@@ -408,6 +609,84 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       "confidentialProtocolId",
       "confidentialProtocolId():(uint256)",
       [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  confirmedPayout(param0: BigInt, param1: Address, param2: BigInt): boolean {
+    let result = super.call(
+      "confirmedPayout",
+      "confirmedPayout(uint256,address,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromAddress(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_confirmedPayout(
+    param0: BigInt,
+    param1: Address,
+    param2: BigInt,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "confirmedPayout",
+      "confirmedPayout(uint256,address,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromAddress(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  creditParticipantRewardForBatch(
+    trialId: BigInt,
+    milestoneIndex: BigInt,
+    participant: Address,
+    amountWei: BigInt,
+  ): BigInt {
+    let result = super.call(
+      "creditParticipantRewardForBatch",
+      "creditParticipantRewardForBatch(uint256,uint256,address,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(trialId),
+        ethereum.Value.fromUnsignedBigInt(milestoneIndex),
+        ethereum.Value.fromAddress(participant),
+        ethereum.Value.fromUnsignedBigInt(amountWei),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_creditParticipantRewardForBatch(
+    trialId: BigInt,
+    milestoneIndex: BigInt,
+    participant: Address,
+    amountWei: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "creditParticipantRewardForBatch",
+      "creditParticipantRewardForBatch(uint256,uint256,address,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(trialId),
+        ethereum.Value.fromUnsignedBigInt(milestoneIndex),
+        ethereum.Value.fromAddress(participant),
+        ethereum.Value.fromUnsignedBigInt(amountWei),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -433,6 +712,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  dataAccessLogChangeEta(): BigInt {
+    let result = super.call(
+      "dataAccessLogChangeEta",
+      "dataAccessLogChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_dataAccessLogChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "dataAccessLogChangeEta",
+      "dataAccessLogChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   eip712Domain(): SponsorIncentiveVault__eip712DomainResult {
@@ -499,6 +801,109 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  encodeConfidentialFundAndMilestonesData(
+    _trialId: BigInt,
+    _names: Array<string>,
+    _weights: Array<i32>,
+    _deadlines: Array<BigInt>,
+  ): Bytes {
+    let result = super.call(
+      "encodeConfidentialFundAndMilestonesData",
+      "encodeConfidentialFundAndMilestonesData(uint256,string[],uint16[],uint256[]):(bytes)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromStringArray(_names),
+        ethereum.Value.fromI32Array(_weights),
+        ethereum.Value.fromUnsignedBigIntArray(_deadlines),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_encodeConfidentialFundAndMilestonesData(
+    _trialId: BigInt,
+    _names: Array<string>,
+    _weights: Array<i32>,
+    _deadlines: Array<BigInt>,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "encodeConfidentialFundAndMilestonesData",
+      "encodeConfidentialFundAndMilestonesData(uint256,string[],uint16[],uint256[]):(bytes)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromStringArray(_names),
+        ethereum.Value.fromI32Array(_weights),
+        ethereum.Value.fromUnsignedBigIntArray(_deadlines),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  entitlementStaged(param0: BigInt, param1: Address, param2: BigInt): boolean {
+    let result = super.call(
+      "entitlementStaged",
+      "entitlementStaged(uint256,address,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromAddress(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
+    );
+
+    return result[0].toBoolean();
+  }
+
+  try_entitlementStaged(
+    param0: BigInt,
+    param1: Address,
+    param2: BigInt,
+  ): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "entitlementStaged",
+      "entitlementStaged(uint256,address,uint256):(bool)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromAddress(param1),
+        ethereum.Value.fromUnsignedBigInt(param2),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  getConfirmedDistributedWei(_trialId: BigInt): BigInt {
+    let result = super.call(
+      "getConfirmedDistributedWei",
+      "getConfirmedDistributedWei(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_getConfirmedDistributedWei(
+    _trialId: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "getConfirmedDistributedWei",
+      "getConfirmedDistributedWei(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   getEncryptedPoolSize(_trialId: BigInt): Bytes {
     let result = super.call(
       "getEncryptedPoolSize",
@@ -537,6 +942,84 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
       "getParticipantCount",
       "getParticipantCount(uint256):(uint256)",
       [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  getStagedEntitlement(
+    _trialId: BigInt,
+    _participant: Address,
+    _milestoneIndex: BigInt,
+  ): Bytes {
+    let result = super.call(
+      "getStagedEntitlement",
+      "getStagedEntitlement(uint256,address,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromAddress(_participant),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_getStagedEntitlement(
+    _trialId: BigInt,
+    _participant: Address,
+    _milestoneIndex: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "getStagedEntitlement",
+      "getStagedEntitlement(uint256,address,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromAddress(_participant),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
+  }
+
+  getStagedShareWei(
+    _trialId: BigInt,
+    _participant: Address,
+    _milestoneIndex: BigInt,
+  ): BigInt {
+    let result = super.call(
+      "getStagedShareWei",
+      "getStagedShareWei(uint256,address,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromAddress(_participant),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_getStagedShareWei(
+    _trialId: BigInt,
+    _participant: Address,
+    _milestoneIndex: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "getStagedShareWei",
+      "getStagedShareWei(uint256,address,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromAddress(_participant),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
     );
     if (result.reverted) {
       return new ethereum.CallResult();
@@ -638,6 +1121,38 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  lastPaidParticipantIndex(param0: BigInt, param1: BigInt): BigInt {
+    let result = super.call(
+      "lastPaidParticipantIndex",
+      "lastPaidParticipantIndex(uint256,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_lastPaidParticipantIndex(
+    param0: BigInt,
+    param1: BigInt,
+  ): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "lastPaidParticipantIndex",
+      "lastPaidParticipantIndex(uint256,uint256):(uint256)",
+      [
+        ethereum.Value.fromUnsignedBigInt(param0),
+        ethereum.Value.fromUnsignedBigInt(param1),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   lastProcessedIndex(param0: BigInt, param1: BigInt): BigInt {
@@ -759,6 +1274,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  milestoneManagerChangeEta(): BigInt {
+    let result = super.call(
+      "milestoneManagerChangeEta",
+      "milestoneManagerChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_milestoneManagerChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "milestoneManagerChangeEta",
+      "milestoneManagerChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   milestoneRemainderPaid(param0: BigInt, param1: BigInt): boolean {
     let result = super.call(
       "milestoneRemainderPaid",
@@ -789,6 +1327,49 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  onConfidentialTransferReceived(
+    param0: Address,
+    from: Address,
+    amount: Bytes,
+    data: Bytes,
+  ): Bytes {
+    let result = super.call(
+      "onConfidentialTransferReceived",
+      "onConfidentialTransferReceived(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(param0),
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_onConfidentialTransferReceived(
+    param0: Address,
+    from: Address,
+    amount: Bytes,
+    data: Bytes,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "onConfidentialTransferReceived",
+      "onConfidentialTransferReceived(address,address,bytes32,bytes):(bytes32)",
+      [
+        ethereum.Value.fromAddress(param0),
+        ethereum.Value.fromAddress(from),
+        ethereum.Value.fromFixedBytes(amount),
+        ethereum.Value.fromBytes(data),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   owner(): Address {
@@ -877,6 +1458,75 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  pendingAutomationContract(): Address {
+    let result = super.call(
+      "pendingAutomationContract",
+      "pendingAutomationContract():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingAutomationContract(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingAutomationContract",
+      "pendingAutomationContract():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingDataAccessLog(): Address {
+    let result = super.call(
+      "pendingDataAccessLog",
+      "pendingDataAccessLog():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingDataAccessLog(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingDataAccessLog",
+      "pendingDataAccessLog():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingMilestoneManager(): Address {
+    let result = super.call(
+      "pendingMilestoneManager",
+      "pendingMilestoneManager():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingMilestoneManager(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingMilestoneManager",
+      "pendingMilestoneManager():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   pendingOwner(): Address {
     let result = super.call("pendingOwner", "pendingOwner():(address)", []);
 
@@ -890,6 +1540,107 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingReclaimRecipient(param0: BigInt): Address {
+    let result = super.call(
+      "pendingReclaimRecipient",
+      "pendingReclaimRecipient(uint256):(address)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingReclaimRecipient(param0: BigInt): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingReclaimRecipient",
+      "pendingReclaimRecipient(uint256):(address)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingReclaimWei(param0: BigInt): BigInt {
+    let result = super.call(
+      "pendingReclaimWei",
+      "pendingReclaimWei(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_pendingReclaimWei(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "pendingReclaimWei",
+      "pendingReclaimWei(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  pendingSponsorRegistry(): Address {
+    let result = super.call(
+      "pendingSponsorRegistry",
+      "pendingSponsorRegistry():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingSponsorRegistry(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingSponsorRegistry",
+      "pendingSponsorRegistry():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  prepareEntitlementProof(_trialId: BigInt, _milestoneIndex: BigInt): Bytes {
+    let result = super.call(
+      "prepareEntitlementProof",
+      "prepareEntitlementProof(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_prepareEntitlementProof(
+    _trialId: BigInt,
+    _milestoneIndex: BigInt,
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "prepareEntitlementProof",
+      "prepareEntitlementProof(uint256,uint256):(bytes32)",
+      [
+        ethereum.Value.fromUnsignedBigInt(_trialId),
+        ethereum.Value.fromUnsignedBigInt(_milestoneIndex),
+      ],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   reclaimFinalized(param0: BigInt): boolean {
@@ -936,6 +1687,29 @@ export class SponsorIncentiveVault extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  sponsorRegistryChangeEta(): BigInt {
+    let result = super.call(
+      "sponsorRegistryChangeEta",
+      "sponsorRegistryChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_sponsorRegistryChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "sponsorRegistryChangeEta",
+      "sponsorRegistryChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   trialManager(): Address {
@@ -1018,6 +1792,110 @@ export class AcceptOwnershipCall__Outputs {
   }
 }
 
+export class ApplyAutomationContractCall extends ethereum.Call {
+  get inputs(): ApplyAutomationContractCall__Inputs {
+    return new ApplyAutomationContractCall__Inputs(this);
+  }
+
+  get outputs(): ApplyAutomationContractCall__Outputs {
+    return new ApplyAutomationContractCall__Outputs(this);
+  }
+}
+
+export class ApplyAutomationContractCall__Inputs {
+  _call: ApplyAutomationContractCall;
+
+  constructor(call: ApplyAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyAutomationContractCall__Outputs {
+  _call: ApplyAutomationContractCall;
+
+  constructor(call: ApplyAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyDataAccessLogCall extends ethereum.Call {
+  get inputs(): ApplyDataAccessLogCall__Inputs {
+    return new ApplyDataAccessLogCall__Inputs(this);
+  }
+
+  get outputs(): ApplyDataAccessLogCall__Outputs {
+    return new ApplyDataAccessLogCall__Outputs(this);
+  }
+}
+
+export class ApplyDataAccessLogCall__Inputs {
+  _call: ApplyDataAccessLogCall;
+
+  constructor(call: ApplyDataAccessLogCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyDataAccessLogCall__Outputs {
+  _call: ApplyDataAccessLogCall;
+
+  constructor(call: ApplyDataAccessLogCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyMilestoneManagerCall extends ethereum.Call {
+  get inputs(): ApplyMilestoneManagerCall__Inputs {
+    return new ApplyMilestoneManagerCall__Inputs(this);
+  }
+
+  get outputs(): ApplyMilestoneManagerCall__Outputs {
+    return new ApplyMilestoneManagerCall__Outputs(this);
+  }
+}
+
+export class ApplyMilestoneManagerCall__Inputs {
+  _call: ApplyMilestoneManagerCall;
+
+  constructor(call: ApplyMilestoneManagerCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyMilestoneManagerCall__Outputs {
+  _call: ApplyMilestoneManagerCall;
+
+  constructor(call: ApplyMilestoneManagerCall) {
+    this._call = call;
+  }
+}
+
+export class ApplySponsorRegistryCall extends ethereum.Call {
+  get inputs(): ApplySponsorRegistryCall__Inputs {
+    return new ApplySponsorRegistryCall__Inputs(this);
+  }
+
+  get outputs(): ApplySponsorRegistryCall__Outputs {
+    return new ApplySponsorRegistryCall__Outputs(this);
+  }
+}
+
+export class ApplySponsorRegistryCall__Inputs {
+  _call: ApplySponsorRegistryCall;
+
+  constructor(call: ApplySponsorRegistryCall) {
+    this._call = call;
+  }
+}
+
+export class ApplySponsorRegistryCall__Outputs {
+  _call: ApplySponsorRegistryCall;
+
+  constructor(call: ApplySponsorRegistryCall) {
+    this._call = call;
+  }
+}
+
 export class ClaimParticipantRewardsCall extends ethereum.Call {
   get inputs(): ClaimParticipantRewardsCall__Inputs {
     return new ClaimParticipantRewardsCall__Inputs(this);
@@ -1053,6 +1931,18 @@ export class ClaimParticipantRewardsCall__Inputs {
 
   get inputProof(): Bytes {
     return this._call.inputValues[4].value.toBytes();
+  }
+
+  get _withdrawToNonce(): BigInt {
+    return this._call.inputValues[5].value.toBigInt();
+  }
+
+  get _withdrawToDeadline(): BigInt {
+    return this._call.inputValues[6].value.toBigInt();
+  }
+
+  get _withdrawToSignature(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
   }
 }
 
@@ -1101,24 +1991,40 @@ export class ClaimParticipantRewardsForCall__Inputs {
     return this._call.inputValues[4].value.toBigInt();
   }
 
-  get encryptedUnits(): Bytes {
+  get _encryptedAmountCommitment(): Bytes {
     return this._call.inputValues[5].value.toBytes();
   }
 
-  get inputProof(): Bytes {
+  get encryptedUnits(): Bytes {
     return this._call.inputValues[6].value.toBytes();
   }
 
-  get _nonce(): BigInt {
-    return this._call.inputValues[7].value.toBigInt();
+  get inputProof(): Bytes {
+    return this._call.inputValues[7].value.toBytes();
   }
 
-  get _deadline(): BigInt {
+  get _nonce(): BigInt {
     return this._call.inputValues[8].value.toBigInt();
   }
 
+  get _deadline(): BigInt {
+    return this._call.inputValues[9].value.toBigInt();
+  }
+
   get _signature(): Bytes {
-    return this._call.inputValues[9].value.toBytes();
+    return this._call.inputValues[10].value.toBytes();
+  }
+
+  get _withdrawToNonce(): BigInt {
+    return this._call.inputValues[11].value.toBigInt();
+  }
+
+  get _withdrawToDeadline(): BigInt {
+    return this._call.inputValues[12].value.toBigInt();
+  }
+
+  get _withdrawToSignature(): Bytes {
+    return this._call.inputValues[13].value.toBytes();
   }
 }
 
@@ -1127,6 +2033,124 @@ export class ClaimParticipantRewardsForCall__Outputs {
 
   constructor(call: ClaimParticipantRewardsForCall) {
     this._call = call;
+  }
+}
+
+export class ClaimReclaimedCall extends ethereum.Call {
+  get inputs(): ClaimReclaimedCall__Inputs {
+    return new ClaimReclaimedCall__Inputs(this);
+  }
+
+  get outputs(): ClaimReclaimedCall__Outputs {
+    return new ClaimReclaimedCall__Outputs(this);
+  }
+}
+
+export class ClaimReclaimedCall__Inputs {
+  _call: ClaimReclaimedCall;
+
+  constructor(call: ClaimReclaimedCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class ClaimReclaimedCall__Outputs {
+  _call: ClaimReclaimedCall;
+
+  constructor(call: ClaimReclaimedCall) {
+    this._call = call;
+  }
+}
+
+export class ConfirmReceiptCall extends ethereum.Call {
+  get inputs(): ConfirmReceiptCall__Inputs {
+    return new ConfirmReceiptCall__Inputs(this);
+  }
+
+  get outputs(): ConfirmReceiptCall__Outputs {
+    return new ConfirmReceiptCall__Outputs(this);
+  }
+}
+
+export class ConfirmReceiptCall__Inputs {
+  _call: ConfirmReceiptCall;
+
+  constructor(call: ConfirmReceiptCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get cleartexts(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get decryptionProof(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class ConfirmReceiptCall__Outputs {
+  _call: ConfirmReceiptCall;
+
+  constructor(call: ConfirmReceiptCall) {
+    this._call = call;
+  }
+}
+
+export class CreditParticipantRewardForBatchCall extends ethereum.Call {
+  get inputs(): CreditParticipantRewardForBatchCall__Inputs {
+    return new CreditParticipantRewardForBatchCall__Inputs(this);
+  }
+
+  get outputs(): CreditParticipantRewardForBatchCall__Outputs {
+    return new CreditParticipantRewardForBatchCall__Outputs(this);
+  }
+}
+
+export class CreditParticipantRewardForBatchCall__Inputs {
+  _call: CreditParticipantRewardForBatchCall;
+
+  constructor(call: CreditParticipantRewardForBatchCall) {
+    this._call = call;
+  }
+
+  get trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get participant(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get amountWei(): BigInt {
+    return this._call.inputValues[3].value.toBigInt();
+  }
+}
+
+export class CreditParticipantRewardForBatchCall__Outputs {
+  _call: CreditParticipantRewardForBatchCall;
+
+  constructor(call: CreditParticipantRewardForBatchCall) {
+    this._call = call;
+  }
+
+  get creditedWei(): BigInt {
+    return this._call.outputValues[0].value.toBigInt();
   }
 }
 
@@ -1274,6 +2298,48 @@ export class DistributePartialPaginatedCall__Outputs {
   }
 }
 
+export class EmitParticipantCreditFailedCall extends ethereum.Call {
+  get inputs(): EmitParticipantCreditFailedCall__Inputs {
+    return new EmitParticipantCreditFailedCall__Inputs(this);
+  }
+
+  get outputs(): EmitParticipantCreditFailedCall__Outputs {
+    return new EmitParticipantCreditFailedCall__Outputs(this);
+  }
+}
+
+export class EmitParticipantCreditFailedCall__Inputs {
+  _call: EmitParticipantCreditFailedCall;
+
+  constructor(call: EmitParticipantCreditFailedCall) {
+    this._call = call;
+  }
+
+  get trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+
+  get participant(): Address {
+    return this._call.inputValues[2].value.toAddress();
+  }
+
+  get reason(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class EmitParticipantCreditFailedCall__Outputs {
+  _call: EmitParticipantCreditFailedCall;
+
+  constructor(call: EmitParticipantCreditFailedCall) {
+    this._call = call;
+  }
+}
+
 export class FundTrialCall extends ethereum.Call {
   get inputs(): FundTrialCall__Inputs {
     return new FundTrialCall__Inputs(this);
@@ -1304,6 +2370,162 @@ export class FundTrialCall__Outputs {
   }
 }
 
+export class FundTrialAndSetMilestonesCall extends ethereum.Call {
+  get inputs(): FundTrialAndSetMilestonesCall__Inputs {
+    return new FundTrialAndSetMilestonesCall__Inputs(this);
+  }
+
+  get outputs(): FundTrialAndSetMilestonesCall__Outputs {
+    return new FundTrialAndSetMilestonesCall__Outputs(this);
+  }
+}
+
+export class FundTrialAndSetMilestonesCall__Inputs {
+  _call: FundTrialAndSetMilestonesCall;
+
+  constructor(call: FundTrialAndSetMilestonesCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _names(): Array<string> {
+    return this._call.inputValues[1].value.toStringArray();
+  }
+
+  get _weights(): Array<i32> {
+    return this._call.inputValues[2].value.toI32Array();
+  }
+
+  get _deadlines(): Array<BigInt> {
+    return this._call.inputValues[3].value.toBigIntArray();
+  }
+}
+
+export class FundTrialAndSetMilestonesCall__Outputs {
+  _call: FundTrialAndSetMilestonesCall;
+
+  constructor(call: FundTrialAndSetMilestonesCall) {
+    this._call = call;
+  }
+}
+
+export class MakeEncryptedPoolSizePublicCall extends ethereum.Call {
+  get inputs(): MakeEncryptedPoolSizePublicCall__Inputs {
+    return new MakeEncryptedPoolSizePublicCall__Inputs(this);
+  }
+
+  get outputs(): MakeEncryptedPoolSizePublicCall__Outputs {
+    return new MakeEncryptedPoolSizePublicCall__Outputs(this);
+  }
+}
+
+export class MakeEncryptedPoolSizePublicCall__Inputs {
+  _call: MakeEncryptedPoolSizePublicCall;
+
+  constructor(call: MakeEncryptedPoolSizePublicCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+}
+
+export class MakeEncryptedPoolSizePublicCall__Outputs {
+  _call: MakeEncryptedPoolSizePublicCall;
+
+  constructor(call: MakeEncryptedPoolSizePublicCall) {
+    this._call = call;
+  }
+}
+
+export class OnConfidentialTransferReceivedCall extends ethereum.Call {
+  get inputs(): OnConfidentialTransferReceivedCall__Inputs {
+    return new OnConfidentialTransferReceivedCall__Inputs(this);
+  }
+
+  get outputs(): OnConfidentialTransferReceivedCall__Outputs {
+    return new OnConfidentialTransferReceivedCall__Outputs(this);
+  }
+}
+
+export class OnConfidentialTransferReceivedCall__Inputs {
+  _call: OnConfidentialTransferReceivedCall;
+
+  constructor(call: OnConfidentialTransferReceivedCall) {
+    this._call = call;
+  }
+
+  get value0(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+
+  get from(): Address {
+    return this._call.inputValues[1].value.toAddress();
+  }
+
+  get amount(): Bytes {
+    return this._call.inputValues[2].value.toBytes();
+  }
+
+  get data(): Bytes {
+    return this._call.inputValues[3].value.toBytes();
+  }
+}
+
+export class OnConfidentialTransferReceivedCall__Outputs {
+  _call: OnConfidentialTransferReceivedCall;
+
+  constructor(call: OnConfidentialTransferReceivedCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
+export class PrepareEntitlementProofCall extends ethereum.Call {
+  get inputs(): PrepareEntitlementProofCall__Inputs {
+    return new PrepareEntitlementProofCall__Inputs(this);
+  }
+
+  get outputs(): PrepareEntitlementProofCall__Outputs {
+    return new PrepareEntitlementProofCall__Outputs(this);
+  }
+}
+
+export class PrepareEntitlementProofCall__Inputs {
+  _call: PrepareEntitlementProofCall;
+
+  constructor(call: PrepareEntitlementProofCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+}
+
+export class PrepareEntitlementProofCall__Outputs {
+  _call: PrepareEntitlementProofCall;
+
+  constructor(call: PrepareEntitlementProofCall) {
+    this._call = call;
+  }
+
+  get value0(): Bytes {
+    return this._call.outputValues[0].value.toBytes();
+  }
+}
+
 export class ProposeOwnershipCall extends ethereum.Call {
   get inputs(): ProposeOwnershipCall__Inputs {
     return new ProposeOwnershipCall__Inputs(this);
@@ -1330,6 +2552,40 @@ export class ProposeOwnershipCall__Outputs {
   _call: ProposeOwnershipCall;
 
   constructor(call: ProposeOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class PruneUnconfirmedSlotsCall extends ethereum.Call {
+  get inputs(): PruneUnconfirmedSlotsCall__Inputs {
+    return new PruneUnconfirmedSlotsCall__Inputs(this);
+  }
+
+  get outputs(): PruneUnconfirmedSlotsCall__Outputs {
+    return new PruneUnconfirmedSlotsCall__Outputs(this);
+  }
+}
+
+export class PruneUnconfirmedSlotsCall__Inputs {
+  _call: PruneUnconfirmedSlotsCall;
+
+  constructor(call: PruneUnconfirmedSlotsCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+}
+
+export class PruneUnconfirmedSlotsCall__Outputs {
+  _call: PruneUnconfirmedSlotsCall;
+
+  constructor(call: PruneUnconfirmedSlotsCall) {
     this._call = call;
   }
 }
@@ -1390,6 +2646,36 @@ export class ReclaimUndistributedCall__Outputs {
   _call: ReclaimUndistributedCall;
 
   constructor(call: ReclaimUndistributedCall) {
+    this._call = call;
+  }
+}
+
+export class RecoverStrandedCethCall extends ethereum.Call {
+  get inputs(): RecoverStrandedCethCall__Inputs {
+    return new RecoverStrandedCethCall__Inputs(this);
+  }
+
+  get outputs(): RecoverStrandedCethCall__Outputs {
+    return new RecoverStrandedCethCall__Outputs(this);
+  }
+}
+
+export class RecoverStrandedCethCall__Inputs {
+  _call: RecoverStrandedCethCall;
+
+  constructor(call: RecoverStrandedCethCall) {
+    this._call = call;
+  }
+
+  get _recipient(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class RecoverStrandedCethCall__Outputs {
+  _call: RecoverStrandedCethCall;
+
+  constructor(call: RecoverStrandedCethCall) {
     this._call = call;
   }
 }
@@ -1542,6 +2828,126 @@ export class ResetPaginationStateCall__Outputs {
   }
 }
 
+export class ScheduleAutomationContractCall extends ethereum.Call {
+  get inputs(): ScheduleAutomationContractCall__Inputs {
+    return new ScheduleAutomationContractCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleAutomationContractCall__Outputs {
+    return new ScheduleAutomationContractCall__Outputs(this);
+  }
+}
+
+export class ScheduleAutomationContractCall__Inputs {
+  _call: ScheduleAutomationContractCall;
+
+  constructor(call: ScheduleAutomationContractCall) {
+    this._call = call;
+  }
+
+  get _automation(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleAutomationContractCall__Outputs {
+  _call: ScheduleAutomationContractCall;
+
+  constructor(call: ScheduleAutomationContractCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleDataAccessLogCall extends ethereum.Call {
+  get inputs(): ScheduleDataAccessLogCall__Inputs {
+    return new ScheduleDataAccessLogCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleDataAccessLogCall__Outputs {
+    return new ScheduleDataAccessLogCall__Outputs(this);
+  }
+}
+
+export class ScheduleDataAccessLogCall__Inputs {
+  _call: ScheduleDataAccessLogCall;
+
+  constructor(call: ScheduleDataAccessLogCall) {
+    this._call = call;
+  }
+
+  get _dataAccessLog(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleDataAccessLogCall__Outputs {
+  _call: ScheduleDataAccessLogCall;
+
+  constructor(call: ScheduleDataAccessLogCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleMilestoneManagerCall extends ethereum.Call {
+  get inputs(): ScheduleMilestoneManagerCall__Inputs {
+    return new ScheduleMilestoneManagerCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleMilestoneManagerCall__Outputs {
+    return new ScheduleMilestoneManagerCall__Outputs(this);
+  }
+}
+
+export class ScheduleMilestoneManagerCall__Inputs {
+  _call: ScheduleMilestoneManagerCall;
+
+  constructor(call: ScheduleMilestoneManagerCall) {
+    this._call = call;
+  }
+
+  get _milestoneManager(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleMilestoneManagerCall__Outputs {
+  _call: ScheduleMilestoneManagerCall;
+
+  constructor(call: ScheduleMilestoneManagerCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleSponsorRegistryCall extends ethereum.Call {
+  get inputs(): ScheduleSponsorRegistryCall__Inputs {
+    return new ScheduleSponsorRegistryCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleSponsorRegistryCall__Outputs {
+    return new ScheduleSponsorRegistryCall__Outputs(this);
+  }
+}
+
+export class ScheduleSponsorRegistryCall__Inputs {
+  _call: ScheduleSponsorRegistryCall;
+
+  constructor(call: ScheduleSponsorRegistryCall) {
+    this._call = call;
+  }
+
+  get _registry(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleSponsorRegistryCall__Outputs {
+  _call: ScheduleSponsorRegistryCall;
+
+  constructor(call: ScheduleSponsorRegistryCall) {
+    this._call = call;
+  }
+}
+
 export class SetAutomationContractCall extends ethereum.Call {
   get inputs(): SetAutomationContractCall__Inputs {
     return new SetAutomationContractCall__Inputs(this);
@@ -1658,6 +3064,40 @@ export class SetSponsorRegistryCall__Outputs {
   _call: SetSponsorRegistryCall;
 
   constructor(call: SetSponsorRegistryCall) {
+    this._call = call;
+  }
+}
+
+export class SignalMilestoneDistributedCall extends ethereum.Call {
+  get inputs(): SignalMilestoneDistributedCall__Inputs {
+    return new SignalMilestoneDistributedCall__Inputs(this);
+  }
+
+  get outputs(): SignalMilestoneDistributedCall__Outputs {
+    return new SignalMilestoneDistributedCall__Outputs(this);
+  }
+}
+
+export class SignalMilestoneDistributedCall__Inputs {
+  _call: SignalMilestoneDistributedCall;
+
+  constructor(call: SignalMilestoneDistributedCall) {
+    this._call = call;
+  }
+
+  get _trialId(): BigInt {
+    return this._call.inputValues[0].value.toBigInt();
+  }
+
+  get _milestoneIndex(): BigInt {
+    return this._call.inputValues[1].value.toBigInt();
+  }
+}
+
+export class SignalMilestoneDistributedCall__Outputs {
+  _call: SignalMilestoneDistributedCall;
+
+  constructor(call: SignalMilestoneDistributedCall) {
     this._call = call;
   }
 }

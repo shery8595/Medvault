@@ -17,6 +17,20 @@ export function criteriaSchemaHashField(): bigint {
     return RAW_SCHEMA_HASH % BN254_FIELD_ORDER;
 }
 
+/** Versioned document schema — must match EligibilityEngine.DOC_SCHEMA_HASH. */
+export const DOC_SCHEMA_ID = "medvault.document.v1";
+
+const RAW_DOC_SCHEMA_HASH = BigInt(ethers.keccak256(ethers.toUtf8Bytes(DOC_SCHEMA_ID)));
+
+export const DOC_SCHEMA_HASH = ethers.toBeHex(
+    RAW_DOC_SCHEMA_HASH % BN254_FIELD_ORDER,
+    32
+) as `0x${string}`;
+
+export function docSchemaHashField(): bigint {
+    return RAW_DOC_SCHEMA_HASH % BN254_FIELD_ORDER;
+}
+
 /** Map a staged Zama FHE ebool handle (bytes32) to the BN254 public input field. */
 export function fheStageHandleToField(handle: bigint | string): bigint {
     const hex =

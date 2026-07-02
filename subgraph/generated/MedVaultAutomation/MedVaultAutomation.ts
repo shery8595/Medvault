@@ -94,6 +94,28 @@ export class TrialFinalized__Params {
   }
 }
 
+export class TrialQuarantined extends ethereum.Event {
+  get params(): TrialQuarantined__Params {
+    return new TrialQuarantined__Params(this);
+  }
+}
+
+export class TrialQuarantined__Params {
+  _event: TrialQuarantined;
+
+  constructor(event: TrialQuarantined) {
+    this._event = event;
+  }
+
+  get trialId(): BigInt {
+    return this._event.parameters[0].value.toBigInt();
+  }
+
+  get consecutiveFailures(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+}
+
 export class MedVaultAutomation__checkUpkeepResult {
   value0: boolean;
   value1: Bytes;
@@ -122,6 +144,75 @@ export class MedVaultAutomation__checkUpkeepResult {
 export class MedVaultAutomation extends ethereum.SmartContract {
   static bind(address: Address): MedVaultAutomation {
     return new MedVaultAutomation("MedVaultAutomation", address);
+  }
+
+  ACTIVE_SCAN_BATCH_SIZE(): BigInt {
+    let result = super.call(
+      "ACTIVE_SCAN_BATCH_SIZE",
+      "ACTIVE_SCAN_BATCH_SIZE():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_ACTIVE_SCAN_BATCH_SIZE(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "ACTIVE_SCAN_BATCH_SIZE",
+      "ACTIVE_SCAN_BATCH_SIZE():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  MAX_BATCH_FAILURES(): BigInt {
+    let result = super.call(
+      "MAX_BATCH_FAILURES",
+      "MAX_BATCH_FAILURES():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_MAX_BATCH_FAILURES(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "MAX_BATCH_FAILURES",
+      "MAX_BATCH_FAILURES():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  MAX_PRUNE_PER_UPKEEP(): BigInt {
+    let result = super.call(
+      "MAX_PRUNE_PER_UPKEEP",
+      "MAX_PRUNE_PER_UPKEEP():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_MAX_PRUNE_PER_UPKEEP(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "MAX_PRUNE_PER_UPKEEP",
+      "MAX_PRUNE_PER_UPKEEP():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   PAGINATED_DISTRIBUTION_THRESHOLD(): BigInt {
@@ -161,6 +252,52 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     let result = super.tryCall(
       "PAGINATION_BATCH_SIZE",
       "PAGINATION_BATCH_SIZE():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  READER_CHANGE_DELAY(): BigInt {
+    let result = super.call(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_READER_CHANGE_DELAY(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "READER_CHANGE_DELAY",
+      "READER_CHANGE_DELAY():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  activeScanCursor(): BigInt {
+    let result = super.call(
+      "activeScanCursor",
+      "activeScanCursor():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_activeScanCursor(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "activeScanCursor",
+      "activeScanCursor():(uint256)",
       [],
     );
     if (result.reverted) {
@@ -247,6 +384,29 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     );
   }
 
+  consecutiveBatchFailures(param0: BigInt): BigInt {
+    let result = super.call(
+      "consecutiveBatchFailures",
+      "consecutiveBatchFailures(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_consecutiveBatchFailures(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "consecutiveBatchFailures",
+      "consecutiveBatchFailures(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   distributionInProgress(param0: BigInt): boolean {
     let result = super.call(
       "distributionInProgress",
@@ -270,6 +430,52 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
+  expiredTrialIds(param0: BigInt): BigInt {
+    let result = super.call(
+      "expiredTrialIds",
+      "expiredTrialIds(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_expiredTrialIds(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "expiredTrialIds",
+      "expiredTrialIds(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  expiredTrialIndex(param0: BigInt): BigInt {
+    let result = super.call(
+      "expiredTrialIndex",
+      "expiredTrialIndex(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_expiredTrialIndex(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "expiredTrialIndex",
+      "expiredTrialIndex(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
   finalized(param0: BigInt): boolean {
     let result = super.call("finalized", "finalized(uint256):(bool)", [
       ethereum.Value.fromUnsignedBigInt(param0),
@@ -282,6 +488,50 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     let result = super.tryCall("finalized", "finalized(uint256):(bool)", [
       ethereum.Value.fromUnsignedBigInt(param0),
     ]);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  forwarderChangeEta(): BigInt {
+    let result = super.call(
+      "forwarderChangeEta",
+      "forwarderChangeEta():(uint256)",
+      [],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_forwarderChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "forwarderChangeEta",
+      "forwarderChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
+  }
+
+  isQuarantined(_trialId: BigInt): boolean {
+    let result = super.call("isQuarantined", "isQuarantined(uint256):(bool)", [
+      ethereum.Value.fromUnsignedBigInt(_trialId),
+    ]);
+
+    return result[0].toBoolean();
+  }
+
+  try_isQuarantined(_trialId: BigInt): ethereum.CallResult<boolean> {
+    let result = super.tryCall(
+      "isQuarantined",
+      "isQuarantined(uint256):(bool)",
+      [ethereum.Value.fromUnsignedBigInt(_trialId)],
+    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -304,6 +554,29 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toAddress());
   }
 
+  pendingChainlinkForwarder(): Address {
+    let result = super.call(
+      "pendingChainlinkForwarder",
+      "pendingChainlinkForwarder():(address)",
+      [],
+    );
+
+    return result[0].toAddress();
+  }
+
+  try_pendingChainlinkForwarder(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "pendingChainlinkForwarder",
+      "pendingChainlinkForwarder():(address)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   pendingOwner(): Address {
     let result = super.call("pendingOwner", "pendingOwner():(address)", []);
 
@@ -317,6 +590,44 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  pendingVault(): Address {
+    let result = super.call("pendingVault", "pendingVault():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_pendingVault(): ethereum.CallResult<Address> {
+    let result = super.tryCall("pendingVault", "pendingVault():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  quarantinedTrialIds(param0: BigInt): BigInt {
+    let result = super.call(
+      "quarantinedTrialIds",
+      "quarantinedTrialIds(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+
+    return result[0].toBigInt();
+  }
+
+  try_quarantinedTrialIds(param0: BigInt): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "quarantinedTrialIds",
+      "quarantinedTrialIds(uint256):(uint256)",
+      [ethereum.Value.fromUnsignedBigInt(param0)],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 
   trialManager(): Address {
@@ -347,6 +658,25 @@ export class MedVaultAutomation extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  vaultChangeEta(): BigInt {
+    let result = super.call("vaultChangeEta", "vaultChangeEta():(uint256)", []);
+
+    return result[0].toBigInt();
+  }
+
+  try_vaultChangeEta(): ethereum.CallResult<BigInt> {
+    let result = super.tryCall(
+      "vaultChangeEta",
+      "vaultChangeEta():(uint256)",
+      [],
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 }
 
@@ -410,6 +740,58 @@ export class AcceptOwnershipCall__Outputs {
   _call: AcceptOwnershipCall;
 
   constructor(call: AcceptOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyChainlinkForwarderCall extends ethereum.Call {
+  get inputs(): ApplyChainlinkForwarderCall__Inputs {
+    return new ApplyChainlinkForwarderCall__Inputs(this);
+  }
+
+  get outputs(): ApplyChainlinkForwarderCall__Outputs {
+    return new ApplyChainlinkForwarderCall__Outputs(this);
+  }
+}
+
+export class ApplyChainlinkForwarderCall__Inputs {
+  _call: ApplyChainlinkForwarderCall;
+
+  constructor(call: ApplyChainlinkForwarderCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyChainlinkForwarderCall__Outputs {
+  _call: ApplyChainlinkForwarderCall;
+
+  constructor(call: ApplyChainlinkForwarderCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyVaultCall extends ethereum.Call {
+  get inputs(): ApplyVaultCall__Inputs {
+    return new ApplyVaultCall__Inputs(this);
+  }
+
+  get outputs(): ApplyVaultCall__Outputs {
+    return new ApplyVaultCall__Outputs(this);
+  }
+}
+
+export class ApplyVaultCall__Inputs {
+  _call: ApplyVaultCall;
+
+  constructor(call: ApplyVaultCall) {
+    this._call = call;
+  }
+}
+
+export class ApplyVaultCall__Outputs {
+  _call: ApplyVaultCall;
+
+  constructor(call: ApplyVaultCall) {
     this._call = call;
   }
 }
@@ -530,6 +912,66 @@ export class ProposeOwnershipCall__Outputs {
   _call: ProposeOwnershipCall;
 
   constructor(call: ProposeOwnershipCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleChainlinkForwarderCall extends ethereum.Call {
+  get inputs(): ScheduleChainlinkForwarderCall__Inputs {
+    return new ScheduleChainlinkForwarderCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleChainlinkForwarderCall__Outputs {
+    return new ScheduleChainlinkForwarderCall__Outputs(this);
+  }
+}
+
+export class ScheduleChainlinkForwarderCall__Inputs {
+  _call: ScheduleChainlinkForwarderCall;
+
+  constructor(call: ScheduleChainlinkForwarderCall) {
+    this._call = call;
+  }
+
+  get _forwarder(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleChainlinkForwarderCall__Outputs {
+  _call: ScheduleChainlinkForwarderCall;
+
+  constructor(call: ScheduleChainlinkForwarderCall) {
+    this._call = call;
+  }
+}
+
+export class ScheduleVaultCall extends ethereum.Call {
+  get inputs(): ScheduleVaultCall__Inputs {
+    return new ScheduleVaultCall__Inputs(this);
+  }
+
+  get outputs(): ScheduleVaultCall__Outputs {
+    return new ScheduleVaultCall__Outputs(this);
+  }
+}
+
+export class ScheduleVaultCall__Inputs {
+  _call: ScheduleVaultCall;
+
+  constructor(call: ScheduleVaultCall) {
+    this._call = call;
+  }
+
+  get _vault(): Address {
+    return this._call.inputValues[0].value.toAddress();
+  }
+}
+
+export class ScheduleVaultCall__Outputs {
+  _call: ScheduleVaultCall;
+
+  constructor(call: ScheduleVaultCall) {
     this._call = call;
   }
 }

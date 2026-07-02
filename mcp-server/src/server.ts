@@ -5,7 +5,8 @@ import {
   ALLOWED_SUBGRAPH_QUERY_NAMES,
   PROTOCOL_CONTRACTS,
   checkWiring,
-  createTrialOnChain,
+  createTrialEncrypted,
+  createTrialOnChainPlaintext,
   deactivateTrial,
   distributePartialMilestone,
   fetchAuditLogsFromChain,
@@ -15,6 +16,8 @@ import {
   getTrialPoolReclaimStatus,
   postSubgraph,
   reclaimUndistributedPool,
+  reclaimAbandonedToOwnerPool,
+  claimReclaimedPool,
   registerAnonymousParticipantByNullifier,
   setTrialMilestones,
   updateTrialApplicationStatus,
@@ -36,6 +39,7 @@ import {
 import type { MedVaultMcpContext } from "./context.js";
 import { SERVER_VERSION as MCP_VERSION } from "./context.js";
 import { isBlockedContractView } from "./sensitiveViews.js";
+import { postAiAuditLogs, postAiExtractCriteria } from "./aiService.js";
 
 function jsonText(data: unknown): { content: { type: "text"; text: string }[] } {
   return {
@@ -358,6 +362,57 @@ export function createMedVaultMcpServer(ctx: MedVaultMcpContext): McpServer {
     async ({ trialId }) => jsonText(await getTrialOperationsTimeline(ctx, trialId))
   );
 
+  server.tool(
+    "medvault_ai_extract_criteria",
+    "Read-only: extract trial eligibility criteria from protocol text or base64 PDF via @medvault/ai (PHI redacted before LLM). Does not submit on-chain.",
+    {
+      text: z.string().optional().describe("Plain protocol text (mutually exclusive with pdfBase64)"),
+      pdfBase64: z.string().optional().describe("Base64-encoded protocol PDF"),
+      blocklist: z.array(z.string()).optional().describe("Optional sponsor PHI name blocklist"),
+    },
+    async ({ text, pdfBase64, blocklist }) => {
+      if (!text?.trim() && !pdfBase64?.trim()) {
+        throw new Error("Provide text or pdfBase64");
+      }
+      if (text?.trim() && pdfBase64?.trim()) {
+        throw new Error("Provide only one of text or pdfBase64");
+      }
+      return jsonText(
+        await postAiExtractCriteria({
+          text: text?.trim() || undefined,
+          pdfBase64: pdfBase64?.trim() || undefined,
+          blocklist,
+        })
+      );
+    }
+  );
+
+  server.tool(
+    "medvault_ai_audit_logs",
+    "Read-only: AI summary of anonymized DataAccessLog events (match rate, bottlenecks). Fetches from chain when logs omitted.",
+    {
+      trialIds: z.array(z.string()).optional(),
+      logs: z
+        .array(
+          z.object({
+            id: z.string(),
+            actionType: z.string(),
+            trialId: z.string(),
+            patientHash: z.string(),
+            timestamp: z.string(),
+            performer: z.string(),
+          })
+        )
+        .optional(),
+    },
+    async ({ trialIds, logs }) => {
+      if ((!trialIds || trialIds.length === 0) && (!logs || logs.length === 0)) {
+        throw new Error("Provide trialIds and/or logs");
+      }
+      return jsonText(await postAiAuditLogs({ trialIds, logs }));
+    }
+  );
+
   if (!ctx.readOnly) {
     registerWriteTools(server, ctx);
   }
@@ -400,7 +455,13 @@ function registerWriteTools(server: McpServer, ctx: MedVaultMcpContext) {
       if (params.fundingAmountEth) ctx.assertFundAmount(params.fundingAmountEth);
       const signer = ctx.getSigner();
       try {
-        const result = await createTrialOnChain(signer, {
+        const network = await ctx.provider.getNetwork();
+        const createFn =
+          network.chainId === 31337n
+            ? createTrialOnChainPlaintext
+            : (s: typeof signer, p: Parameters<typeof createTrialEncrypted>[1]) =>
+                createTrialEncrypted(s, p, { rpcUrl: ctx.config.rpcUrl });
+        const result = await createFn(signer, {
           name: params.name,
           phase: params.phase,
           location: params.location,
@@ -553,9 +614,18 @@ function registerWriteTools(server: McpServer, ctx: MedVaultMcpContext) {
       const signerAddr = await ctx.assertWritesAllowed();
       const signer = ctx.getSigner();
       try {
-        await distributePartialMilestone(signer, trialId, milestoneIndex);
+        const result = await distributePartialMilestone(signer, trialId, milestoneIndex);
         await auditWrite("medvault_distribute_milestone", signerAddr, true, { trialId });
-        return jsonText({ ok: true, trialId, milestoneIndex });
+        return jsonText({
+          ok: true,
+          trialId,
+          milestoneIndex,
+          txHash: result.txHash,
+          creditFailures: result.creditFailures.map((f) => ({
+            participant: f.participant,
+            reason: f.reason,
+          })),
+        });
       } catch (err) {
         await auditWrite("medvault_distribute_milestone", signerAddr, false, {
           trialId,
@@ -568,13 +638,15 @@ function registerWriteTools(server: McpServer, ctx: MedVaultMcpContext) {
 
   server.tool(
     "medvault_register_anonymous_participant",
-    "Register anonymous participant in incentive vault by nullifier.",
-    { trialId: z.string(), nullifier: z.string() },
-    async ({ trialId, nullifier }) => {
+    "Register anonymous participant in incentive vault by nullifier. MED-3: when MCP signer is not the decrypt permit holder, pass identitySecret (Semaphore identity.secretScalar) for gasless registerAnonymousParticipantFor.",
+    { trialId: z.string(), nullifier: z.string(), identitySecret: z.string().optional() },
+    async ({ trialId, nullifier, identitySecret }) => {
       const signerAddr = await ctx.assertWritesAllowed();
       const signer = ctx.getSigner();
       try {
-        await registerAnonymousParticipantByNullifier(signer, trialId, BigInt(nullifier));
+        await registerAnonymousParticipantByNullifier(signer, trialId, BigInt(nullifier), {
+          identitySecret: identitySecret ? BigInt(identitySecret) : undefined,
+        });
         await auditWrite("medvault_register_anonymous_participant", signerAddr, true, { trialId });
         return jsonText({ ok: true, trialId, nullifier });
       } catch (err) {
@@ -600,6 +672,48 @@ function registerWriteTools(server: McpServer, ctx: MedVaultMcpContext) {
         return jsonText({ ok: true, trialId });
       } catch (err) {
         await auditWrite("medvault_reclaim_trial_pool", signerAddr, false, {
+          trialId,
+          detail: normalizeTxError(err),
+        });
+        return jsonText({ ok: false, error: normalizeTxError(err) });
+      }
+    }
+  );
+
+  server.tool(
+    "medvault_reclaim_abandoned_pool",
+    "Vault owner: schedule reclaim to protocol owner when trial sponsor was removed from SponsorRegistry.",
+    { trialId: z.string() },
+    async ({ trialId }) => {
+      const signerAddr = await ctx.assertWritesAllowed();
+      const signer = ctx.getSigner();
+      try {
+        await reclaimAbandonedToOwnerPool(signer, trialId);
+        await auditWrite("medvault_reclaim_abandoned_pool", signerAddr, true, { trialId });
+        return jsonText({ ok: true, trialId, scheduled: true });
+      } catch (err) {
+        await auditWrite("medvault_reclaim_abandoned_pool", signerAddr, false, {
+          trialId,
+          detail: normalizeTxError(err),
+        });
+        return jsonText({ ok: false, error: normalizeTxError(err) });
+      }
+    }
+  );
+
+  server.tool(
+    "medvault_claim_reclaimed_pool",
+    "Claim ETH after reclaimUndistributed or reclaimAbandonedToOwner scheduled a payout.",
+    { trialId: z.string() },
+    async ({ trialId }) => {
+      const signerAddr = await ctx.assertWritesAllowed();
+      const signer = ctx.getSigner();
+      try {
+        await claimReclaimedPool(signer, trialId);
+        await auditWrite("medvault_claim_reclaimed_pool", signerAddr, true, { trialId });
+        return jsonText({ ok: true, trialId });
+      } catch (err) {
+        await auditWrite("medvault_claim_reclaimed_pool", signerAddr, false, {
           trialId,
           detail: normalizeTxError(err),
         });

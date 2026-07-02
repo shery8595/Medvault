@@ -4,6 +4,8 @@ pragma solidity ^0.8.27;
 import {FHE, euint8, ebool, euint16, externalEuint8, externalEbool, externalEuint16} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./DataAccessLog.sol";
+import {TestHelpers} from "./test/TestHelpers.sol";
+import {FheAclEpochLib} from "./lib/FheAclEpochLib.sol";
 
 /**
  * @title AnonymousPatientRegistry
@@ -19,6 +21,9 @@ import "./DataAccessLog.sol";
  *      2. Application: Semaphore proof (with commitment as signal) → Fetch data → FHE compute
  */
 contract AnonymousPatientRegistry is ZamaEthereumConfig {
+
+    uint256 private constant BN254_FIELD_ORDER =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /**
      * @notice Encrypted patient profile
@@ -52,6 +57,12 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
      */
     mapping(uint256 => bool) private isRegistered;
 
+    /// @notice Commitments whose field handles have persistent `FHE.allow(eligibilityEngine)` grants.
+    mapping(uint256 => bool) private patientHandlesCached;
+
+    /// @notice Commitment to a secret profile salt (keccak256(salt)); must not be the deterministic test salt.
+    mapping(uint256 => bytes32) public profileSaltCommitments;
+
     /**
      * @notice Authorized contract that can register patients (MedVaultRegistry)
      */
@@ -74,12 +85,20 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
     // H-3: Track number of registered patients to prevent engine changes after registration
     uint256 private _patientCount;
 
+    FheAclEpochLib.EpochState private _aclEpoch;
+
+    /// @dev Cleartext profile seeding for Hardhat unit tests only.
+    bool public testHelpersEnabled;
+    bool public pendingTestHelpersValue;
+    uint256 public testHelpersChangeEta;
+    uint256 public constant TEST_HELPERS_CHANGE_DELAY = 6 hours;
+
     /**
-     * @notice Emitted when a patient registers with their commitment
-     * @param commitment The Semaphore identity commitment (not wallet address!)
+     * @notice Emitted when a patient registers (blinded commitment only — not the raw Semaphore commitment).
+     * @param blindedCommitment keccak256(commitment, timestamp) — safe for indexed logs
      * @param timestamp Registration time
      */
-    event PatientRegistered(uint256 indexed commitment, uint256 timestamp);
+    event PatientRegistered(bytes32 blindedCommitment, uint256 timestamp);
 
     /**
      * @notice Emitted when patient data is accessed (aggregate signal only; no commitment in logs).
@@ -100,6 +119,11 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
 
     modifier onlyAuthorizedEngine() {
         require(msg.sender == authorizedEngine, "Only authorized engine");
+        _;
+    }
+
+    modifier onlyTestHelpers() {
+        TestHelpers.requireEnabled(testHelpersEnabled);
         _;
     }
 
@@ -143,6 +167,36 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         authorizedEngine = _engine;
     }
 
+    /// @notice MEDIUM-1: bump ACL epoch when rotating trusted consumers (off-chain re-grant required).
+    function rotateTrustedContract(uint8 kind, address newConsumer) external onlyOwner {
+        require(newConsumer != address(0), "Zero address");
+        FheAclEpochLib.rotateKind(_aclEpoch, kind, newConsumer);
+    }
+
+    function aclEpochForKind(uint8 kind) external view returns (uint40) {
+        return FheAclEpochLib.currentEpoch(_aclEpoch, kind);
+    }
+
+    function _recordEngineAcl(bytes32 handle) private {
+        if (authorizedEngine != address(0)) {
+            FheAclEpochLib.recordGrant(
+                _aclEpoch,
+                handle,
+                authorizedEngine,
+                uint8(FheAclEpochLib.GrantKind.EligibilityEngine)
+            );
+        }
+    }
+
+    function _recordPermitAcl(bytes32 handle, address permitRecipient) private {
+        FheAclEpochLib.recordGrant(
+            _aclEpoch,
+            handle,
+            permitRecipient,
+            uint8(FheAclEpochLib.GrantKind.PatientRegistry)
+        );
+    }
+
     /**
      * @notice Set the data access log contract
      * @param _log Address of the DataAccessLog contract
@@ -150,6 +204,130 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
     function setDataAccessLog(address _log) external onlyOwner {
         require(_log != address(0), "Zero address");
         dataAccessLog = DataAccessLog(_log);
+    }
+
+    function _deterministicProfileSalt(uint256 _commitment) internal view returns (uint256) {
+        uint256 raw = uint256(keccak256(abi.encodePacked(_commitment, block.chainid))) % BN254_FIELD_ORDER;
+        return raw == 0 ? 1 : raw;
+    }
+
+    function _forbiddenProfileSaltCommitment(uint256 _commitment) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(_deterministicProfileSalt(_commitment)));
+    }
+
+    function _requireValidProfileSaltCommitment(
+        uint256 _commitment,
+        bytes32 _profileSaltCommitment
+    ) internal view {
+        require(_profileSaltCommitment != bytes32(0), "Zero salt commitment");
+        require(
+            _profileSaltCommitment != _forbiddenProfileSaltCommitment(_commitment),
+            "Forbidden deterministic salt"
+        );
+    }
+
+    function scheduleTestHelpersEnabled(bool enabled) external onlyOwner {
+        pendingTestHelpersValue = enabled;
+        testHelpersChangeEta = block.timestamp + TEST_HELPERS_CHANGE_DELAY;
+    }
+
+    function applyTestHelpersEnabled() external onlyOwner {
+        require(
+            testHelpersChangeEta != 0 && block.timestamp >= testHelpersChangeEta,
+            "Timelock active"
+        );
+        testHelpersEnabled = pendingTestHelpersValue;
+        testHelpersChangeEta = 0;
+    }
+
+    /**
+     * @notice Store patient from cleartext fields (Hardhat test harness only — no Poseidon).
+     * @dev Called by AnonymousPatientRegistryTestHarness after on-chain Poseidon commitment.
+     */
+    function _storeCleartextPatientRegistration(
+        uint256 _commitment,
+        address _permitRecipient,
+        bytes32 profileCommitment,
+        uint8 age,
+        bool gender,
+        uint16 weight,
+        uint8 height,
+        bool hasDiabetes,
+        uint16 hbLevel,
+        bool isSmoker,
+        bool hasHypertension
+    ) internal {
+        require(authorizedEngine != address(0), "Engine not set before registration");
+        require(_permitRecipient != address(0), "Zero permit recipient");
+        require(!isRegistered[_commitment], "Commitment already registered");
+
+        euint8 encAge = FHE.asEuint8(age);
+        ebool encGender = FHE.asEbool(gender);
+        euint16 encWeight = FHE.asEuint16(weight);
+        euint8 encHeight = FHE.asEuint8(height);
+        ebool encDiabetes = FHE.asEbool(hasDiabetes);
+        euint16 encHb = FHE.asEuint16(hbLevel);
+        ebool encSmoker = FHE.asEbool(isSmoker);
+        ebool encHypertension = FHE.asEbool(hasHypertension);
+
+        FHE.allowThis(encAge);
+        FHE.allowThis(encGender);
+        FHE.allowThis(encWeight);
+        FHE.allowThis(encHeight);
+        FHE.allowThis(encDiabetes);
+        FHE.allowThis(encHb);
+        FHE.allowThis(encSmoker);
+        FHE.allowThis(encHypertension);
+
+        FHE.allow(encAge, _permitRecipient);
+        FHE.allow(encGender, _permitRecipient);
+        FHE.allow(encWeight, _permitRecipient);
+        FHE.allow(encHeight, _permitRecipient);
+        FHE.allow(encDiabetes, _permitRecipient);
+        FHE.allow(encHb, _permitRecipient);
+        FHE.allow(encSmoker, _permitRecipient);
+        FHE.allow(encHypertension, _permitRecipient);
+
+        if (authorizedEngine != address(0)) {
+            FHE.allow(encAge, authorizedEngine);
+            FHE.allow(encGender, authorizedEngine);
+            FHE.allow(encWeight, authorizedEngine);
+            FHE.allow(encHeight, authorizedEngine);
+            FHE.allow(encDiabetes, authorizedEngine);
+            FHE.allow(encHb, authorizedEngine);
+            FHE.allow(encSmoker, authorizedEngine);
+            FHE.allow(encHypertension, authorizedEngine);
+        }
+
+        patients[_commitment] = EncryptedPatient({
+            age: encAge,
+            gender: encGender,
+            weight: encWeight,
+            height: encHeight,
+            hasDiabetes: encDiabetes,
+            hbLevel: encHb,
+            isSmoker: encSmoker,
+            hasHypertension: encHypertension,
+            profileCommitment: profileCommitment,
+            exists: true
+        });
+
+        isRegistered[_commitment] = true;
+        patientHandlesCached[_commitment] = true;
+        _patientCount++;
+
+        if (address(dataAccessLog) != address(0)) {
+            dataAccessLog.logAction(
+                DataAccessLog.ActionType.PROFILE_SUBMISSION,
+                0,
+                keccak256(abi.encodePacked(_commitment, block.timestamp, "TEST_HELPER"))
+            );
+        }
+
+        emit PatientRegistered(
+            keccak256(abi.encodePacked(_commitment, block.timestamp)),
+            block.timestamp
+        );
     }
 
     /**
@@ -174,6 +352,7 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         uint256 _commitment,
         address _permitRecipient,
         bytes32 _profileCommitment,
+        bytes32 _profileSaltCommitment,
         externalEuint8 _age,
         externalEbool _gender,
         externalEuint16 _weight,
@@ -184,9 +363,12 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         externalEbool _hasHypertension,
         bytes calldata inputProof
     ) external onlyAuthorizedRegistry {
+        // AUDIT-FIX-MH-1: block registration until engine is set — prevents front-run brick of setAuthorizedEngine.
+        require(authorizedEngine != address(0), "Engine not set before registration");
         require(_permitRecipient != address(0), "Zero permit recipient");
         require(_profileCommitment != bytes32(0), "Zero profile commitment");
         require(!isRegistered[_commitment], "Commitment already registered");
+        _requireValidProfileSaltCommitment(_commitment, _profileSaltCommitment);
 
         euint8 age = FHE.fromExternal(_age, inputProof);
         ebool gender = FHE.fromExternal(_gender, inputProof);
@@ -219,6 +401,14 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         FHE.allow(hbLevel, _permitRecipient);
         FHE.allow(isSmoker, _permitRecipient);
         FHE.allow(hasHypertension, _permitRecipient);
+        _recordPermitAcl(euint8.unwrap(age), _permitRecipient);
+        _recordPermitAcl(ebool.unwrap(gender), _permitRecipient);
+        _recordPermitAcl(euint16.unwrap(weight), _permitRecipient);
+        _recordPermitAcl(euint8.unwrap(height), _permitRecipient);
+        _recordPermitAcl(ebool.unwrap(hasDiabetes), _permitRecipient);
+        _recordPermitAcl(euint16.unwrap(hbLevel), _permitRecipient);
+        _recordPermitAcl(ebool.unwrap(isSmoker), _permitRecipient);
+        _recordPermitAcl(ebool.unwrap(hasHypertension), _permitRecipient);
 
         // Allow authorized engine to access this data
         if (authorizedEngine != address(0)) {
@@ -230,6 +420,14 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
             FHE.allow(hbLevel, authorizedEngine);
             FHE.allow(isSmoker, authorizedEngine);
             FHE.allow(hasHypertension, authorizedEngine);
+            _recordEngineAcl(euint8.unwrap(age));
+            _recordEngineAcl(ebool.unwrap(gender));
+            _recordEngineAcl(euint16.unwrap(weight));
+            _recordEngineAcl(euint8.unwrap(height));
+            _recordEngineAcl(ebool.unwrap(hasDiabetes));
+            _recordEngineAcl(euint16.unwrap(hbLevel));
+            _recordEngineAcl(ebool.unwrap(isSmoker));
+            _recordEngineAcl(ebool.unwrap(hasHypertension));
         }
 
         // Store patient data indexed by commitment (NOT wallet address!)
@@ -247,6 +445,8 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         });
 
         isRegistered[_commitment] = true;
+        patientHandlesCached[_commitment] = true;
+        profileSaltCommitments[_commitment] = _profileSaltCommitment;
 
         // H-3: Increment patient counter to track registrations
         _patientCount++;
@@ -260,7 +460,10 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
             );
         }
 
-        emit PatientRegistered(_commitment, block.timestamp);
+        emit PatientRegistered(
+            keccak256(abi.encodePacked(_commitment, block.timestamp)),
+            block.timestamp
+        );
     }
 
     /**
@@ -275,11 +478,35 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
      * @param _commitment The Semaphore identity commitment
      * @return The encrypted patient data
      */
+    /**
+     * @notice Get cached patient field handles (persistent engine ACL — no per-call re-allow).
+     * @dev Preferred path for EligibilityEngine to minimize HCU churn.
+     */
+    function getCachedPatientFields(uint256 _commitment) external onlyAuthorizedEngine returns (EncryptedPatient memory) {
+        EncryptedPatient memory p = patients[_commitment];
+        require(p.exists, "Patient not found for this commitment");
+        require(patientHandlesCached[_commitment], "Patient handles not cached");
+
+        if (address(dataAccessLog) != address(0)) {
+            dataAccessLog.logAction(
+                DataAccessLog.ActionType.ELIGIBILITY_CHECKED,
+                0,
+                keccak256(abi.encodePacked(_commitment, block.timestamp, "CACHED_READ"))
+            );
+        }
+
+        emit ProfileAccessed(msg.sender, block.timestamp);
+        return p;
+    }
+
+    /**
+     * @notice Legacy patient fetch that refreshes engine ACL grants (fuzz baseline only).
+     * @dev Production eligibility uses {getCachedPatientFields}. Kept for bit-identical fuzz checks.
+     */
     function getPatient(uint256 _commitment) external onlyAuthorizedEngine returns (EncryptedPatient memory) {
         EncryptedPatient memory p = patients[_commitment];
         require(p.exists, "Patient not found for this commitment");
 
-        // Re-allow engine to access data (handles existing profiles)
         if (authorizedEngine != address(0)) {
             FHE.allow(p.age, authorizedEngine);
             FHE.allow(p.gender, authorizedEngine);
@@ -331,10 +558,18 @@ contract AnonymousPatientRegistry is ZamaEthereumConfig {
         return isRegistered[_commitment];
     }
 
+    function isPatientHandlesCached(uint256 _commitment) external view returns (bool) {
+        return patientHandlesCached[_commitment];
+    }
+
     /**
      * @notice Poseidon profile commitment stored at registration (for Noir eligibility proofs).
      */
     function getProfileCommitment(uint256 _commitment) external view returns (bytes32) {
+        require(
+            msg.sender == authorizedEngine || msg.sender == authorizedRegistry,
+            "Not authorized"
+        );
         require(patients[_commitment].exists, "Patient not found for this commitment");
         return patients[_commitment].profileCommitment;
     }

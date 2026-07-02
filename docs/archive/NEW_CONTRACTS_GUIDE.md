@@ -1,5 +1,7 @@
 # MedVault — New Contracts to Build
 
+> **Historical design — shipped (archived 2026-06-30).** The contracts proposed here (`TrialMilestoneManager`, `DataAccessLog`, `EncryptedConsentGate`) are **production code**. For current reference see [Smart Contracts](https://med-vault.xyz/docs/contracts), [`protocolContracts.ts`](../../src/lib/protocolContracts.ts), and [`docs/archive/README.md`](./README.md).
+
 > Contracts that fill **real gaps** in the current clinical trial flow.
 
 ---

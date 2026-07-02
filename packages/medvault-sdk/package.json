@@ -1,13 +1,13 @@
 {
   "name": "@medvault/sdk",
   "version": "0.1.0",
-  "description": "Official TypeScript SDK for MedVault — private clinical trials on Arbitrum Sepolia",
-  "private": true,
+  "description": "Official TypeScript SDK for MedVault — private clinical trials on Ethereum Sepolia",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "exports": {
     ".": {
@@ -15,17 +15,36 @@
       "import": "./dist/index.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shery8595/Med-Vault.git",
+    "directory": "packages/medvault-sdk"
+  },
+  "keywords": [
+    "medvault",
+    "zama",
+    "fhe",
+    "clinical-trials",
+    "sepolia",
+    "ethereum"
+  ],
+  "license": "BSD-3-Clause-Clear",
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --external ethers --external @medvault/core",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@medvault/core": "*"
+    "@medvault/core": "^0.1.0"
   },
   "peerDependencies": {
     "ethers": "6.16.0"
   },
   "devDependencies": {
+    "@medvault/core": "*",
     "ethers": "6.16.0",
     "tsup": "^8.5.0",
     "tsx": "^4.19.4",

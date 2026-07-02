@@ -9,23 +9,20 @@ import {
   Loader2,
   Hourglass,
   CheckCircle2,
-  Fingerprint,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useWeb3 } from "../lib/Web3Context";
 import { useEncryptedData } from "../lib/EncryptedDataContext";
 import { useTrials } from "../hooks/useTrials";
-import { getContractAddressForChain, getMedVaultRegistry, getEligibilityEngine, resolveChainIdFrom } from "../lib/contracts";
+import { getContractAddressForChain, getMedVaultRegistry } from "../lib/contracts";
 import { getEncryptedScoreHandle } from "../lib/contracts/sponsorAdapters";
-import { reencryptUint8, reencryptUint8WithEphemeral, decryptForViewWithEphemeral, FheTypes } from "../lib/fhe";
+import { reencryptUint8, reencryptUint8WithEphemeral } from "../lib/fhe";
 import { getStoredIdentity, getEphemeralSigner } from "../lib/semaphore";
-import { parseFieldElement, parseTrialId } from "../lib/field";
 import { Trial } from "../types";
 import { SectionTopBar } from "../components/layout/SectionTopBar";
 import { Button } from "../components/ui/Button";
 import { cn } from "../lib/utils";
-import { useEligibilityProof } from "../hooks/useEligibilityProof";
 import { fetchCertificationStatus } from "../lib/certificationStatus";
 import { ZkCertifyBadge, ZkCertifyStepper, ZkCertifyExplainer, buildZkCertifySteps } from "../components/zk";
 import { MatchScoreRing } from "../components/privacy/MatchScoreRing";
@@ -83,11 +80,8 @@ function ResultRow({
   decryptedScore,
   onDecrypt,
   isDecrypting,
-  onCertify,
-  isCertifying,
   sealCertified,
   sealEligible,
-  trialCertifyPhase,
 }: {
   trial: Trial;
   index: number;
@@ -95,11 +89,8 @@ function ResultRow({
   decryptedScore: number | null;
   onDecrypt: () => void;
   isDecrypting: boolean;
-  onCertify: () => void;
-  isCertifying: boolean;
   sealCertified: boolean;
   sealEligible: boolean | null;
-  trialCertifyPhase: "idle" | "generating" | "submitting" | "certified" | "error";
 }) {
   const variant = resultVariant(trial);
   /** Pending = awaiting decrypted inputs; decryptable = handle present; revealed = decryptedScore set */
@@ -134,21 +125,15 @@ function ResultRow({
   const canDecrypt = variant === "decrypt" && identityOk;
   const showZkRail = !!trial.nullifier && trial.hasComputed;
 
-  let zkBadgeVariant: "certified" | "pending" | "processing" = "pending";
-  if (sealCertified) zkBadgeVariant = "certified";
-  else if (
-    isCertifying ||
-    trialCertifyPhase === "generating" ||
-    trialCertifyPhase === "submitting"
-  ) {
-    zkBadgeVariant = "processing";
-  }
+  const zkBadgeVariant: "certified" | "pending" | "processing" = sealCertified
+    ? "certified"
+    : "pending";
 
   const zkSteps = showZkRail
     ? buildZkCertifySteps({
         hasComputed: !!trial.hasComputed,
         decrypted: decryptedScore !== null,
-        certifyPhase: trialCertifyPhase,
+        certifyPhase: "idle",
         isCertified: sealCertified,
       })
     : [];
@@ -186,7 +171,14 @@ function ResultRow({
             </span>
             {statusBadge}
             {showZkRail ? (
-              <ZkCertifyBadge variant={zkBadgeVariant} size="sm" eligible={sealEligible} />
+              <>
+                <ZkCertifyBadge variant={zkBadgeVariant} size="sm" eligible={sealEligible} />
+                {!sealCertified ? (
+                  <span className="inline-flex rounded-full bg-slate-50 text-slate-500 border border-slate-200 px-2.5 py-0.5 text-[10px] font-semibold">
+                    Not sealed
+                  </span>
+                ) : null}
+              </>
             ) : null}
           </div>
           <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{trial.name}</h3>
@@ -244,33 +236,6 @@ function ResultRow({
             </Button>
           )}
 
-          {/* Certify button — anonymous applies only (Semaphore + Noir binds nullifier). */}
-          {decryptedScore !== null && !!trial.nullifier && !sealCertified && (
-            <div className="flex flex-col items-stretch lg:items-end gap-1">
-              <Button
-                type="button"
-                onClick={onCertify}
-                disabled={isCertifying}
-                variant="outline"
-                className="w-full lg:w-auto rounded-full border-teal-200 text-teal-800 hover:bg-teal-50 px-6 py-5 h-auto text-xs font-semibold gap-2"
-              >
-                {isCertifying ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sealing…
-                  </>
-                ) : (
-                  <>
-                    <Fingerprint className="h-3.5 w-3.5" /> Generate compliance seal
-                  </>
-                )}
-              </Button>
-              <p className="text-[10px] leading-snug text-slate-500 text-center lg:text-right max-w-[240px] lg:ml-auto">
-                {isCertifying
-                  ? "This can take 1–2 minutes. Please keep this tab open."
-                  : `Seal your ${decryptedScore}% FHE match for sponsors (1–2 min in your browser).`}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>
@@ -287,12 +252,6 @@ export function PatientResultsPage() {
   const [identityLoading, setIdentityLoading] = useState(true);
   const [decryptingId, setDecryptingId] = useState<string | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
-  const [eligibleResults, setEligibleResults] = useState<Record<string, boolean>>({});
-
-  // Noir proof certification
-  const { status: certifyStatus, error: certifyError, certifyResult, reset: resetCertify } =
-    useEligibilityProof();
-  const [certifyingId, setCertifyingId] = useState<string | null>(null);
   const [sealStatus, setSealStatus] = useState<
     Record<string, { certified: boolean; eligible: boolean | null }>
   >({});
@@ -382,57 +341,10 @@ export function PatientResultsPage() {
       const n = Number(score);
       setScores((prev) => ({ ...prev, [trial.id]: n }));
       setRevealedScore(engineAddress, trial.id, n);
-
-      if (trial.nullifier && signer.provider) {
-        try {
-          const identity = getStoredIdentity();
-          if (identity) {
-            const chainId = await resolveChainIdFrom(signer);
-            const engine = getEligibilityEngine(signer, chainId);
-            const resultHandle = await engine.getAnonymousResult(
-              parseFieldElement(trial.nullifier),
-              parseTrialId(trial.id)
-            );
-            const ephemeralSigner = getEphemeralSigner(identity, signer.provider);
-            const isEligible = Boolean(
-              await decryptForViewWithEphemeral(
-                ephemeralSigner,
-                resultHandle,
-                FheTypes.Bool,
-                engineAddress
-              )
-            );
-            setEligibleResults((prev) => ({ ...prev, [trial.id]: isEligible }));
-          }
-        } catch (boolErr) {
-          console.warn("Eligibility boolean decrypt failed:", boolErr);
-        }
-      }
     } catch (e) {
       console.error("Decrypt result failed:", e);
     } finally {
       setDecryptingId(null);
-    }
-  };
-
-  const handleCertify = async (trial: Trial) => {
-    const score = scores[trial.id] ?? (engineAddress ? getRevealedScore(engineAddress, trial.id) : null);
-    if (score === null) return;
-    const eligible =
-      eligibleResults[trial.id] ??
-      (score > 0 && trial.applicationStatus !== "Rejected");
-    setCertifyingId(trial.id);
-    resetCertify();
-    try {
-      const ok = await certifyResult(trial.id, eligible);
-      if (ok) {
-        setSealStatus((prev) => ({
-          ...prev,
-          [trial.id]: { certified: true, eligible },
-        }));
-      }
-    } finally {
-      setCertifyingId(null);
     }
   };
 
@@ -464,7 +376,7 @@ export function PatientResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, [provider, engineAddress, resultTrials, certifyStatus]);
+  }, [provider, engineAddress, resultTrials]);
 
   if (!account) {
     return (
@@ -560,17 +472,6 @@ export function PatientResultsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {certifyError && (
-            <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
-              Compliance seal failed: {certifyError}
-            </p>
-          )}
-          {certifyStatus === "certified" && !certifyError && (
-            <p className="text-xs text-teal-800 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
-              Zama match sealed on-chain. Sponsors can verify your anonymous attestation receipt without seeing your
-              medical record.
-            </p>
-          )}
           {resultTrials.map((trial, i) => (
             <ResultRow
               key={trial.id}
@@ -580,11 +481,8 @@ export function PatientResultsPage() {
               decryptedScore={scores[trial.id] ?? (engineAddress ? getRevealedScore(engineAddress, trial.id) : null)}
               onDecrypt={() => handleDecrypt(trial)}
               isDecrypting={decryptingId === trial.id}
-              onCertify={() => handleCertify(trial)}
-              isCertifying={certifyingId === trial.id}
               sealCertified={!!sealStatus[trial.id]?.certified}
               sealEligible={sealStatus[trial.id]?.eligible ?? null}
-              trialCertifyPhase={certifyingId === trial.id ? certifyStatus : "idle"}
             />
           ))}
         </div>

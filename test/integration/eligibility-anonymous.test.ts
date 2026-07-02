@@ -39,7 +39,7 @@ describe("Integration: eligibility anonymous flow", function () {
         );
         await cancelAnonymousApplyStage(
             stack.medVaultRegistry,
-            stack.patient,
+            stack.relayer,
             trialId,
             id,
             stack.patient.address
@@ -197,7 +197,7 @@ describe("Integration: eligibility anonymous flow", function () {
         const bogusInputs = Array.from({ length: 14 }, () => ethers.ZeroHash);
         await expectRevert(
             stack.medVaultRegistry
-                .connect(stack.patient)
+                .connect(stack.relayer)
                 .finalizeAnonymousApplyWithProof(
                     trialId,
                     args.proof,
@@ -208,9 +208,8 @@ describe("Integration: eligibility anonymous flow", function () {
                     args.permitSignature,
                     args.consentWalletSignature,
                     "0x" + "00".repeat(128),
-                    bogusInputs,
-                    true
-                ),
+                    bogusInputs
+            ),
             /Invalid Noir proof|reverted/
         );
     });
@@ -250,7 +249,7 @@ describe("Integration: eligibility anonymous flow", function () {
                     args.deadline,
                     args.permitSignature
                 ),
-            "Already staged"
+            /Stale stage permit|Already staged/
         );
     });
 

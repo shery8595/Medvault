@@ -24,6 +24,8 @@ import {
 import { Link } from "react-router-dom";
 import { importFhirJson, type FhirImportIssue, type FhirMappedProfile } from "../lib/fhirImport";
 import { SepoliaGasBanner } from "../components/ui/SepoliaGasBanner";
+import { HybridDocumentUploader } from "../components/dashboard/HybridDocumentUploader";
+import { useSearchParams } from "react-router-dom";
 
 /* ─── Animation helpers ───────────────────────────────────────────────────── */
 const fadeUp = (delay = 0) => ({
@@ -40,6 +42,8 @@ const fadeIn = (delay = 0) => ({
 
 export function PatientVaultPage() {
   const { account, provider, signer, isFHEReady, connect, isConnecting, error: connectError, chainId } = useWeb3();
+  const [searchParams] = useSearchParams();
+  const vaultTrialId = searchParams.get("trialId") ?? undefined;
   const [showUploadForm, setShowUploadForm] = useState(false);
   const {
     profile,
@@ -275,6 +279,16 @@ export function PatientVaultPage() {
       <motion.div {...fadeUp(0.15)}>
         <VaultQuickActions onUpload={openManualUpload} />
       </motion.div>
+
+      {vaultTrialId ? (
+        <motion.div {...fadeUp(0.17)} className="rounded-2xl border border-teal-200 bg-teal-50/50 p-5 space-y-3">
+          <h3 className="text-sm font-bold text-slate-900">Hybrid document for trial #{vaultTrialId}</h3>
+          <p className="text-xs text-slate-600">
+            Encrypt a medical file locally, pin ciphertext to IPFS, and bind it to your anonymous application proof.
+          </p>
+          <HybridDocumentUploader trialId={vaultTrialId} />
+        </motion.div>
+      ) : null}
 
       {/* ── Vault Grid ── */}
       <div className="flex items-center justify-between px-2 mb-6">

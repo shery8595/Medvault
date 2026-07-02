@@ -36,6 +36,15 @@ function mochaSpecs(): string[] | undefined {
     if (suite === "honk") {
         return ["test/crypto/honk-pipeline.test.ts"];
     }
+    if (suite === "fuzz") {
+        return ["test/fuzz/**/*.ts", "test/invariants/**/*.ts"];
+    }
+    if (suite === "fork") {
+        return ["test/fork/**/*.ts"];
+    }
+    if (suite === "sepolia") {
+        return ["test/sepolia/**/*.ts"];
+    }
     // Default `npm test`: full suite except slow Honk pipeline
     return [
         "test/smoke/**/*.ts",
@@ -81,15 +90,55 @@ const config: HardhatUserConfig = {
                     evmVersion: "cancun",
                 },
             },
+            "contracts/HonkVerifierEncrypted.sol": {
+                version: "0.8.27",
+                settings: {
+                    viaIR: false,
+                    optimizer: {
+                        enabled: true,
+                        runs: 1,
+                    },
+                    evmVersion: "cancun",
+                },
+            },
         },
     },
     networks: {
         hardhat: {
             chainId: 31337,
+            allowUnlimitedContractSize: true,
+            ...(process.env.SOLIDITY_COVERAGE === "true"
+                ? {
+                      blockGasLimit: 0x1fffffffffffff,
+                      gas: 0xffffffffff,
+                      gasPrice: 1,
+                      initialBaseFeePerGas: 0,
+                  }
+                : {}),
+            ...(process.env.RUN_LARGE_POOL_TEST
+                ? {
+                      accounts: {
+                          count: 60,
+                          accountsBalance: "10000000000000000000",
+                      },
+                  }
+                : {}),
         },
         sepolia: {
             url: SEPOLIA_RPC_URL,
             accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+            chainId: 11155111,
+        },
+        sepoliaFork: {
+            url: SEPOLIA_RPC_URL || "http://127.0.0.1:8545",
+            forking: SEPOLIA_RPC_URL
+                ? {
+                      url: SEPOLIA_RPC_URL,
+                      blockNumber: process.env.SEPOLIA_FORK_BLOCK
+                          ? Number(process.env.SEPOLIA_FORK_BLOCK)
+                          : undefined,
+                  }
+                : undefined,
             chainId: 11155111,
         },
     },
@@ -102,6 +151,9 @@ const config: HardhatUserConfig = {
     mocha: {
         timeout: 120_000,
         spec: mochaSpecs(),
+    },
+    fuzz: {
+        runs: 256,
     },
 };
 

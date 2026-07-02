@@ -6,6 +6,9 @@ const suites = {
     integration: ["test/integration/**/*.ts"],
     crypto: ["test/crypto/noir-nullifier.test.ts"],
     honk: ["test/crypto/honk-pipeline.test.ts"],
+    fuzz: ["test/fuzz/**/*.ts", "test/invariants/**/*.ts"],
+    fork: ["test/fork/**/*.ts"],
+    sepolia: ["test/sepolia/**/*.ts"],
     default: [
         "test/smoke/**/*.ts",
         "test/unit/**/*.ts",

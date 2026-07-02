@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -23,12 +23,20 @@ import {
   AlertCircle,
   Coins,
   Activity,
+  Upload,
+  Loader2,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWeb3 } from "../lib/Web3Context";
 import { cn } from "../lib/utils";
 import { useSponsorTrialCreation } from "../hooks/useSponsorTrialCreation";
 import { useSponsorVerification } from "../hooks/useSponsorVerification";
+import {
+  extractCriteriaFromProtocolPdf,
+  isAiServiceConfigured,
+  type RedactionReport,
+} from "../lib/aiServiceClient";
 
 import { sponsorCardHeader, sponsorCardShell } from "../lib/sponsorUi";
 
@@ -76,6 +84,13 @@ export function SponsorCreateTrialPage() {
     { name: "Phase 1 Completion", weight: 7500, deadline: 30 },
   ]);
   const [usePhasedPayouts, setUsePhasedPayouts] = useState(true);
+  const [redactionReport, setRedactionReport] = useState<RedactionReport | null>(null);
+  const [redactionAcknowledged, setRedactionAcknowledged] = useState(false);
+  const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiExtractError, setAiExtractError] = useState<string | null>(null);
+  const [redactionBannerDismissed, setRedactionBannerDismissed] = useState(false);
+  const protocolFileRef = useRef<HTMLInputElement>(null);
+  const aiConfigured = isAiServiceConfigured();
 
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
@@ -101,6 +116,12 @@ export function SponsorCreateTrialPage() {
     if (!formData.name) {
       setStatus("Error: Trial name is required.");
       setStep(1);
+      return;
+    }
+
+    if (redactionReport && redactionReport.tokensRedacted > 0 && !redactionAcknowledged) {
+      setStatus("Error: Acknowledge PHI redaction before submitting.");
+      setStep(4);
       return;
     }
 
@@ -131,6 +152,32 @@ export function SponsorCreateTrialPage() {
     setStatus(null);
     nextStep();
   };
+
+  const handleProtocolPdfUpload = async (file: File) => {
+    setAiExtracting(true);
+    setAiExtractError(null);
+    setRedactionAcknowledged(false);
+    setRedactionBannerDismissed(false);
+    try {
+      const result = await extractCriteriaFromProtocolPdf(file);
+      setCriteria(result.criteria);
+      setRedactionReport(result.redactionReport);
+      setStatus("AI pre-filled eligibility criteria from protocol (review before submit).");
+      setStep(4);
+    } catch (err) {
+      setAiExtractError(err instanceof Error ? err.message : "Protocol extraction failed");
+    } finally {
+      setAiExtracting(false);
+    }
+  };
+
+  const showRedactionBanner =
+    redactionReport &&
+    redactionReport.tokensRedacted > 0 &&
+    !redactionBannerDismissed;
+
+  const submitBlockedByRedaction =
+    Boolean(redactionReport && redactionReport.tokensRedacted > 0 && !redactionAcknowledged);
 
   const steps = [
     { title: "Protocol", icon: FileText },
@@ -208,6 +255,51 @@ export function SponsorCreateTrialPage() {
         </div>
       )}
 
+      {showRedactionBanner && redactionReport && (
+        <div
+          className="relative flex flex-col gap-3 rounded-2xl border border-amber-300/90 bg-amber-50 px-4 py-4 sm:flex-row sm:items-start"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" strokeWidth={2} />
+          <div className="min-w-0 flex-1 space-y-2 text-sm">
+            <p className="font-semibold text-amber-950">PHI redaction applied ({redactionReport.tokensRedacted} tokens)</p>
+            <p className="leading-relaxed text-amber-900/90">
+              Patient-identifying content was removed locally before AI extraction. Review pre-filled criteria and
+              acknowledge before on-chain submit.
+            </p>
+            <ul className="text-xs text-amber-900/80 list-disc pl-4">
+              {redactionReport.entities.slice(0, 5).map((e, i) => (
+                <li key={`${e.token}-${i}`}>
+                  {e.type} → {e.token}
+                </li>
+              ))}
+              {redactionReport.entities.length > 5 && (
+                <li>…and {redactionReport.entities.length - 5} more</li>
+              )}
+            </ul>
+            <label className="flex items-start gap-2 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={redactionAcknowledged}
+                onChange={(e) => setRedactionAcknowledged(e.target.checked)}
+              />
+              <span className="font-medium text-amber-950">
+                I reviewed the redaction report and confirm criteria before submitting on-chain.
+              </span>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="absolute right-3 top-3 rounded-lg p-1 text-amber-800 hover:bg-amber-100/80"
+            aria-label="Dismiss banner"
+            onClick={() => setRedactionBannerDismissed(true)}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="relative">
         <div className="absolute left-10 right-10 top-5 hidden h-px bg-slate-200 md:block" />
         <div className="relative z-10 grid grid-cols-2 gap-6 md:flex md:justify-between md:gap-2">
@@ -254,6 +346,67 @@ export function SponsorCreateTrialPage() {
                 transition={{ duration: 0.2 }}
                 className="space-y-8"
               >
+                <div className="rounded-2xl border-2 border-teal-200/90 bg-gradient-to-br from-teal-50/90 via-white to-indigo-50/40 p-6 shadow-sm ring-1 ring-teal-100/80">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-2 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                          <ShieldIcon className="h-3 w-3" />
+                          Headline feature
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-800">
+                          PHI-safe · redacted before LLM
+                        </span>
+                      </div>
+                      <h3 className="font-display text-lg font-semibold text-slate-900">
+                        Upload protocol PDF → encrypted criteria
+                      </h3>
+                      <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+                        Dr. Chen uploads a sponsor protocol PDF. PHI is redacted locally, AI extracts eligibility
+                        bounds, and you review before{" "}
+                        <code className="text-xs bg-white/80 px-1 rounded">createTrialWithEncryptedCriteria</code>{" "}
+                        encrypts bounds with Zama FHE on Sepolia.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                      <input
+                        ref={protocolFileRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleProtocolPdfUpload(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        disabled={!aiConfigured || aiExtracting}
+                        className="gap-2 rounded-xl bg-teal-700 font-semibold text-white hover:bg-teal-800"
+                        onClick={() => protocolFileRef.current?.click()}
+                      >
+                        {aiExtracting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        {aiExtracting ? "Extracting criteria…" : "Upload protocol PDF"}
+                      </Button>
+                      {!aiConfigured && (
+                        <p className="text-[11px] text-amber-800 text-right max-w-[220px]">
+                          Set <code>VITE_AI_SERVICE_URL</code> to enable
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {aiExtractError && (
+                    <p className="mt-3 text-xs text-rose-700" role="alert">
+                      {aiExtractError}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <label className={labelClass}>Trial name</label>
                   <Input
@@ -263,6 +416,15 @@ export function SponsorCreateTrialPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
+
+                <div className={cn(subpanel, "opacity-80")}>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-slate-500">
+                      Or enter trial metadata manually below — criteria step still uses encrypted bounds.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid gap-8 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className={labelClass}>Clinical phase</label>
@@ -624,8 +786,14 @@ export function SponsorCreateTrialPage() {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={!account || blockedFromCreate}
-                title={blockedFromCreate ? "Wallet must be allowlisted on Sponsor Registry or be the registry owner" : undefined}
+                disabled={!account || blockedFromCreate || submitBlockedByRedaction}
+                title={
+                  submitBlockedByRedaction
+                    ? "Acknowledge PHI redaction before submitting"
+                    : blockedFromCreate
+                      ? "Wallet must be allowlisted on Sponsor Registry or be the registry owner"
+                      : undefined
+                }
                 className="order-1 gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-6 font-semibold text-white shadow-none hover:bg-emerald-700 disabled:opacity-50 sm:order-2 sm:ml-auto"
               >
                 Create protocol

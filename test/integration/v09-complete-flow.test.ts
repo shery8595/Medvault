@@ -31,8 +31,10 @@ import {
     deployMedVaultStack,
     createTrialForSponsor,
 } from "../../test-support/journey";
-import { requestEncryptedWithdraw } from "../../test-support/withdraw";
-import { createEncryptedClaimUnits } from "../../test-support/withdraw";
+import { requestEncryptedWithdraw, createEncryptedClaimUnits, claimParticipantRewardsTx, dummyWithdrawToArgs } from "../../test-support/withdraw";
+import { confirmStagedReceipt } from "../../test-support/claimReceipt";
+import { parseClaimInitiatedLog } from "../../test-support/vaultEvents";
+import { authorizeCethContract } from "../../test-support/timelock";
 import {
     cancelAnonymousApplyStage,
     buildAnonymousApplyArgs,
@@ -107,7 +109,7 @@ describe("Integration: v0.9 complete patient flows", function () {
 
             await cancelAnonymousApplyStage(
                 stack.medVaultRegistry,
-                stack.patient,
+                stack.relayer,
                 trialId,
                 patient.identity,
                 stack.patient.address
@@ -139,7 +141,7 @@ describe("Integration: v0.9 complete patient flows", function () {
             );
             await expectRevert(
                 stack.medVaultRegistry
-                    .connect(stack.patient)
+                    .connect(stack.relayer)
                     .finalizeAnonymousApplyWithProof(
                         trialId,
                         staged.proof,
@@ -150,9 +152,8 @@ describe("Integration: v0.9 complete patient flows", function () {
                         applyArgs.permitSignature,
                         applyArgs.consentWalletSignature,
                         proofBytes,
-                        publicInputs,
-                        true
-                    ),
+                        publicInputs
+            ),
                 /Already applied/
             );
         });
@@ -230,24 +231,24 @@ describe("Integration: v0.9 complete patient flows", function () {
             const { nullifier } = await walletApplyWithConsent(stack, trialId, patient);
             await sponsorAcceptApplication(stack, trialId, nullifier);
             await fundRegisterAndDistribute(stack, trialId, nullifier);
+            await confirmStagedReceipt(stack.sponsorIncentiveVault, trialId, 0n, stack.patient);
 
-            const units = weiToCethUnits(10n ** 18n);
-            const encrypted = await createEncryptedClaimUnits(
-                await stack.confidentialETH.getAddress(),
-                await stack.sponsorIncentiveVault.getAddress(),
+            const units = await (
+                await import("../../test-support/journey")
+            ).patientConfidentialBalanceUnits(stack, stack.patient.address);
+            const tx = await claimParticipantRewardsTx(
+                stack.confidentialETH,
+                stack.sponsorIncentiveVault,
+                stack.patient,
+                trialId,
+                nullifier,
+                stack.patient.address,
                 units
             );
-            await expect(
-                stack.sponsorIncentiveVault
-                    .connect(stack.patient)
-                    .claimParticipantRewards(
-                        trialId,
-                        nullifier,
-                        stack.patient.address,
-                        encrypted.handle,
-                        encrypted.inputProof
-                    )
-            ).to.emit(stack.sponsorIncentiveVault, "ClaimInitiated");
+            const rc = await tx.wait();
+            const ev = parseClaimInitiatedLog(rc);
+            expect(ev).to.not.equal(undefined);
+            expect(ev!.args.trialId).to.equal(trialId);
         });
 
         it("FLOW-10: claim reverts when patient not in pool", async function () {
@@ -261,6 +262,7 @@ describe("Integration: v0.9 complete patient flows", function () {
                 await stack.sponsorIncentiveVault.getAddress(),
                 1
             );
+            const withdrawTo = await dummyWithdrawToArgs();
             await expectRevert(
                 stack.sponsorIncentiveVault
                     .connect(stack.patient)
@@ -269,9 +271,12 @@ describe("Integration: v0.9 complete patient flows", function () {
                         nullifier,
                         stack.patient.address,
                         encrypted.handle,
-                        encrypted.inputProof
+                        encrypted.inputProof,
+                        withdrawTo.nonce,
+                        withdrawTo.deadline,
+                        withdrawTo.signature
                     ),
-                /Patient not registered/
+                /Patient not registered|PatientNotRegistered/
             );
         });
     });
@@ -309,7 +314,7 @@ describe("Integration: v0.9 complete patient flows", function () {
                 stack.sponsorIncentiveVault
                     .connect(stack.patient)
                     .registerAnonymousParticipant(trialId, staged.nullifier),
-                /must be accepted/
+                /App not accepted|must be accepted|AppNotAccepted/
             );
         });
 
@@ -353,7 +358,12 @@ describe("Integration: v0.9 complete patient flows", function () {
                 AWETH_SEPOLIA
             );
             await stakingManager.waitForDeployment();
-            await stack.confidentialETH.authorizeContract(await stakingManager.getAddress());
+            await authorizeCethContract(
+                stack.confidentialETH,
+                stack.owner,
+                await stakingManager.getAddress(),
+                true
+            );
 
             const stakeAmount = CET_MIN_DEPOSIT_WEI * 2n;
             await stakingManager.connect(stack.patient).stake({ value: stakeAmount });
@@ -367,13 +377,13 @@ describe("Integration: v0.9 complete patient flows", function () {
 
             const reqTx = await stakingManager.connect(stack.patient).requestUnstake(stakeAmount);
             const reqRc = (await reqTx.wait())!;
-            const sufficientHandle = (await import("../../test-support/fhe")).parseEventArg(
+            const transferableHandle = (await import("../../test-support/fhe")).parseEventArg(
                 reqRc,
                 stakingManager.interface,
                 "PublicUnstakeRequested",
-                "sufficientHandle"
+                "transferableHandle"
             );
-            const { cleartexts, proof } = await mockPublicDecryptProof(sufficientHandle);
+            const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
             await stakingManager.connect(stack.patient).completePublicUnstake(cleartexts, proof);
         });
     });

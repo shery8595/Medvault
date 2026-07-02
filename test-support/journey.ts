@@ -26,10 +26,25 @@ import { DEFAULT_TRIAL_PARAMS, CET_MIN_DEPOSIT_WEI } from "./constants";
 import { generateTestEligibilityProof } from "./noirProof";
 import { deriveEphemeralWallet } from "./vaultEip712";
 
+async function permitSignerFor(
+    recipient: string,
+    signer: HardhatEthersSigner,
+    permitIdentity?: Identity
+) {
+    if (permitIdentity) {
+        return deriveEphemeralWallet(permitIdentity).connect(ethers.provider);
+    }
+    if (recipient.toLowerCase() === (await signer.getAddress()).toLowerCase()) {
+        return signer;
+    }
+    return ethers.getSigner(recipient);
+}
+
 export type RegisteredPatient = {
     identity: Identity;
     commitment: bigint;
     profile: PatientProfileValues;
+    profileSalt: bigint;
     nullifierFor: (trialId: bigint) => bigint;
 };
 
@@ -49,7 +64,7 @@ export async function registerPatient(
     permitRecipient?: string
 ): Promise<RegisteredPatient> {
     const identity = new Identity();
-    await registerPatientOnRegistry(
+    const { profileSalt } = await registerPatientOnRegistry(
         stack,
         signer,
         identity.commitment,
@@ -60,6 +75,7 @@ export async function registerPatient(
         identity,
         commitment: identity.commitment,
         profile,
+        profileSalt,
         nullifierFor: (trialId: bigint) => deriveNullifier(identity, trialId),
     };
 }
@@ -88,9 +104,7 @@ export async function stageSemaphoreApply(
     const proof = semaphoreProofFor(trialId, nullifier, patient.commitment, recipient);
     const registryAddress = await stack.medVaultRegistry.getAddress();
     const deadline = await defaultApplyDeadline();
-    const permitSigner = permitIdentity
-        ? deriveEphemeralWallet(permitIdentity).connect(ethers.provider)
-        : await ethers.getSigner(recipient);
+    const permitSigner = await permitSignerFor(recipient, signer, permitIdentity);
     const permitSignature = await signAnonymousApplyPermit(permitSigner, registryAddress, {
         trialId,
         commitment: patient.commitment,
@@ -128,9 +142,7 @@ export async function finalizeSemaphoreApply(
     permitIdentity?: Identity
 ) {
     const recipient = permitRecipient ?? signer.address;
-    const decryptUser = permitIdentity
-        ? deriveEphemeralWallet(permitIdentity).connect(ethers.provider)
-        : await ethers.getSigner(recipient);
+    const decryptUser = await permitSignerFor(recipient, signer, permitIdentity);
     const eligible = await (
         await import("./fhe")
     ).mockUserDecryptBool(
@@ -147,6 +159,7 @@ export async function finalizeSemaphoreApply(
         commitment: patient.commitment,
         trialId: staged.trialId,
         profile: patient.profile,
+        profileSalt: patient.profileSalt,
         eligible: true,
         fheStageHandle: staged.finalCt,
     });
@@ -160,9 +173,7 @@ export async function finalizeSemaphoreApply(
 
     const registryAddress = await stack.medVaultRegistry.getAddress();
     const deadline = await defaultApplyDeadline();
-    const permitSigner = permitIdentity
-        ? deriveEphemeralWallet(permitIdentity).connect(ethers.provider)
-        : await ethers.getSigner(recipient);
+    const permitSigner = await permitSignerFor(recipient, signer, permitIdentity);
     const permitSignature = await signAnonymousApplyPermit(permitSigner, registryAddress, {
         trialId: staged.trialId,
         commitment: patient.commitment,
@@ -172,7 +183,9 @@ export async function finalizeSemaphoreApply(
     });
     const consentWallet = signer.address;
     const consentWalletSignature = await signConsentWalletBinding(
-        await ethers.getSigner(consentWallet),
+        consentWallet.toLowerCase() === (await signer.getAddress()).toLowerCase()
+            ? signer
+            : await ethers.getSigner(consentWallet),
         registryAddress,
         {
             nullifier: staged.nullifier,
@@ -183,7 +196,7 @@ export async function finalizeSemaphoreApply(
     );
 
     const tx = await stack.medVaultRegistry
-        .connect(signer)
+        .connect(stack.relayer)
         .finalizeAnonymousApplyWithProof(
             staged.trialId,
             proofFresh,
@@ -194,8 +207,7 @@ export async function finalizeSemaphoreApply(
             permitSignature,
             consentWalletSignature,
             proofBytes,
-            publicInputs,
-            true
+            publicInputs
         );
     const receipt = await tx.wait();
     return { receipt, eligible };
@@ -277,39 +289,35 @@ function receiptGasCost(rc: ContractTransactionReceipt): bigint {
     return rc.gasUsed * (rc.gasPrice ?? 0n);
 }
 
-/** v0.9 completeWithdrawTo after claimParticipantRewards or requestWithdrawTo. */
+/** Single-completion completeWithdrawTo after claimParticipantRewards or requestWithdrawTo. */
 export async function completeWithdrawToFromReceipt(
-    cETH: { interface: { parseLog: (log: { topics: readonly string[]; data: string }) => unknown }; revealWithdrawToAmount: (user: string, cleartexts: string, proof: string) => Promise<{ wait: () => Promise<ContractTransactionReceipt | null> }>; completeWithdrawTo: (user: string, cleartexts: string, proof: string) => Promise<{ wait: () => Promise<ContractTransactionReceipt | null> }> },
+    cETH: {
+        interface: { parseLog: (log: { topics: readonly string[]; data: string }) => unknown };
+        connect: (s: unknown) => {
+            completeWithdrawTo: (user: string, cleartexts: string, proof: string) => Promise<{ wait: () => Promise<ContractTransactionReceipt | null> }>;
+        };
+    },
+    vaultAddress: string,
     patientAddress: string,
     requestReceipt: ContractTransactionReceipt
 ) {
     const { mockPublicDecryptProof, parseEventArg } = await import("./fhe");
-    const sufficientHandle = parseEventArg(
+    const { impersonateAccount } = await import("./signers");
+    const transferableHandle = parseEventArg(
         requestReceipt,
         cETH.interface as never,
         "WithdrawToRequested",
-        "sufficientHandle"
+        "transferableHandle"
     );
-    const { cleartexts, proof } = await mockPublicDecryptProof(sufficientHandle);
-    const [owner] = await ethers.getSigners();
-    const revealRc = await (
-        await cETH.connect(owner).revealWithdrawToAmount(patientAddress, cleartexts, proof)
-    ).wait();
-    if (!revealRc) throw new Error("Reveal receipt missing");
-    const amountHandle = parseEventArg(
-        revealRc,
-        cETH.interface as never,
-        "WithdrawAmountRevealed",
-        "amountHandle"
-    );
-    const amount = await mockPublicDecryptProof(amountHandle);
-    const completeTx = await cETH.connect(owner).completeWithdrawTo(
+    const { cleartexts, proof } = await mockPublicDecryptProof(transferableHandle);
+    const vaultSigner = await impersonateAccount(vaultAddress);
+    const completeTx = await cETH.connect(vaultSigner).completeWithdrawTo(
         patientAddress,
-        amount.cleartexts,
-        amount.proof
+        cleartexts,
+        proof
     );
     const completeRc = await completeTx.wait();
-    return { sufficientHandle, cleartexts, proof };
+    return { transferableHandle, cleartexts, proof, completeRc };
 }
 
 /** v0.9 completeWithdraw after requestWithdraw. */
@@ -317,7 +325,6 @@ export async function completeWithdrawFromReceipt(
     cETH: {
         interface: { parseLog: (log: { topics: readonly string[]; data: string }) => unknown };
         connect: (s: HardhatEthersSigner) => {
-            revealWithdrawAmount: (cleartexts: string, proof: string) => Promise<{ wait: () => Promise<ContractTransactionReceipt | null> }>;
             completeWithdraw: (cleartexts: string, proof: string) => Promise<unknown>;
         };
     },
@@ -341,11 +348,33 @@ export async function claimAndCompleteRewards(
     units: bigint,
     claimSigner: HardhatEthersSigner = stack.patient
 ): Promise<{ gasCost: bigint }> {
-    const { createEncryptedClaimUnits } = await import("./withdraw");
+    const { confirmStagedReceipt } = await import("./claimReceipt");
+    const { createEncryptedClaimUnits, buildWithdrawToAuthorization } = await import("./withdraw");
+    let gasCost = 0n;
+    const alreadyConfirmed = await stack.sponsorIncentiveVault.confirmedPayout(
+        trialId,
+        claimSigner.address,
+        0n
+    );
+    if (!alreadyConfirmed) {
+        const { gasCost: confirmGas } = await confirmStagedReceipt(
+            stack.sponsorIncentiveVault,
+            trialId,
+            0n,
+            claimSigner
+        );
+        gasCost += confirmGas;
+    }
     const encrypted = await createEncryptedClaimUnits(
         await stack.confidentialETH.getAddress(),
         await stack.sponsorIncentiveVault.getAddress(),
         units
+    );
+    const withdrawTo = await buildWithdrawToAuthorization(
+        stack.confidentialETH,
+        claimSigner,
+        destination,
+        encrypted
     );
     const claimTx = await stack.sponsorIncentiveVault
         .connect(claimSigner)
@@ -354,11 +383,19 @@ export async function claimAndCompleteRewards(
             nullifier,
             destination,
             encrypted.handle,
-            encrypted.inputProof
+            encrypted.inputProof,
+            withdrawTo.nonce,
+            withdrawTo.deadline,
+            withdrawTo.signature
         );
     const claimRc = (await claimTx.wait())!;
-    const gasCost = receiptGasCost(claimRc);
-    await completeWithdrawToFromReceipt(stack.confidentialETH, stack.patient.address, claimRc);
+    gasCost += receiptGasCost(claimRc);
+    await completeWithdrawToFromReceipt(
+        stack.confidentialETH,
+        await stack.sponsorIncentiveVault.getAddress(),
+        claimSigner.address,
+        claimRc
+    );
     return { gasCost };
 }
 
@@ -366,7 +403,9 @@ export async function patientConfidentialBalanceUnits(
     stack: MedVaultStack,
     patientAddress: string
 ): Promise<bigint> {
-    const handle = await stack.confidentialETH.getBalance(patientAddress);
+    const handle = await stack.confidentialETH
+        .connect(await ethers.getSigner(patientAddress))
+        .getBalance(patientAddress);
     return mockUserDecryptUint64(handle, await stack.confidentialETH.getAddress(), patientAddress);
 }
 

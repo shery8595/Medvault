@@ -41,6 +41,13 @@ export function ProtocolContractSection({ contract }: { contract: ProtocolContra
                     {contract.related.join(" · ")}
                 </p>
             )}
+            {contract.quirks && contract.quirks.length > 0 && (
+                <ul className="text-xs text-amber-800 mt-3 mb-0 pl-4 list-disc space-y-1">
+                    {contract.quirks.map((q) => (
+                        <li key={q}>{q}</li>
+                    ))}
+                </ul>
+            )}
         </section>
     );
 }

@@ -7,6 +7,7 @@ const { ethers } = hre;
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+import { wireAllContracts } from "./lib/timelockWiring";
 
 const SEMAPHORE_ADDRESS = process.env.SEMAPHORE_ADDRESS || "0x8A1fd199516489B0Fb7153EB5f075cDAC83c693D";
 
@@ -69,10 +70,12 @@ async function main() {
     console.log(`✓ TrialMilestoneManager   → ${milestoneManagerAddress}`);
 
     const MedVaultAutomation = await ethers.getContractFactory("MedVaultAutomation");
-    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress, ethers.ZeroAddress);
+    const chainlinkForwarder =
+        process.env.CHAINLINK_FORWARDER?.trim() || deployer.address;
+    const automation = await MedVaultAutomation.deploy(trialManagerAddress, vaultAddress, chainlinkForwarder);
     await automation.waitForDeployment();
     const automationAddress = await automation.getAddress();
-    console.log(`✓ MedVaultAutomation      → ${automationAddress}`);
+    console.log(`✓ MedVaultAutomation      → ${automationAddress} (forwarder: ${chainlinkForwarder})`);
 
     const StakingManager = await ethers.getContractFactory("StakingManager");
     const AAVE_POOL = process.env.AAVE_POOL || "0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff";
@@ -108,7 +111,7 @@ async function main() {
         console.log(`  ${name}: ${block || "unknown"}`);
     }
 
-    console.log("\nWiring contracts...");
+    console.log("\nWiring contracts (timelocked setters)...");
     const anonymousRegistry = await ethers.getContractAt("AnonymousPatientRegistry", anonymousRegistryAddress);
     const trialManager = await ethers.getContractAt("TrialManager", trialManagerAddress);
     const engine = await ethers.getContractAt("EligibilityEngine", engineAddress);
@@ -116,56 +119,32 @@ async function main() {
     const dataAccessLog = await ethers.getContractAt("DataAccessLog", dataAccessLogAddress);
     const leaderboard = await ethers.getContractAt("EncryptedScoreLeaderboard", leaderboardAddress);
     const consentGate = await ethers.getContractAt("EncryptedConsentGate", consentGateAddress);
-
-    await (await anonymousRegistry.setAuthorizedEngine(engineAddress)).wait();
-    await (await anonymousRegistry.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    await (await anonymousRegistry.setDataAccessLog(dataAccessLogAddress)).wait();
-    console.log("✓ AnonymousPatientRegistry wiring");
-
-    await (await trialManager.setAutomationContract(automationAddress)).wait();
-    console.log("✓ TrialManager.setAutomationContract");
-
-    await (await engine.setAutomationContract(automationAddress)).wait();
-    await (await engine.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await engine.setConsentGate(consentGateAddress)).wait();
-    await (await engine.setScoreLeaderboard(leaderboardAddress)).wait();
-    await (await engine.setEligibilityVerifier(honkVerifierAddress)).wait();
-    await (await engine.setSponsorIncentiveVault(vaultAddress)).wait();
-    await (await engine.setAuthorizedRegistry(medVaultRegistryAddress)).wait();
-    console.log("✓ EligibilityEngine wiring");
-
     const consentManager = await ethers.getContractAt("ConsentManager", consentManagerAddress);
-    await (await consentManager.setEligibilityEngine(engineAddress)).wait();
-    await (await consentManager.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await consentManager.setConsentGate(consentGateAddress)).wait();
-    console.log("✓ ConsentManager wiring");
 
-    await (await vault.setMilestoneManager(milestoneManagerAddress)).wait();
-    await (await vault.setDataAccessLog(dataAccessLogAddress)).wait();
-    await (await vault.setAutomationContract(automationAddress)).wait();
-    console.log("✓ SponsorIncentiveVault wiring");
+    const trustedRelayer =
+        process.env.TRUSTED_RELAYER_ADDRESS ||
+        (process.env.RELAYER_PRIVATE_KEY
+            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
+            : undefined);
 
-    await (await milestoneManager.setVault(vaultAddress)).wait();
-    await (await milestoneManager.setDataAccessLog(dataAccessLogAddress)).wait();
-    console.log("✓ TrialMilestoneManager wiring");
-
-    await (await automation.setVault(vaultAddress)).wait();
-    console.log("✓ MedVaultAutomation.setVault");
-
-    await (await cETH.authorizeContract(vaultAddress)).wait();
-    await (await cETH.authorizeContract(stakingManagerAddress)).wait();
-    console.log("✓ ConfidentialETH.authorizeContract");
-
-    await (await dataAccessLog.setAuthorizedLogger(engineAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(anonymousRegistryAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(vaultAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(consentManagerAddress, true)).wait();
-    await (await dataAccessLog.setAuthorizedLogger(milestoneManagerAddress, true)).wait();
-    console.log("✓ DataAccessLog authorized loggers");
-
-    await (await leaderboard.authorizeCaller(engineAddress)).wait();
-    await (await consentGate.authorizeComputer(engineAddress)).wait();
-    console.log("✓ Leaderboard + ConsentGate authorizations");
+    await wireAllContracts({
+        anonymousRegistry,
+        trialManager,
+        engine,
+        consentManager,
+        vault,
+        milestoneManager,
+        automation,
+        cETH,
+        dataAccessLog,
+        leaderboard,
+        consentGate,
+        medVaultRegistry,
+        honkVerifierAddress,
+        sponsorRegistryAddress,
+        stakingManagerAddress,
+        trustedRelayer,
+    });
 
     const addressesPath = path.join(__dirname, "../src/lib/contracts/addresses.json");
     const existing = fs.existsSync(addressesPath) ? JSON.parse(fs.readFileSync(addressesPath, "utf8")) : {};

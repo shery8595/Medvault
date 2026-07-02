@@ -1,7 +1,8 @@
 import {
   assertSponsorCanWrite,
   computeMilestoneDeadlines,
-  createTrialOnChain,
+  createTrialEncrypted as createTrialEncryptedOnChain,
+  createTrialOnChainPlaintext,
   deactivateTrial,
   distributePartialMilestone,
   fetchAuditLogsFromChain,
@@ -10,7 +11,8 @@ import {
   getTrialPoolReclaimStatus,
   postSubgraph,
   reclaimUndistributedPool,
-  registerAnonymousParticipantByNullifier,
+  reclaimAbandonedToOwnerPool,
+  claimReclaimedPool as claimReclaimedPoolOnChain,
   setTrialMilestones,
   updateTrialApplicationStatus,
   type CreateTrialParams,
@@ -76,7 +78,18 @@ export function createSponsorModule(ctx: SdkRuntimeContext) {
     async createTrial(params: CreateTrialParams) {
       const signer = requireSigner(ctx);
       await assertSponsorCanWrite(signer, openAccess());
-      return createTrialOnChain(signer, params);
+      const network = await ctx.provider.getNetwork();
+      if (network.chainId === 31337n) {
+        return createTrialOnChainPlaintext(signer, params);
+      }
+      return createTrialEncryptedOnChain(signer, params, { rpcUrl: ctx.config.rpcUrl });
+    },
+
+    /** Always uses FHE-encrypted criteria (Sepolia / production). */
+    async createTrialEncrypted(params: CreateTrialParams) {
+      const signer = requireSigner(ctx);
+      await assertSponsorCanWrite(signer, openAccess());
+      return createTrialEncryptedOnChain(signer, params, { rpcUrl: ctx.config.rpcUrl });
     },
 
     async setMilestones(
@@ -125,21 +138,34 @@ export function createSponsorModule(ctx: SdkRuntimeContext) {
     async distributeMilestone(trialId: string, milestoneIndex: number) {
       const signer = requireSigner(ctx);
       await assertSponsorCanWrite(signer, openAccess());
-      await distributePartialMilestone(signer, trialId, milestoneIndex);
-      return { trialId, milestoneIndex };
-    },
-
-    async registerAnonymousParticipant(trialId: string, nullifier: bigint | string) {
-      const signer = requireSigner(ctx);
-      await assertSponsorCanWrite(signer, openAccess());
-      await registerAnonymousParticipantByNullifier(signer, trialId, BigInt(nullifier));
-      return { trialId, nullifier: nullifier.toString() };
+      const result = await distributePartialMilestone(signer, trialId, milestoneIndex);
+      return {
+        trialId,
+        milestoneIndex,
+        txHash: result.txHash,
+        creditFailures: result.creditFailures.map((f) => ({
+          participant: f.participant,
+          reason: f.reason,
+        })),
+      };
     },
 
     async reclaimPool(trialId: string) {
       const signer = requireSigner(ctx);
       await assertSponsorCanWrite(signer, openAccess());
       await reclaimUndistributedPool(signer, trialId);
+      return { trialId };
+    },
+
+    async reclaimAbandonedPool(trialId: string) {
+      const signer = requireSigner(ctx);
+      await reclaimAbandonedToOwnerPool(signer, trialId);
+      return { trialId, scheduled: true as const };
+    },
+
+    async claimReclaimedPool(trialId: string) {
+      const signer = requireSigner(ctx);
+      await claimReclaimedPoolOnChain(signer, trialId);
       return { trialId };
     },
   };

@@ -1,17 +1,22 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Identity } from "@semaphore-protocol/identity";
-import { assertFhevmMock, mockDecryptBool } from "../../test-support/fhe";
-import { ELIGIBLE_PROFILE } from "../../test-support/fixtures/profiles";
+import { assertFhevmMock, mockDecryptBool, mockGetPlaintext } from "../../test-support/fhe";
+import {
+    ELIGIBLE_PROFILE,
+    PROFILE_FAIL_AGE,
+    PROFILE_FAIL_HB,
+} from "../../test-support/fixtures/profiles";
 import {
     deployMedVaultStack,
     createEncryptedTrialForSponsor,
+    createTrialForSponsor,
     registerPatientOnRegistry,
 } from "../../test-support/deployments";
 import { deriveNullifier } from "../../test-support/semaphore";
 import { impersonateAccount } from "../../test-support/signers";
 import { parseEventArg } from "../../test-support/fhe";
-import { generateTestEligibilityProof, BN254_FIELD_ORDER } from "../../test-support/noirProof";
+import { generateTestEncryptedEligibilityProof, BN254_FIELD_ORDER } from "../../test-support/noirProof";
 import { deriveEphemeralAddress } from "../../test-support/vaultEip712";
 
 describe("Unit: encrypted sponsor criteria", function () {
@@ -55,6 +60,47 @@ describe("Unit: encrypted sponsor criteria", function () {
         expect(eligible).to.equal(true);
     });
 
+    it("DIFF-03: encrypted criteria path matches plaintext oracle (finalResult + score)", async function () {
+        const stack = await deployMedVaultStack();
+        const profiles: Array<{ profile: typeof ELIGIBLE_PROFILE; signer: typeof stack.patient }> = [
+            { profile: ELIGIBLE_PROFILE, signer: stack.patient },
+            { profile: PROFILE_FAIL_AGE, signer: stack.stranger },
+            { profile: PROFILE_FAIL_HB, signer: stack.sponsor2 },
+        ];
+        const registrySigner = await impersonateAccount(await stack.medVaultRegistry.getAddress());
+
+        for (const { profile, signer } of profiles) {
+            const id = new Identity();
+            await registerPatientOnRegistry(
+                stack,
+                signer,
+                id.commitment,
+                signer.address,
+                profile
+            );
+            const plaintextTrialId = await createTrialForSponsor(stack);
+            const encryptedTrialId = await createEncryptedTrialForSponsor(stack);
+
+            await stack.eligibilityEngine
+                .connect(registrySigner)
+                .comparePlaintextVsEncryptedEligibility(
+                    id.commitment,
+                    plaintextTrialId,
+                    encryptedTrialId
+                );
+            const handles = await stack.eligibilityEngine.lastDiffCompareHandles();
+            const plaintextFinal = handles.plaintextFinal ?? handles[0];
+            const encryptedFinal = handles.encryptedFinal ?? handles[1];
+            const plaintextScore = handles.plaintextScore ?? handles[2];
+            const encryptedScore = handles.encryptedScore ?? handles[3];
+
+            expect(await mockDecryptBool(plaintextFinal)).to.equal(
+                await mockDecryptBool(encryptedFinal)
+            );
+            expect(await mockGetPlaintext(plaintextScore)).to.equal(await mockGetPlaintext(encryptedScore));
+        }
+    });
+
     it("ECR-02: trial reports encryptedCriteria flag", async function () {
         const stack = await deployMedVaultStack();
         const trialId = await createEncryptedTrialForSponsor(stack);
@@ -89,14 +135,10 @@ describe("Unit: encrypted sponsor criteria", function () {
 
         const bindingHash = await stack.eligibilityEngine.encryptedCriteriaBindingHash(trialId);
         const bindingField = BigInt(bindingHash) % BN254_FIELD_ORDER;
-        const { proofBytes, publicInputs } = await generateTestEligibilityProof({
+        const { proofBytes, publicInputs } = await generateTestEncryptedEligibilityProof({
             identity: id,
-            commitment: id.commitment,
             trialId,
-            profile: ELIGIBLE_PROFILE,
-            eligible: true,
             fheStageHandle: finalCt,
-            criteriaMode: 1,
             encryptedCriteriaBindingHash: bindingField,
         });
 
@@ -109,12 +151,14 @@ describe("Unit: encrypted sponsor criteria", function () {
                 ephemeral,
                 stack.patient.address,
                 proofBytes,
-                publicInputs,
-                true
+                publicInputs
             );
 
         expect(await stack.eligibilityEngine.noirVerifiedResults(nullifier, trialId)).to.equal(true);
-        expect(BigInt(publicInputs[16]!)).to.equal(1n);
-        expect(BigInt(publicInputs[7]!)).to.equal(bindingField);
+        expect(BigInt(publicInputs[6]!)).to.equal(1n);
+        expect(BigInt(publicInputs[5]!)).to.equal(bindingField);
+        expect(await stack.eligibilityEngine.isAnonymousApplicationAccepted(nullifier, trialId)).to.equal(
+            true
+        );
     });
 });

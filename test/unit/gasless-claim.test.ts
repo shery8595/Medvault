@@ -21,8 +21,67 @@ import {
     signRegisterAuthorizationForTest,
 } from "../../test-support/vaultEip712";
 import { createEncryptedUint64, mockUserDecryptUint64 } from "../../test-support/fhe";
+import { confirmStagedReceipt } from "../../test-support/claimReceipt";
+import { buildWithdrawToAuthorization, computeEncryptedAmountCommitment } from "../../test-support/withdraw";
 import { expectRevert } from "../../test-support/assertions";
+import { impersonateAccount } from "../../test-support/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+
+async function gaslessClaimFor(
+    stack: Awaited<ReturnType<typeof deployMedVaultStack>>,
+    patient: Awaited<ReturnType<typeof registerPatient>>,
+    ephemeral: string,
+    trialId: bigint,
+    nullifier: bigint,
+    destination: string,
+    units: bigint,
+    claimNonce: bigint,
+    claimDeadline: bigint
+) {
+    const vaultAddress = await stack.sponsorIncentiveVault.getAddress();
+    const chainId = BigInt((await ethers.provider.getNetwork()).chainId);
+    const enc = await createEncryptedUint64(
+        await stack.confidentialETH.getAddress(),
+        vaultAddress,
+        Number(units)
+    );
+    const amountCommitment = computeEncryptedAmountCommitment(enc.handle, enc.inputProof);
+    const claimSig = await signClaimAuthorizationForTest(patient.identity, vaultAddress, chainId, {
+        trialId,
+        nullifier,
+        permitHolder: ephemeral,
+        destination,
+        units,
+        encryptedAmountCommitment: amountCommitment,
+        nonce: claimNonce,
+        deadline: claimDeadline,
+    });
+    const ephemeralWallet = deriveEphemeralWallet(patient.identity).connect(ethers.provider);
+    const withdrawTo = await buildWithdrawToAuthorization(
+        stack.confidentialETH,
+        ephemeralWallet,
+        destination,
+        enc
+    );
+    return stack.sponsorIncentiveVault
+        .connect(stack.patient)
+        .claimParticipantRewardsFor(
+            trialId,
+            nullifier,
+            ephemeral,
+            destination,
+            units,
+            amountCommitment,
+            enc.handle,
+            enc.inputProof,
+            claimNonce,
+            claimDeadline,
+            claimSig,
+            withdrawTo.nonce,
+            withdrawTo.deadline,
+            withdrawTo.signature
+        );
+}
 
 describe("Unit: gasless ephemeral claim and register", function () {
     async function setupEphemeralApplicant() {
@@ -70,8 +129,13 @@ describe("Unit: gasless ephemeral claim and register", function () {
 
         await endTrialAndDistribute(stack, trialId);
 
-        const balanceHandle = await stack.confidentialETH.getBalance(ephemeral);
         const ephemeralWallet = deriveEphemeralWallet(patient.identity).connect(ethers.provider);
+        const ephemeralSigner = await impersonateAccount(ephemeral);
+        await confirmStagedReceipt(stack.sponsorIncentiveVault, trialId, 0n, ephemeralSigner);
+
+        const balanceHandle = await stack.confidentialETH
+            .connect(ephemeralWallet)
+            .getBalance(ephemeral);
         const units = await mockUserDecryptUint64(
             balanceHandle,
             await stack.confidentialETH.getAddress(),
@@ -81,35 +145,17 @@ describe("Unit: gasless ephemeral claim and register", function () {
 
         const claimDeadline = BigInt((await ethers.provider.getBlock("latest"))!.timestamp + 3600);
         const destination = stack.patient.address;
-        const claimSig = await signClaimAuthorizationForTest(patient.identity, vaultAddress, chainId, {
+        await gaslessClaimFor(
+            stack,
+            patient,
+            ephemeral,
             trialId,
             nullifier,
-            permitHolder: ephemeral,
             destination,
             units,
-            nonce: 2n,
-            deadline: claimDeadline,
-        });
-        const enc = await createEncryptedUint64(
-            await stack.confidentialETH.getAddress(),
-            vaultAddress,
-            Number(units)
+            2n,
+            claimDeadline
         );
-
-        await stack.sponsorIncentiveVault
-            .connect(stack.patient)
-            .claimParticipantRewardsFor(
-                trialId,
-                nullifier,
-                ephemeral,
-                destination,
-                units,
-                enc.handle,
-                enc.inputProof,
-                2n,
-                claimDeadline,
-                claimSig
-            );
 
         const pendingHandle = await stack.confidentialETH.pendingWithdrawToHandle(ephemeral);
         expect(pendingHandle).to.not.equal(ethers.ZeroHash);
@@ -134,59 +180,43 @@ describe("Unit: gasless ephemeral claim and register", function () {
             .registerAnonymousParticipantFor(trialId, nullifier, ephemeral, 11n, regDeadline, regSig);
         await endTrialAndDistribute(stack, trialId);
 
-        const balanceHandle = await stack.confidentialETH.getBalance(ephemeral);
         const ephemeralWallet = deriveEphemeralWallet(patient.identity).connect(ethers.provider);
+        const ephemeralSigner = await impersonateAccount(ephemeral);
+        await confirmStagedReceipt(stack.sponsorIncentiveVault, trialId, 0n, ephemeralSigner);
+
+        const balanceHandle = await stack.confidentialETH
+            .connect(ephemeralWallet)
+            .getBalance(ephemeral);
         const units = await mockUserDecryptUint64(
             balanceHandle,
             await stack.confidentialETH.getAddress(),
             ephemeralWallet
         );
         const claimDeadline = BigInt((await ethers.provider.getBlock("latest"))!.timestamp + 3600);
-        const claimSig = await signClaimAuthorizationForTest(patient.identity, vaultAddress, chainId, {
+        await gaslessClaimFor(
+            stack,
+            patient,
+            ephemeral,
             trialId,
             nullifier,
-            permitHolder: ephemeral,
-            destination: stack.patient.address,
+            stack.patient.address,
             units,
-            nonce: 22n,
-            deadline: claimDeadline,
-        });
-        const enc = await createEncryptedUint64(
-            await stack.confidentialETH.getAddress(),
-            vaultAddress,
-            Number(units)
+            22n,
+            claimDeadline
         );
 
-        await stack.sponsorIncentiveVault
-            .connect(stack.patient)
-            .claimParticipantRewardsFor(
+        await expectRevert(
+            gaslessClaimFor(
+                stack,
+                patient,
+                ephemeral,
                 trialId,
                 nullifier,
-                ephemeral,
                 stack.patient.address,
                 units,
-                enc.handle,
-                enc.inputProof,
                 22n,
-                claimDeadline,
-                claimSig
-            );
-
-        await expectRevert(
-            stack.sponsorIncentiveVault
-                .connect(stack.patient)
-                .claimParticipantRewardsFor(
-                    trialId,
-                    nullifier,
-                    ephemeral,
-                    stack.patient.address,
-                    units,
-                    enc.handle,
-                    enc.inputProof,
-                    22n,
-                    claimDeadline,
-                    claimSig
-                ),
+                claimDeadline
+            ),
             "Auth already used"
         );
     });
@@ -210,45 +240,33 @@ describe("Unit: gasless ephemeral claim and register", function () {
             .registerAnonymousParticipantFor(trialId, nullifier, ephemeral, 31n, regDeadline, regSig);
         await endTrialAndDistribute(stack, trialId);
 
-        const balanceHandle = await stack.confidentialETH.getBalance(ephemeral);
         const ephemeralWallet = deriveEphemeralWallet(patient.identity).connect(ethers.provider);
+        const ephemeralSigner = await impersonateAccount(ephemeral);
+        await confirmStagedReceipt(stack.sponsorIncentiveVault, trialId, 0n, ephemeralSigner);
+
+        const balanceHandle = await stack.confidentialETH
+            .connect(ephemeralWallet)
+            .getBalance(ephemeral);
         const units = await mockUserDecryptUint64(
             balanceHandle,
             await stack.confidentialETH.getAddress(),
             ephemeralWallet
         );
         const claimDeadline = BigInt((await ethers.provider.getBlock("latest"))!.timestamp + 60);
-        const claimSig = await signClaimAuthorizationForTest(patient.identity, vaultAddress, chainId, {
-            trialId,
-            nullifier,
-            permitHolder: ephemeral,
-            destination: stack.patient.address,
-            units,
-            nonce: 32n,
-            deadline: claimDeadline,
-        });
-        const enc = await createEncryptedUint64(
-            await stack.confidentialETH.getAddress(),
-            vaultAddress,
-            Number(units)
-        );
         await time.increase(120);
 
         await expectRevert(
-            stack.sponsorIncentiveVault
-                .connect(stack.patient)
-                .claimParticipantRewardsFor(
-                    trialId,
-                    nullifier,
-                    ephemeral,
-                    stack.patient.address,
-                    units,
-                    enc.handle,
-                    enc.inputProof,
-                    32n,
-                    claimDeadline,
-                    claimSig
-                ),
+            gaslessClaimFor(
+                stack,
+                patient,
+                ephemeral,
+                trialId,
+                nullifier,
+                stack.patient.address,
+                units,
+                32n,
+                claimDeadline
+            ),
             "Signature expired"
         );
     });
