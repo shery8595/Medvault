@@ -76,26 +76,28 @@ export function AnonymousApplyWizard({
       },
       {
         id: "proof",
-        label: "Semaphore zero-knowledge proof",
-        description: "Proves group membership without revealing wallet",
+        label: "Semaphore membership proof",
+        description:
+          "Trial-scoped anonymous identity — separate from Noir eligibility attestation at finalize",
         status: stepStatus(proofDone, phase === "generating-proof", isError && phase === "generating-proof"),
       },
       {
         id: "stage",
-        label: "Stage anonymous apply",
-        description: "Relayer submits encrypted eligibility staging tx",
+        label: "Stage FHE eligibility",
+        description: "Relayer stages encrypted eligibility on-chain (Zama FHE compute)",
         status: stepStatus(stageDone, phase === "staging", isError && phase === "staging"),
       },
       {
         id: "finalize",
-        label: "KMS decrypt & finalize",
-        description: "Public decrypt gate completes or cancels application",
+        label: "FHE decrypt, Noir proof & finalize",
+        description:
+          "Browser decrypts staged result, generates Noir attestation (incl. hybrid doc binding if attached), relayer finalizes apply",
         status: stepStatus(finalizeDone, phase === "finalizing", isError && phase === "finalizing"),
       },
       {
         id: "done",
-        label: "Application status",
-        description: "Sponsor sees blinded application — no PHI exposed",
+        label: "Application submitted",
+        description: "Status Pending — sponsor accepts or rejects; no PHI exposed on-chain",
         status: stepStatus(phase === "applied", false, isError && phase === "applied"),
       },
     ];

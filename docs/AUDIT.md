@@ -23,10 +23,10 @@
 | MCP tools | 33 | 23 read, 10 write — `mcp-server/src/server.ts` |
 | Background jobs | 5 | relayer watcher, batch-exit queue, indexer sync/reconcile, Chainlink CRE workflow |
 | Scripts | 36 | 33 `scripts/*` + 3 `scripts/lib/*` |
-| Test files (TS) | 96 | `test/`, `packages/**/tests`, `src/lib/__tests__` |
-| Registered test cases | ~2,020 | 491 literal `it()` + 832 parametric + fuzz loop expansion |
-| Default suite passing | **483** | `npm test` / `scripts/hardhat-test-suite.mjs` default (verified 2026-07-02) |
-| Unit suite passing | **395** (+ 6 pending) | `npm run test:unit` |
+| Test files (TS) | 97 | `test/`, `packages/**/tests`, `src/lib/__tests__` |
+| Registered test cases | ~2,028 | 499 literal `it()` + 832 parametric + fuzz loop expansion |
+| Default suite passing | **491** | `npm test` / `scripts/hardhat-test-suite.mjs` default (verified 2026-07-04) |
+| Unit suite passing | **403** (+ 6 pending) | `npm run test:unit` |
 | Integration passing | **85** | `npm run test:integration` |
 | Crypto (nullifier) | **3** | `npm run test:crypto` |
 | CI workflows | 4 | contracts-test, docker-smoke, frontend, mcp — **no CD** |
@@ -69,7 +69,7 @@ find . -name '*.md' -not -path './node_modules/*' | wc -l   # 33
 
 | ID | Issue | Status (Plan 10) |
 |----|-------|------------------|
-| D1 | Test-count contradictions | **Resolved** — canonical **483** via `docsStats` / `testSuiteData`; historical rows labeled in `VERIFICATION_SNAPSHOT.md` |
+| D1 | Test-count contradictions | **Resolved** — canonical **491** via `docsStats` / `testSuiteData`; historical rows labeled in `VERIFICATION_SNAPSHOT.md` |
 | D2 | Stale contract count | **Resolved** — `DOCS_CONTRACT_COUNT = 15` |
 | D3 | Stale public-input count | **Resolved** — **25** in circuit, Prover.toml, `EligibilityEngineDoc` |
 | D4 | Missing service READMEs | **Resolved** (Plans 05–09) — relayer, ai-service, indexer, mcp-server, medvault-core |
@@ -173,7 +173,7 @@ find . -name '*.md' -not -path './node_modules/*' | wc -l   # 33
 | `src/lib/docsNav.ts` | IA, search, `DOCS_CONTRACT_COUNT` | **OK** — 48 nav entries |
 | `src/lib/docsStats.ts` | **Canonical stats manifest (Plan 00)** | Source of truth for counts going forward |
 | `src/lib/protocolContracts.ts` | Contract catalog | 15 + Honk; trial criteria described as public |
-| `src/pages/docs/testing/testSuiteData.ts` | Test section facts | `SUITE_STATS.totalPassing = 483` (from `docsStats`) |
+| `src/pages/docs/testing/testSuiteData.ts` | Test section facts | `SUITE_STATS.totalPassing = 491` (from `docsStats`) |
 | `docs/AUDIT.md` | This file | Baseline artifact |
 
 ---

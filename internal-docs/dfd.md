@@ -152,12 +152,14 @@ Representative write tools: `medvault_create_trial`, `medvault_fund_trial_pool`,
 | 2 | POST | `/relay/pin-document` | relayer |
 | 3 | POST | `/relay/apply-stage` | relayer |
 | 4 | POST | `/relay/apply-finalize` | relayer |
-| 5 | POST | `/relay/register` | relayer |
-| 6 | POST | `/relay/claim` | relayer |
-| 7 | POST | `/relay/register-anon` | relayer |
-| 8 | POST | `/relay/completion-proof` | relayer |
-| 9 | POST | `/relay/public-exit` | relayer |
-| 10 | POST | `/relay/apply` | relayer (deprecated) |
+| 5 | POST | `/relay/cancel-stage` | relayer |
+| 6 | POST | `/relay/register` | relayer |
+| 7 | POST | `/relay/claim` | relayer |
+| 8 | POST | `/relay/register-anon` | relayer |
+| 9 | POST | `/relay/completion-proof` | relayer |
+| 10 | POST | `/relay/public-exit` | relayer |
+| 11 | GET | `/transparency` | relayer |
+| 12 | POST | `/relay/apply` | relayer (deprecated) |
 | 11 | GET | `/health` | ai-service |
 | 12 | POST | `/ai/extract-criteria` | ai-service |
 | 13 | POST | `/ai/audit-logs` | ai-service |

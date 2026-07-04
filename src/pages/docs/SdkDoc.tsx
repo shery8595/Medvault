@@ -304,8 +304,10 @@ npm run sync-sdk-assets`}
                         <code>POST /relay/apply-stage</code> — <code>sdk.relayer.stageApply(...)</code>
                     </li>
                     <li>
-                        <code>POST /relay/apply-finalize</code> — <code>sdk.relayer.finalizeApply(...)</code> (requires{" "}
-                        <code>eligible: true</code> and threshold decrypt signature from the client)
+                        <code>POST /relay/apply-finalize</code> — <code>sdk.relayer.finalizeApply(...)</code> (authorized relayer submits after client Noir proof; optional <code>baseUrl</code> for multi-relayer)
+                    </li>
+                    <li>
+                        <code>sdk.relayer.listHealth(urls?)</code> — probe one or all configured relayer origins
                     </li>
                     <li>
                         <code>POST /relay/claim</code> — <code>sdk.relayer.relayClaim(...)</code>

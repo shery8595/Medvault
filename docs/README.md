@@ -13,7 +13,7 @@ Canonical statistics (contract counts, test matrix totals): [`src/lib/docsStats.
 | Trial payout contract | **SponsorIncentiveVault** | "the vault" alone | Disambiguate from `StakingManager` / Aave |
 | Milestone-0 payout | **zero-revelation reward** (or **zero-revelation screening reward**) | "screening reward" alone | FHE-gated; see [ZERO_REVELATION_REWARDS.md](./ZERO_REVELATION_REWARDS.md) |
 | Contract catalog count | **15** production entries in `PROTOCOL_CONTRACTS` | "14 contracts" | + alias + optional Honk = **17** Solidity artifacts |
-| Default test suite | **483 passing** (`npm test`) | 283 / 285 / ~330 / 369 / 401 / 428 | Source: `docsStats.testSuiteDefaultPassing` (verified 2026-07-02) |
+| Default test suite | **491 passing** (`npm test`) | 283 / 285 / ~330 / 369 / 401 / 428 / 483 | Source: `docsStats.testSuiteDefaultPassing` (verified 2026-07-04) |
 | Eligibility public inputs | **25** (plaintext) / **15** (encrypted) | 16 / 17 | `circuits/eligibility_plaintext`, `circuits/eligibility_encrypted` |
 | FHE core story (canonical) | Homomorphic match of encrypted patient vitals vs encrypted sponsor criteria on Sepolia | — | README header + [LIGHTPAPER.md](./LIGHTPAPER.md) |
 
@@ -59,13 +59,17 @@ MedVault maintains **two documentation layers**. Each topic has **one canonical 
 | [MEDIUM_FINDINGS_CLOSEOUT.md](./MEDIUM_FINDINGS_CLOSEOUT.md) | Closeout for 3 open Medium threat-model rows (auditor, silent reject, RegConsistency) |
 | [REGCONSISTENCY_B_FINDING.md](./REGCONSISTENCY_B_FINDING.md) | P5 SDK investigation — registration consistency binding **not available**; RegConsistency-A blocked |
 | [REGULATORY_POSTURE.md](./REGULATORY_POSTURE.md) | HIPAA/IRB/GDPR scope — **not a certified clinical system** |
+| [PRODUCTION_READINESS_COMPLIANCE.md](./PRODUCTION_READINESS_COMPLIANCE.md) | Judge-skimmable HIPAA/BAA/GDPR/Part 11 gap checklist |
 | [EXTERNAL_AUDIT_SUMMARY.md](./EXTERNAL_AUDIT_SUMMARY.md) | Public external security audit status |
 | [EXTERNAL_AUDIT_SCOPE.md](./EXTERNAL_AUDIT_SCOPE.md) | Third-party audit RFP scope (finalize → vault → relayer) |
 | [ATOMIC_FLOWS.md](./ATOMIC_FLOWS.md) | Relayer-gated finalize, `stakeAndLock`, atomic sponsor flows |
 | [ERC7984_CONFIDENTIAL_TOKEN.md](./ERC7984_CONFIDENTIAL_TOKEN.md) | OpenZeppelin IERC7984 implementation (`ConfidentialETH7984`) |
 | [FHE_AUDIT_README.md](./FHE_AUDIT_README.md) | FHE audit map for judges (includes ERC-7984 summary) |
 | [PRIVATE_WITHDRAWALS.md](./PRIVATE_WITHDRAWALS.md) | Encrypted withdraw, withdraw-to, public exit, relayer |
-| [TIMELOCK_WIRING.md](./TIMELOCK_WIRING.md) | 2-day schedule/apply wiring for cross-contract auth |
+| [RELAYER_TRUST_BOUNDARIES.md](./RELAYER_TRUST_BOUNDARIES.md) | Relayer trust bounds + REL-* test matrix |
+| [P3_3_THRESHOLD_ATTESTATION.md](./P3_3_THRESHOLD_ATTESTATION.md) | Deferred M-of-N relayer co-sign spec |
+| [TIMELOCK_WIRING.md](./TIMELOCK_WIRING.md) | Schedule/apply wiring for cross-contract auth; dual relayer deploy; CRE + owner cron runbooks |
+| [AUTOMATION_CRON.md](./AUTOMATION_CRON.md) | Owner cron scheduler for `MedVaultAutomation` (Railway `*/5 * * * *`) |
 | [HYBRID_STORAGE.md](./HYBRID_STORAGE.md) | IPFS + FHE document keys (`PatientDocumentStore`) |
 | [ATOMIC_FLOWS.md](./ATOMIC_FLOWS.md) | End-to-end atomic patient/sponsor flows |
 | [ZERO_REVELATION_REWARDS.md](./ZERO_REVELATION_REWARDS.md) | FHE-gated zero-revelation milestone payouts |

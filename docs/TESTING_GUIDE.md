@@ -2,7 +2,7 @@
 
 MedVault uses **Hardhat 2**, **Mocha/Chai** (120s timeout), and **@fhevm/hardhat-plugin** (Zama FHE local mocks) for Solidity tests. There are **0 Foundry/Solidity test contracts** — the five files in `contracts/test/` are helpers/mocks only.
 
-**Inventory (canonical — `src/lib/docsStats.ts`, verified 2026-07-02):** **87** Hardhat test files under `test/` (**76** in default `npm test`), **~2,020** registered cases (incl. **832** parametric ECM matrix), **19** `test-support/` helpers. The default suite has **483 passing** cases (**395** unit + **85** integration + **3** crypto; **6** unit pending: **4** permanent `it.skip`, **2** conditional when `RUN_LARGE_POOL_TEST` unset; **1** optional Honk), including timelock wiring, IERC7984 conformance (CET-13/14), hybrid document storage, trust-gap payout gating, sponsor-registry auditor (SRA-*), and Phase 5 differential eligibility tests.
+**Inventory (canonical — `src/lib/docsStats.ts`, verified 2026-07-04):** **88** Hardhat test files under `test/` (**77** in default `npm test`), **~2,028** registered cases (incl. **832** parametric ECM matrix), **19** `test-support/` helpers. The default suite has **491 passing** cases (**403** unit + **85** integration + **3** crypto; **6** unit pending: **4** permanent `it.skip`, **2** conditional when `RUN_LARGE_POOL_TEST` unset; **1** optional Honk), including timelock wiring, IERC7984 conformance (CET-13/14), hybrid document storage, trust-gap payout gating, **relayer adversarial (REL-*)**, sponsor-registry auditor (SRA-*), and Phase 5 differential eligibility tests.
 
 Additional runners: **Vitest 3.x** (3 files, 13 cases in `src/lib/__tests__/`), **node:test** (SDK: 3 files / 11 cases; core: 1 file / 3 cases — **not CI-wired**).
 
@@ -11,7 +11,7 @@ In-app documentation: open the dapp **Docs → Tests & verification** tab (`/doc
 ## Repository layout
 
 ```
-test/                       # 76 Hardhat files in default suite: unit 61 (59+smoke+staking), integration 14, fuzz 5, invariants 2, crypto 2, fork 1
+test/                       # 77 Hardhat files in default suite: unit 62 (60+smoke+staking), integration 14, fuzz 5, invariants 2, crypto 2, fork 1
   smoke/                    # Zama FHE + deployMedVaultStack (4 cases)
   unit/                     # Per-contract tests (incl. timelock-wiring, PDS, HCU, v0.9, trust-gap, Phase 5)
   integration/              # Cross-contract + named E2E (e2e-patient-to-claim, hybrid-storage.e2e)
@@ -63,8 +63,8 @@ docs/
 | Script | What runs |
 |--------|-----------|
 | `npm run compile` | Compile contracts (required first) |
-| `npm test` | Default: smoke + unit + staking + integration + nullifier crypto (**483** = 395 + 85 + 3) |
-| `npm run test:unit` | `test/smoke/**`, `test/unit/**`, `test/staking/**` (**395 passing**, 6 pending) |
+| `npm test` | Default: smoke + unit + staking + integration + nullifier crypto (**491** = 403 + 85 + 3) |
+| `npm run test:unit` | `test/smoke/**`, `test/unit/**`, `test/staking/**` (**403 passing**, 6 pending) |
 | `npm run test:integration` | `test/integration/**` (**85 passing**) |
 | `npm run test:crypto` | `test/crypto/noir-nullifier.test.ts` (3 cases) |
 | `npm run test:fuzz` | `test/fuzz/**` + `test/invariants/**` (Mocha loops; separate CI job) |
@@ -148,7 +148,7 @@ Signers: `owner`, `patient`, `sponsor`, `sponsor2`, `stranger`.
 | `ConsentManager.grantConsent` | Patient EOA |
 | `claimParticipantRewards` → `requestWithdrawTo` | SponsorIncentiveVault address |
 
-Integration helpers: `test-support/journey.ts` (`claimAndCompleteRewards` includes withdraw-to sigs). Pull-claim tests use `test-support/claimReceipt.ts` (`confirmStagedReceipt`) before claim in `sponsor-incentive-vault-claim-prune.test.ts` (P01-01..05). Anonymous apply **finalize** and **cancel** must use `stack.relayer` (`onlyTrustedRelayer`); patient EOA calls revert. Registration uses `registerPatientOnRegistry` with `randomProfileSalt()` from `test-support/profileCommitment.ts`.
+Integration helpers: `test-support/journey.ts` (`claimAndCompleteRewards` includes withdraw-to sigs). Pull-claim tests use `test-support/claimReceipt.ts` (`confirmStagedReceipt`) before claim in `sponsor-incentive-vault-claim-prune.test.ts` (P01-01..05). Anonymous apply **finalize** and **cancel** must use `stack.relayer` (`onlyAuthorizedRelayer`); patient EOA calls revert. Registration uses `registerPatientOnRegistry` with `randomProfileSalt()` from `test-support/profileCommitment.ts`.
 
 ## Consent in tests
 

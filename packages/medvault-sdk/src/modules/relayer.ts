@@ -62,11 +62,20 @@ async function postRelay(
 }
 
 export function createRelayerModule(config: MedVaultConfig) {
-  const getBase = () => requireRelayerUrl(config);
+  const getBase = (override?: string) => {
+    if (override) return override.replace(/\/$/, "");
+    return requireRelayerUrl(config);
+  };
+
+  const listUrls = (): string[] => {
+    if (config.relayerUrls?.length) return config.relayerUrls;
+    const single = config.relayerUrl?.trim();
+    return single ? [single.replace(/\/$/, "")] : [];
+  };
 
   return {
-    async health(): Promise<RelayerHealthResponse> {
-      const base = getBase();
+    async health(baseUrl?: string): Promise<RelayerHealthResponse> {
+      const base = getBase(baseUrl);
       const res = await fetch(`${base}/health`);
       if (!res.ok) {
         throw new Error(`Relayer health check failed: HTTP ${res.status}`);
@@ -74,8 +83,16 @@ export function createRelayerModule(config: MedVaultConfig) {
       return (await res.json()) as RelayerHealthResponse;
     },
 
-    async stageApply(params: RelayerStageApplyParams): Promise<string> {
-      const base = getBase();
+    async listHealth(urls?: string[]): Promise<RelayerHealthResponse[]> {
+      const targets = urls?.length ? urls : listUrls();
+      if (targets.length === 0) {
+        return [await this.health()];
+      }
+      return Promise.all(targets.map((url) => this.health(url)));
+    },
+
+    async stageApply(params: RelayerStageApplyParams, baseUrl?: string): Promise<string> {
+      const base = getBase(baseUrl);
       return postRelay(base, "/relay/apply-stage", {
         trialId: Number(params.trialId),
         proof: serializeProofForRelay(params.proof),
@@ -86,8 +103,8 @@ export function createRelayerModule(config: MedVaultConfig) {
       });
     },
 
-    async finalizeApply(params: RelayerFinalizeApplyParams): Promise<string> {
-      const base = getBase();
+    async finalizeApply(params: RelayerFinalizeApplyParams, baseUrl?: string): Promise<string> {
+      const base = getBase(baseUrl);
       return postRelay(base, "/relay/apply-finalize", {
         trialId: Number(params.trialId),
         proof: serializeProofForRelay(params.proof),
@@ -104,8 +121,8 @@ export function createRelayerModule(config: MedVaultConfig) {
       });
     },
 
-    async relayClaim(params: RelayerClaimParams): Promise<string> {
-      const base = getBase();
+    async relayClaim(params: RelayerClaimParams, baseUrl?: string): Promise<string> {
+      const base = getBase(baseUrl);
       return postRelay(base, "/relay/claim", {
         trialId: params.trialId.toString(),
         nullifier: params.nullifier.toString(),

@@ -1,6 +1,8 @@
 # MedVault: Confidential Clinical Research on FHE
 
-**MedVault homomorphically matches encrypted patient vitals against encrypted sponsor trial criteria on Ethereum Sepolia — with optional Semaphore anonymity and Noir identity/policy attestation (compliance seal).**
+**Private clinical-trial matching over encrypted patient vitals and encrypted sponsor trial criteria on Ethereum Sepolia.**
+
+MedVault is the most socially significant **end-to-end** fhEVM clinical-research application — homomorphic eligibility, consent, anonymous application, audit trail, rewards, and an honest regulatory posture. Optional Semaphore anonymity and Noir identity/policy attestation extend the core matching workflow.
 
 MedVault is privacy-centric clinical trial infrastructure on **Zama (Zama FHE)**. Using **Fully Homomorphic Encryption (FHE)**, it bridges individual medical sovereignty and collective research—patient records stay mathematically private during matching, scoring, and incentive settlement.
 
@@ -16,9 +18,9 @@ MedVault is privacy-centric clinical trial infrastructure on **Zama (Zama FHE)**
 | **Demo video** | https://www.youtube.com/watch?v=1wR01KflBOM&t=88s |
 | **Terminal demo** | `npm run demo:fhe` |
 
-**Stack** — Zama FHE · Semaphore · Noir/UltraHonk · Ethereum Sepolia · The Graph · Chainlink CRE · Hardhat
+**Stack** — Core: Zama FHE · Ethereum Sepolia. Extensions: Semaphore · Noir/UltraHonk · The Graph · Chainlink CRE · Hardhat
 
-**Verification** — **483** default Hardhat cases (**~2,020** registered incl. fuzz; see `src/lib/docsStats.ts`): FHE eligibility (encrypted patient + **encrypted sponsor criteria**), aggregates, batch matching, attestation binding, trust-gap payout gating, Phase 5 differential properties, Semaphore anonymity, relayer registration, incentives, end-to-end patient workflows.
+**Verification** — **491** default Hardhat cases (**~2,028** registered incl. fuzz; see `src/lib/docsStats.ts`): FHE eligibility (encrypted patient + **encrypted sponsor criteria**), aggregates, batch matching, attestation binding, trust-gap payout gating, Phase 5 differential properties, Semaphore anonymity, **multi-relayer adversarial bounds (REL-*)**, relayer registration, incentives, end-to-end patient workflows.
 
 ---
 
@@ -87,7 +89,7 @@ Sponsors publish trial criteria via **`createTrialWithEncryptedCriteria`** (reco
 | **Compliance** | Privacy-by-design matching | **Not HIPAA-compliant today** |
 
 ---
-| **5** | Testing, ops & production | Done | 483 tests · subgraph · live testnet |
+| **5** | Testing, ops & production | Done | 491 tests · dual relayer · subgraph · live testnet |
 | **Next** | Mainnet pilot | Planned | External audit · sponsor KYC |
 
 ---

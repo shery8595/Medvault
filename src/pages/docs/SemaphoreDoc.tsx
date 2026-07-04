@@ -198,9 +198,10 @@ export function getIdentityCommitment(identity: Identity): bigint {
                 <p className="text-sm">
                     <code>src/lib/relayer.ts</code> posts to <code>/relay/apply-stage</code> then{" "}
                     <code>/relay/apply-finalize</code> (or <code>/relay/cancel-stage</code> when ineligible). The relayer
-                    wallet must match <code>MedVaultRegistry.trustedRelayer</code>. It never receives the patient&apos;s
+                    wallet must be in <code>MedVaultRegistry.authorizedRelayers</code> (HIGH-1). It never receives the patient&apos;s
                     Semaphore secret or ephemeral private key. Deprecated <code>POST /relay/apply</code> returns HTTP 410;
-                    patient-wallet finalize reverts with <code>onlyTrustedRelayer</code> on production.
+                    patient-wallet finalize reverts with <code>Only authorized relayer</code> on production. See{" "}
+                    <Link to="/docs/relayer-trust-boundaries">relayer trust boundaries</Link>.
                 </p>
 
                 <h2>Security properties</h2>

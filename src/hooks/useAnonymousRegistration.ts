@@ -12,7 +12,7 @@ import {
     type SemaphoreProof
 } from '../lib/semaphore';
 import { submitViaRelayer } from '../lib/relayer';
-import { getMedVaultRegistry } from '../lib/contracts';
+import { selectRelayer } from '../lib/relayerRegistry';
 
 interface RegistrationState {
     isRegistered: boolean;
@@ -166,22 +166,15 @@ export function useAnonymousApplication(signer?: ethers.Signer, provider?: ether
             // This ensures the Merkle root is current even if user waited after generating preview
             const proof = await generateAnonymousProof(identity, provider, trialId, permitRecipient);
 
-            // Manually serialize all BigInt fields before passing to relayer
-            const serializedProof = {
-                merkleTreeDepth: Number(proof.merkleTreeDepth),
-                merkleTreeRoot: String(proof.merkleTreeRoot),
-                nullifier: String(proof.nullifier),
-                message: String(proof.message),
-                scope: String(proof.scope),
-                points: proof.points.map((p: any) => String(p))
-            } as unknown as SemaphoreProof;
+            const relayerUrl = await selectRelayer();
 
             const txHash = await submitViaRelayer(
                 trialId,
-                serializedProof,
+                proof,
                 commitment.toString(),
                 permitRecipient,
-                { provider, identity, consentSigner: signer }
+                { provider, identity, consentSigner: signer },
+                relayerUrl
             );
 
             // Persist per-trial nullifier so patient-side views can resolve

@@ -73,7 +73,7 @@ export function TestingInfrastructureDoc() {
                         <code>test-support/profileCommitment.ts</code>
                     </li>
                     <li>
-                        Anonymous apply finalize/cancel via <code>stack.relayer</code> (<code>onlyTrustedRelayer</code>)
+                        Anonymous apply finalize/cancel via <code>stack.relayer</code> (<code>onlyAuthorizedRelayer</code>)
                     </li>
                 </ul>
 

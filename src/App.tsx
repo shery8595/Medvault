@@ -53,6 +53,8 @@ import { TestingMatrixDoc } from "./pages/docs/testing/TestingMatrixDoc";
 import { TestingInfrastructureDoc } from "./pages/docs/testing/TestingInfrastructureDoc";
 import { TestingCiDoc } from "./pages/docs/testing/TestingCiDoc";
 import { SecurityModelDoc } from "./pages/docs/SecurityModelDoc";
+import { RelayerTrustBoundariesDoc } from "./pages/docs/RelayerTrustBoundariesDoc";
+import { P33ThresholdAttestationDoc } from "./pages/docs/P33ThresholdAttestationDoc";
 import { ComplianceDoc } from "./pages/docs/ComplianceDoc";
 import { FaqDoc } from "./pages/docs/FaqDoc";
 import { ChangelogDoc } from "./pages/docs/ChangelogDoc";
@@ -434,6 +436,22 @@ function MedVaultRoutes() {
               element={
                 <DocsLayout>
                   <TestingCiDoc />
+                </DocsLayout>
+              }
+            />
+            <Route
+              path="/docs/relayer-trust-boundaries"
+              element={
+                <DocsLayout>
+                  <RelayerTrustBoundariesDoc />
+                </DocsLayout>
+              }
+            />
+            <Route
+              path="/docs/p3-3-threshold-attestation"
+              element={
+                <DocsLayout>
+                  <P33ThresholdAttestationDoc />
                 </DocsLayout>
               }
             />

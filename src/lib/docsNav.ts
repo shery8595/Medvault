@@ -231,7 +231,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "https://github.com/shery8595/Med-Vault/blob/main/docs/HYBRID_STORAGE.md",
         tabId: "protocol",
         section: "Smart contracts",
-        keywords: ["ipfs", "pinata", "patientdocumentstore", "aes", "document", "hybrid", "cid", "rotateDocument", "DocumentLegacyHandleRevoked"],
+        keywords: ["ipfs", "pinata", "patientdocumentstore", "aes", "document", "hybrid", "cid", "revokeAccess", "pullSponsorKeyAccess", "DocumentLegacyHandleRevoked"],
         pageTitle: "Hybrid storage (IPFS + FHE)",
         pageDescription: "PatientDocumentStore: IPFS ciphertext + FHE-wrapped AES keys bound into Noir attestation.",
     },
@@ -295,12 +295,15 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
             "MedVaultAutomation",
             "AutomationReceiver",
             "forwarder",
+            "cron",
+            "railway",
+            "owner cron",
             "finalize",
             "trial expiry",
         ],
         pageTitle: "Chainlink CRE (Trial Finalization)",
         pageDescription:
-            "CRE workflow + AutomationReceiver bridge for trial finalization: checkUpkeep/performUpkeep, vault distribution, and TrialManager hooks.",
+            "Trial finalization via MedVaultAutomation: Chainlink CRE + AutomationReceiver, or owner cron scheduler. checkUpkeep/performUpkeep, vault distribution, TrialManager hooks.",
     },
     {
         title: "Subgraph indexing",
@@ -388,10 +391,10 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         href: "/docs/testing",
         tabId: "testing",
         section: "Suite",
-        keywords: ["hardhat", "tests", "ci", "verify", "483", "mocha", "timelock", "docker", "smoke"],
+        keywords: ["hardhat", "tests", "ci", "verify", "491", "mocha", "timelock", "docker", "smoke", "relayer"],
         pageTitle: "Contract test suite overview",
         pageDescription:
-            "483 Hardhat tests with Zama FHE mocks: suite breakdown, pillars, trust-gap payout gating, Phase 5 differential, timelock wiring, IERC7984 CET-13/14, and CI.",
+            "491 Hardhat tests with Zama FHE mocks: suite breakdown, pillars, relayer adversarial REL-*, trust-gap payout gating, Phase 5 differential, timelock wiring, IERC7984 CET-13/14, and CI.",
     },
     {
         title: "Test matrix",
@@ -599,6 +602,25 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
         pageTitle: "Security notes",
         pageDescription:
             "Repository SECURITY.md: Noir–FHE integrity gap, encrypted vs legacy trial criteria paths, and operational guidance.",
+    },
+    {
+        title: "Relayer trust boundaries",
+        href: "/docs/relayer-trust-boundaries",
+        tabId: "security",
+        section: "Assurance",
+        keywords: ["relayer", "trust", "censor", "forge", "p3.1", "multi-relayer", "equivocation"],
+        pageTitle: "Relayer trust boundaries",
+        pageDescription:
+            "Proof-style bounds: relayer cannot steal funds or forge eligibility; can only censor or delay. Test-backed claims.",
+    },
+    {
+        title: "P3.3 threshold attestation",
+        href: "/docs/p3-3-threshold-attestation",
+        tabId: "security",
+        section: "Assurance",
+        keywords: ["threshold", "p3.3", "co-sign", "attestation", "equivocation", "2-of-2"],
+        pageTitle: "P3.3 threshold attestation (spec)",
+        pageDescription: "Deferred M-of-N relayer co-sign design for independent decrypt attestations.",
     },
     {
         title: "Security model",

@@ -447,9 +447,13 @@ export function FrontendArchitectureDoc() {
                     <li>
                         <strong>Sponsor document decrypt</strong> — <code>SponsorDocumentPanel</code> on accepted anonymous
                         matches → <code>useMatchHasDocument</code> → <code>useSponsorDocumentDecrypt</code> →{" "}
-                        <code>fetchAndDecryptSponsorDocument</code>: read 4 FHE key chunks from{" "}
-                        <code>PatientDocumentStore</code>, unwrap via Zama SDK, fetch ciphertext JSON from IPFS, decrypt
-                        locally.
+                        <code>fetchAndDecryptSponsorDocument</code>: <code>pullSponsorKeyAccess</code> on first view, then{" "}
+                        <code>getKeyForSponsor</code>, Zama FHE unwrap, IPFS fetch, local AES decrypt.
+                    </li>
+                    <li>
+                        <strong>Anonymous apply finalize</strong> — relayer stage → browser FHE decrypt of staged
+                        eligibility → <code>generateEligibilityProof</code> (Noir UltraHonk + optional document binding) →{" "}
+                        <code>finalizeAnonymousApplyWithProof</code>. <code>AnonymousApplyWizard</code> surfaces these phases.
                     </li>
                     <li>
                         <strong>Blind ranking</strong> — <code>BlindRankingPanel</code> reads{" "}

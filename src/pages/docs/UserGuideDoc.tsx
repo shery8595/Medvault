@@ -208,9 +208,17 @@ export function UserGuideDoc() {
                 <h3>Hybrid document upload</h3>
                 <p>
                     When applying anonymously to a trial, <code>HybridDocumentUploader</code> encrypts a supporting document
-                    (AES-256-GCM), pins ciphertext to IPFS, and stores a pending record locally. After the apply stage
-                    completes, <code>recordHybridDocumentOnChain</code> records the CID on{" "}
-                    <code>PatientDocumentStore</code> with FHE-wrapped key chunks bound into the Noir eligibility proof.
+                    (AES-256-GCM), pins ciphertext to IPFS, and stores a pending record locally. After the apply stage,
+                    <code>recordHybridDocumentOnChain</code> records the CID on <code>PatientDocumentStore</code>; at
+                    finalize, <code>generateEligibilityProof</code> (Noir) includes document binding hashes in the public
+                    inputs. Revoke uses atomic <code>revokeAccess</code> (new CID + key in one tx) via{" "}
+                    <code>PatientDocumentRevokePanel</code>.
+                </p>
+                <h3>Anonymous apply phases</h3>
+                <p>
+                    <code>AnonymousApplyWizard</code> on trial cards: Semaphore membership proof → FHE eligibility stage →
+                    browser FHE decrypt + Noir attestation + relayer finalize. Sponsor accept/reject happens{" "}
+                    <strong>after</strong> a successful finalize (application status Pending).
                 </p>
                 <h3>Indexer health</h3>
                 <p>

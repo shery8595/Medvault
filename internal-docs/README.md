@@ -1,6 +1,6 @@
 # MedVault Internal Documentation
 
-Formal engineering documentation for the MedVault fhEVM clinical trial protocol (Covalent-style `internal-docs/` parity).
+Formal engineering documentation for the MedVault fhEVM clinical trial protocol (`internal-docs/` structure: SRS, DFD, threat model, integration guide).
 
 | Document | Description |
 |----------|-------------|

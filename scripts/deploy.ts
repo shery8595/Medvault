@@ -3,7 +3,7 @@ const { ethers } = hre;
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
-import { wireAllContracts, wireAutomationForwarder, ensureFhevmInitialized } from "./lib/timelockWiring";
+import { wireAllContracts, wireAutomationForwarder, ensureFhevmInitialized, resolveRelayerAddresses } from "./lib/timelockWiring";
 import { deployAnonymousPatientRegistry } from "./lib/deployAnonymousPatientRegistry";
 
 function resolveNetworkName(name: string) {
@@ -209,11 +209,7 @@ async function main() {
 
     console.log("\nWiring contracts (timelocked setters; hardhat auto-applies after 2d skip)...");
 
-    const trustedRelayer =
-        process.env.TRUSTED_RELAYER_ADDRESS ||
-        (process.env.RELAYER_PRIVATE_KEY
-            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
-            : "");
+    const relayerAddresses = resolveRelayerAddresses();
 
     await wireAllContracts({
         anonymousRegistry,
@@ -233,7 +229,7 @@ async function main() {
         honkVerifierEncryptedAddress,
         sponsorRegistryAddress,
         stakingManagerAddress,
-        trustedRelayer: trustedRelayer && ethers.isAddress(trustedRelayer) ? trustedRelayer : undefined,
+        relayerAddresses,
     });
 
     const realForwarder = process.env.CHAINLINK_FORWARDER?.trim();

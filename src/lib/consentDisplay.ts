@@ -16,6 +16,11 @@ export function consentRowVariant(log: ConsentLog): ConsentRowVariant {
   return "active";
 }
 
+/** Whether the patient can call on-chain `revokeConsent` for this row. */
+export function canRevokeConsent(log: ConsentLog): boolean {
+  return consentRowVariant(log) !== "revoked" && log.trialId != null && String(log.trialId) !== "";
+}
+
 export function formatGrantedUtc(rawTimestamp?: number): { date: string; time: string } {
   if (rawTimestamp == null || Number.isNaN(rawTimestamp)) {
     return { date: "—", time: "" };

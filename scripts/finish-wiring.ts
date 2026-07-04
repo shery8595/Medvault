@@ -102,8 +102,14 @@ async function main() {
         await (await automation.applyVault()).wait();
     });
 
-    const forwarder = process.env.CHAINLINK_FORWARDER?.trim();
-    if (forwarder && ethers.isAddress(forwarder)) {
+    const pendingForwarder = await automation.pendingChainlinkForwarder();
+    const forwarderEta = await automation.forwarderChangeEta();
+    const block = await ethers.provider.getBlock("latest");
+    const now = BigInt(block?.timestamp ?? Math.floor(Date.now() / 1000));
+    const hasPendingForwarder =
+        pendingForwarder !== ethers.ZeroAddress && forwarderEta !== 0n && now >= forwarderEta;
+    const envForwarder = process.env.CHAINLINK_FORWARDER?.trim();
+    if (hasPendingForwarder || (envForwarder && ethers.isAddress(envForwarder))) {
         await tryApply("Automation.applyChainlinkForwarder", async () => {
             await (await automation.applyChainlinkForwarder()).wait();
         });

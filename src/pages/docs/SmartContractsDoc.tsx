@@ -146,9 +146,11 @@ export function SmartContractsDoc() {
                     </li>
                     <li>
                         <strong>Consent / document revocation vs FHE persistence</strong> —{" "}
-                        <code>ConsentManager.revokeConsent</code> and <code>PatientDocumentStore.revokeAccess</code>{" "}
-                        update flags/epochs, but prior <code>FHE.allow</code> grants persist on fhEVM; consumers must
-                        gate on <code>getActiveConsent</code> / revoked flag before new actions.
+                        <code>ConsentManager.revokeConsent</code> and atomic{" "}
+                        <code>PatientDocumentStore.revokeAccess</code> (new CID + key required) update epochs and rotate
+                        bindings; prior <code>FHE.allow</code> grants persist on fhEVM. Sponsors use per-access{" "}
+                        <code>pullSponsorKeyAccess</code> before decrypt; consumers must gate on consent epoch / document
+                        epoch before new reads.
                     </li>
                     <li>
                         <strong>7-day staging TTL</strong> — <code>STAGING_TTL</code> on pending anonymous eligibility.

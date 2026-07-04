@@ -17,6 +17,7 @@ services:
       VITE_SUBGRAPH_URL: ${VITE_SUBGRAPH_URL:-https://api.studio.thegraph.com/query/1755644/medvault/v0.2.0}
       VITE_INDEXER_URL: ${VITE_INDEXER_URL:-http://localhost:3300}
       VITE_RECLAIM_ALLOW_SKIP: ${VITE_RECLAIM_ALLOW_SKIP:-true}
+      VITE_RELAYER_URLS: ${VITE_RELAYER_URLS:-http://localhost:8787,http://localhost:8788}
     healthcheck:
       test:
         [
@@ -45,6 +46,29 @@ services:
         [
           "CMD-SHELL",
           "node -e \"fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  relayer-b:
+    profiles: ["relayer"]
+    build:
+      context: ./relayer
+    ports:
+      - "8788:8788"
+    env_file:
+      - path: relayer/.env.relayer-b
+        required: false
+    environment:
+      PORT: 8788
+      RPC_URL: ${RPC_URL:-https://ethereum-sepolia-rpc.publicnode.com}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:8788/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
         ]
       interval: 15s
       timeout: 5s

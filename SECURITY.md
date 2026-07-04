@@ -26,7 +26,7 @@ Repository-level security findings and architectural limits. Indexed from [docs/
 |-------|------------|-------------------|
 | **FHE** | Homomorphic matching on ciphertext in `EligibilityEngine` | Off-chain PHI; wallet linkage; L1 ETH visibility |
 | **Noir** | Identity and policy attestation | fhEVM execution; compliance seal ≠ eligibility proof |
-| **Relayer** | Gasless relay; P0.2 staged-ciphertext re-decrypt before finalize (defense-in-depth) | Payout integrity via `FHE.select` gating (P2 shipped; Phase 5 differential evidence) |
+| **Relayer** | Gasless relay; P0.2 staged-ciphertext re-decrypt before finalize (defense-in-depth); multi-relayer choice (P3.1) | Payout integrity via `FHE.select` gating (P2 shipped). Relayer can **censor or delay** only — see [docs/RELAYER_TRUST_BOUNDARIES.md](docs/RELAYER_TRUST_BOUNDARIES.md) |
 | **Compliance** | Privacy-by-design on-chain | **Not HIPAA-compliant today** |
 
 Full disclosure: [README.md](README.md#limitations--trust-model), [relayer/README.md](relayer/README.md#transparency--logging-policy), `GET /transparency` on the relayer.

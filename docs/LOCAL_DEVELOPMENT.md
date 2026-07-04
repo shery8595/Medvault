@@ -20,13 +20,13 @@ Open **http://localhost:3000**. The frontend container runs Vite against Sepolia
 | Profile | Command | Services |
 |---------|---------|----------|
 | *(default)* | `docker compose up --build` | Frontend on `:3000` |
-| Relayer | `docker compose --profile relayer up --build` | HTTP relayer on `:8787` |
+| Relayer | `docker compose --profile relayer up --build` | HTTP relayers on `:8787` (relayer-a) and `:8788` (relayer-b) |
 | Local Graph | `docker compose --profile graph up --build` | IPFS, Postgres, Graph Node, subgraph deploy |
 | Indexer | `docker compose --profile indexer up --build` | Mongo, Redis, indexer API on `:3300` |
 
 Profiles can be combined, e.g. `docker compose --profile relayer --profile indexer up --build`.
 
-Relayer requires `relayer/.env` or env vars from `.env.docker.example` (`REGISTRY_ADDRESS`, `RELAYER_PRIVATE_KEY`, `CONFIDENTIAL_ETH_ADDRESS`, etc.).
+Relayer requires `relayer/.env` (and optional `relayer/.env.relayer-b` from `.env.relayer-b.example`) or env vars from `.env.docker.example` (`REGISTRY_ADDRESS`, `RELAYER_PRIVATE_KEY`, `CONFIDENTIAL_ETH_ADDRESS`, etc.). Set `VITE_RELAYER_URLS=http://localhost:8787,http://localhost:8788` for dual-relayer UI testing.
 
 See [DOCKER.md](./DOCKER.md) for architecture diagram, env reference, and troubleshooting.
 

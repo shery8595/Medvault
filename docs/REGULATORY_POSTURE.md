@@ -118,6 +118,7 @@ MedVault demo flows use encrypted consent gates (`ConsentManager`, `EncryptedCon
 
 ## Related documents
 
+- [PRODUCTION_READINESS_COMPLIANCE.md](./PRODUCTION_READINESS_COMPLIANCE.md) — skimmable HIPAA/BAA/GDPR/Part 11 gap checklist
 - [SECURITY.md](../SECURITY.md) — technical threat mitigations
 - [README.md#limitations--trust-model](../README.md#limitations--trust-model) — integrator-facing summary
 - [HYBRID_STORAGE.md](./HYBRID_STORAGE.md) — hybrid document architecture

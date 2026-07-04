@@ -65,10 +65,10 @@ export function TimelockWiringDoc() {
                         <Clock className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-900 m-0">2-day admin delay on live networks</p>
+                        <p className="text-sm font-bold text-slate-900 m-0">6-hour admin delay on live networks</p>
                         <p className="text-xs text-slate-600 mt-1 m-0">
-                            <code>READER_CHANGE_DELAY = 2 days</code> on all affected contracts. Hardhat tests fast-forward
-                            via <code>test-support/timelock.ts</code>; Sepolia requires{" "}
+                            <code>READER_CHANGE_DELAY = 6 hours</code> on affected contracts (relayer auth uses the same delay).
+                            Hardhat tests fast-forward via <code>test-support/timelock.ts</code>; Sepolia requires{" "}
                             <code>npm run deploy:wiring:sepolia</code> after the delay.
                         </p>
                     </div>
@@ -136,11 +136,12 @@ npm run verify:cre-receiver:sepolia`}
                     with opaque plugin errors.
                 </Callout>
 
-                <Callout type="info" title="MedVaultAutomation + CRE">
-                    Deploy passes a <strong>non-zero</strong> forwarder placeholder. For production, point{" "}
-                    <code>chainlinkForwarder</code> at your deployed <code>AutomationReceiver</code> via{" "}
-                    <code>scheduleChainlinkForwarder</code> / <code>applyChainlinkForwarder</code> (or{" "}
-                    <code>npm run wire:cre-receiver:sepolia</code>). Legacy CLA per-upkeep forwarders are deprecated.
+                <Callout type="info" title="MedVaultAutomation — CRE or owner cron">
+                    Deploy passes a <strong>non-zero</strong> forwarder placeholder. For CRE, point{" "}
+                    <code>chainlinkForwarder</code> at <code>AutomationReceiver</code> (
+                    <code>scheduleChainlinkForwarder</code> / <code>applyChainlinkForwarder</code>, or{" "}
+                    <code>npm run wire:cre-receiver:sepolia</code>). For owner cron, scheduled upkeep uses the contract{" "}
+                    owner key — see <code>docs/AUTOMATION_CRON.md</code>. Legacy CLA forwarders are deprecated.
                 </Callout>
 
                 <h2>III. Related API changes (same release)</h2>

@@ -17,7 +17,9 @@ const envVars = [
     { key: "GRAPH_SUBGRAPH_SLUG", required: false, desc: "Studio subgraph slug — default medvault." },
     { key: "CRE_API_KEY", required: false, desc: "Chainlink CRE API key (alternative to cre login) for workflow simulate/deploy." },
     { key: "CHAINLINK_FORWARDER", required: false, desc: "Legacy CLA per-upkeep forwarder only (superseded by CRE AutomationReceiver)." },
-    { key: "TRUSTED_RELAYER_ADDRESS", required: false, desc: "Relayer EOA to schedule cETH contract auth during deploy/wire." },
+    { key: "TRUSTED_RELAYER_ADDRESS", required: false, desc: "Legacy single relayer EOA for deploy/wire (prefer RELAYER_ADDRESSES)." },
+    { key: "RELAYER_ADDRESSES", required: false, desc: "Comma-separated authorized relayer EOAs for P3.1 wiring (e.g. 0xA,0xB)." },
+    { key: "VITE_RELAYER_URLS", required: false, desc: "Comma-separated MedVault relayer HTTP origins for frontend picker/failover." },
     { key: "RELAYER_PRIVATE_KEY", required: false, desc: "Relayer service signing key (relayer/.env, not Vite)." },
     { key: "COVERAGE_MIN_PCT", required: false, desc: "CI coverage gate threshold (default 85)." },
 ];
@@ -44,10 +46,11 @@ const depChecklist = [
     { label: "Production frontend live at med-vault.xyz (Vercel custom domain)", cat: "Frontend" },
     { label: "HTTP relayer live (RPC, relayer key, REGISTRY_ADDRESS, SEMAPHORE_ADDRESS, FRONTEND_URL / CORS)", cat: "Ops" },
     { label: "ConfidentialETH scheduleContractAuth(relayer) for claim/withdraw *For helpers", cat: "Ops" },
-    { label: "After deploy: npm run deploy:wiring:sepolia once 2-day timelock elapses", cat: "Ops" },
+    { label: "After deploy: npm run deploy:wiring:sepolia once 6-hour timelock elapses", cat: "Ops" },
+    { label: "Dual relayer: second Railway service + RELAYER_ADDRESSES wiring; VITE_RELAYER_URLS on Vercel", cat: "Ops" },
     { label: "Relayer FRONTEND_URL=https://med-vault.xyz (CORS for production)", cat: "Ops" },
     { label: "Optional: private drip service + `VITE_TESTNET_FAUCET_URL` (Ethereum Sepolia)", cat: "Ops" },
-    { label: "Optional: `VITE_RELAYER_URL` or Vite `/relay` proxy for local CORS", cat: "Ops" },
+    { label: "Optional: `VITE_RELAYER_URLS` or `VITE_RELAYER_URL` for production relayer origins", cat: "Ops" },
     { label: "Relayer FRONTEND_URL includes https://localhost (Capacitor APK CORS)", cat: "Ops" },
     { label: "Privy dashboard allows https://localhost (Android WebView origin)", cat: "Ops" },
     { label: "Android: android/local.properties → SDK path; JDK 21 for Gradle", cat: "Mobile" },
@@ -563,7 +566,8 @@ npm run subgraph:fetch-start-blocks && npm run subgraph:deploy`}
                     Task type <strong>1 only</strong>: finalize expired trials (distribute screening + deactivate). CRE
                     workflow calls <code>checkUpkeep</code>; <code>AutomationReceiver</code> forwards{" "}
                     <code>performUpkeep</code>. <code>MedVaultAutomation.chainlinkForwarder</code> must point at the
-                    receiver (6-hour timelock). See{" "}
+                    receiver (6-hour timelock). Alternative: <strong>owner cron</strong> — see{" "}
+                    <code>docs/AUTOMATION_CRON.md</code>. In-app:{" "}
                     <Link to="/docs/automation" className="font-semibold text-[#00685f] hover:underline">
                         Chainlink CRE
                     </Link>{" "}
@@ -578,7 +582,10 @@ npm run deploy:wiring:sepolia
 npm run verify:cre-receiver:sepolia
 cre login
 npm run cre:simulate
-npm run cre:deploy`}
+npm run cre:deploy
+
+# Owner cron (alternative — standalone package, Railway Cron */5 * * * *):
+# docs/AUTOMATION_CRON.md`}
                 />
 
                 <hr className="my-12 border-slate-200" />

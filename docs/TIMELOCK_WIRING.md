@@ -51,9 +51,18 @@ Scripts:
 
 **FHEVM on live networks:** call `ensureFhevmInitialized()` before txs so `@fhevm/hardhat-plugin` can format gas estimation errors.
 
-## Chainlink CRE (trial finalization)
+## Trial automation (CRE or owner cron)
 
-Legacy **Chainlink Automation (CLA) upkeeps are sunset** (2026). MedVault uses **Chainlink CRE** with an `AutomationReceiver` bridge:
+`MedVaultAutomation` finalizes expired trials via `checkUpkeep` / `performUpkeep`. MedVault supports:
+
+| Path | Docs |
+|------|------|
+| **Chainlink CRE** | Below + `cre/README.md`, in-app `/docs/automation` |
+| **Owner cron** | [AUTOMATION_CRON.md](./AUTOMATION_CRON.md) — Railway Cron `*/5 * * * *`, owner `performUpkeep` |
+
+### Chainlink CRE
+
+Legacy **Chainlink Automation (CLA) upkeeps are sunset** (2026). CRE uses an `AutomationReceiver` bridge:
 
 1. `npm run deploy:cre-receiver:sepolia` — deploy receiver (Sepolia `KeystoneForwarder` in constructor).
 2. `npm run wire:cre-receiver:sepolia` — `setCallAllowed(performUpkeep)`, workflow identity, schedule forwarder on `MedVaultAutomation`.
@@ -64,11 +73,11 @@ Legacy **Chainlink Automation (CLA) upkeeps are sunset** (2026). MedVault uses *
 
 Legacy CLA-only path (deprecated): `CHAINLINK_FORWARDER=0xYourClaForwarder npm run deploy:chainlink-forwarder:sepolia`
 
-Full guide: `cre/README.md`, in-app `/docs/automation`.
+Full CRE guide: `cre/README.md`, in-app `/docs/automation`. Owner cron: `docs/AUTOMATION_CRON.md`.
 
 ## Other security-related API changes
 
-- **HIGH-1 (trusted relayer):** `MedVaultRegistry.finalizeAnonymousApplyWith*`, `cancelAnonymousApplyStage`, and `registerPatientViaRelayer` require `msg.sender == trustedRelayer`. Set `TRUSTED_RELAYER_ADDRESS` to match relayer `RELAYER_PRIVATE_KEY`.
+- **HIGH-1 (authorized relayers):** `MedVaultRegistry.finalizeAnonymousApplyWith*`, `cancelAnonymousApplyStage`, and `registerPatientViaRelayer` require `msg.sender` in `authorizedRelayers`. Wire with `RELAYER_ADDRESSES=0xRelayerA,0xRelayerB` (or legacy `TRUSTED_RELAYER_ADDRESS` for a single relayer). Each relayer wallet must match its Railway `RELAYER_PRIVATE_KEY` and receive `ensureCethContractAuth` via `wireAllContracts`.
 - **MED-1 (profile salt):** production `registerPatient` requires `profileSaltCommitment`; deterministic salts rejected.
 - **MED-3 (pool enrollment):** `registerAnonymousParticipant` is permit-holder-only; use `registerAnonymousParticipantFor` or relayer `POST /relay/register-anon`.
 - **LOW-1 (failed withdraw):** `pendingFailedWithdrawWei` + `claimFailedWithdraw()` on failed ETH send. `completePublicExit` failures escrow to `owner_` (not `stealthRecipient`); `withdrawNonces[owner]` preserved on that path.
@@ -92,10 +101,36 @@ Full guide: `cre/README.md`, in-app `/docs/automation`.
 | **Screening vault redeploy** | `redeploy-screening-vault.ts` |
 | **Partial deploy resume** | `resume-sepolia-deploy.ts` (edit `PARTIAL` checkpoint) |
 | **Chainlink CRE** | `deploy:cre-receiver:sepolia` → `wire:cre-receiver:sepolia` → wait timelock → `finish-wiring.ts` → `verify:cre-receiver:sepolia` → `cre:simulate` / `cre:deploy` |
+| **Owner cron** | Standalone `medvault-automation-cron` package → Railway Cron `*/5 * * * *` — see `docs/AUTOMATION_CRON.md` |
 | **Frontend ship** | `npm run vercel:ship` (Vercel prebuilt) |
-| **Relayer** | Deploy `relayer/` to Railway; `relayer/.env` from `addresses.json`; timelock cETH auth for relayer |
+| **Relayer** | Deploy `relayer/` to Railway (one service per relayer key); `relayer/.env` from `addresses.json`; `RELAYER_ADDRESSES` in wiring env; timelock cETH auth per relayer |
 | **Subgraph near-head** | `subgraph:deploy:near-head` |
 | **Android APK** | `android-apk.mjs`, `setup-android-sdk.mjs` |
+
+## Dual relayer deployment (P3.1)
+
+Run **two independent** `relayer/server.js` instances with different hot wallets:
+
+| Target | Service | Port / URL | Env file |
+|--------|---------|------------|----------|
+| Local Docker | `relayer` (a) | `8787` | `relayer/.env` |
+| Local Docker | `relayer-b` | `8788` | `relayer/.env.relayer-b` (copy from `.env.relayer-b.example`) |
+| Railway | `medvault-relayer-a` | public URL A | `RELAYER_PRIVATE_KEY` = key A |
+| Railway | `medvault-relayer-b` | public URL B | `RELAYER_PRIVATE_KEY` = key B |
+
+Shared per instance: `REGISTRY_ADDRESS`, `SEMAPHORE_ADDRESS`, `RPC_URL`, `ZAMA_RELAYER_URL`, `FRONTEND_URL`.
+
+On-chain wiring (after deploy):
+
+```bash
+RELAYER_ADDRESSES=0xRelayerA,0xRelayerB npm run deploy:wire:sepolia
+# wait READER_CHANGE_DELAY (~6 hours) if schedule-only
+npm run deploy:wiring:sepolia
+```
+
+Frontend: `VITE_RELAYER_URLS=https://relayer-a...,https://relayer-b...` (comma-separated). See [RELAYER_TRUST_BOUNDARIES.md](./RELAYER_TRUST_BOUNDARIES.md).
+
+**Note:** Only one instance should run the chain watcher (`WATCHER_ENABLED=true`) to avoid duplicate `completeWithdrawTo` submissions; set `WATCHER_ENABLED=false` on relayer-b.
 
 ## Tests
 
@@ -105,4 +140,4 @@ Full guide: `cre/README.md`, in-app `/docs/automation`.
 | — | `test-support/timelock.ts` | `advanceTimelock`, `scheduleAndApply`, `authorizeCethContract` |
 | — | `test-support/deployments.ts` | Full timelock wiring in `deployMedVaultStack()` |
 
-Run: `npm test` (**483** passing = 395 unit + 85 integration + 3 crypto; **6** unit pending as of July 2026).
+Run: `npm test` (**491** passing = 403 unit + 85 integration + 3 crypto; **6** unit pending as of July 2026).

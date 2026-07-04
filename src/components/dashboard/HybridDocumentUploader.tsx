@@ -77,7 +77,9 @@ export function HybridDocumentUploader({ trialId, className, compact, disabled }
             {pending.recordedTxHash ? (
               <p className="text-[10px] text-emerald-700 mt-1">Bound on-chain</p>
             ) : (
-              <p className="text-[10px] mt-1">Will be recorded on-chain when you apply (after stage).</p>
+              <p className="text-[10px] mt-1">
+                Recorded on-chain after apply stage; hashes included in Noir proof at finalize.
+              </p>
             )}
           </div>
         </div>

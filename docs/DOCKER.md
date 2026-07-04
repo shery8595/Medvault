@@ -47,7 +47,7 @@ flowchart LR
 | Service | Profile | Port | Purpose |
 |---------|---------|------|---------|
 | `frontend` | default | 3000 | Vite dev server (`target: dev`) |
-| `relayer` | `relayer` | 8787 | Optional gasless registration / withdraw completion |
+| `relayer` | `relayer`, `relayer-b` | 8787, 8788 | Optional dual gasless relayers (P3.1); set `WATCHER_ENABLED=false` on relayer-b |
 | `graph-ipfs` | `graph` | 5001, 8080 | IPFS for local Graph Node |
 | `graph-db` | `graph` | 5433 | Postgres for Graph Node |
 | `graph-node` | `graph` | 8000–8030 | Local subgraph indexer (Sepolia RPC) |

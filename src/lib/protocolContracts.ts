@@ -35,7 +35,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         related: ["SponsorRegistry", "Chainlink price feeds (compensation)", "MedVaultAutomation"],
         quirks: [
             "Plaintext `createTrial` is Hardhat-only (chainid 31337); production and Sepolia must use `createTrialWithEncryptedCriteria`.",
-            "Instant setters (`setAutomationContract`, `setEligibilityEngine`, `setSponsorRegistry`) hard-revert — use 2-day schedule/apply pairs.",
+            "Instant setters (`setAutomationContract`, `setEligibilityEngine`, `setSponsorRegistry`) hard-revert — use 6-hour schedule/apply pairs.",
             "`isSponsorStillVerified(trialId)` soft-gates payouts when registry is configured (M-3).",
         ],
     },
@@ -50,7 +50,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
             "registerPatient(commitment, permitRecipient, profileCommitment, profileSaltCommitment, ...)",
             "registerPatientViaRelayer(...) **onlyAuthorizedRelayer**",
             "stageAnonymousApply(...)",
-            "finalizeAnonymousApplyWithProof(...) **open (P3.2)**",
+            "finalizeAnonymousApplyWithProof(...) **onlyAuthorizedRelayer (HIGH-1)**",
             "finalizeAnonymousApplyWithConsent(...) **onlyAuthorizedRelayer**",
             "cancelAnonymousApplyStage(...) **onlyAuthorizedRelayer**",
             "scheduleRelayerAuth / applyRelayerAuth (P3.1 timelock)",
@@ -59,8 +59,8 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         related: ["AnonymousPatientRegistry", "MockSemaphore / ISemaphore", "EligibilityEngine", "HonkVerifier"],
         quirks: [
             "`applyToTrial` reverts with \"Deprecated: use stageAnonymousApply + finalizeAnonymousApplyWithProof\".",
-            "**P3.1 multi-relayer:** `authorizedRelayers` mapping with 2-day timelock (`scheduleRelayerAuth` / `applyRelayerAuth`). Registration/cancel/consent-finalize require `onlyAuthorizedRelayer`.",
-            "**P3.2 open finalize:** `finalizeAnonymousApplyWithProof` has no relayer gate — patient EOAs may submit directly. Payout integrity is ciphertext-gated via `FHE.select` (P2). Relayer remains optional for gasless finalize when patient uses relayer as `permitRecipient` (P0.2 decrypt).",
+            "**P3.1 multi-relayer:** `authorizedRelayers` mapping with **6-hour** timelock (`scheduleRelayerAuth` / `applyRelayerAuth`). Finalize/cancel/consent-finalize/register require `onlyAuthorizedRelayer`.",
+            "**HIGH-1 relayer-gated finalize:** `finalizeAnonymousApplyWithProof` requires authorized relayer. Payout integrity is ciphertext-gated via `FHE.select` (P2). Gasless path: `POST /relay/apply-finalize` with P0.2 decrypt when relayer is `permitRecipient`.",
             "Gasless cancel/register: `POST /relay/cancel-stage`, `POST /relay/register` via authorized relayer.",
         ],
     },
@@ -115,7 +115,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
             "**Silent rejection:** ineligible proofs finalize without revert; `silentApplyOutcome` set to `SilentRejected` (no on-chain plaintext eligibility bit).",
             "**7-day staging TTL:** `STAGING_TTL = 7 days` on pending anonymous eligibility.",
             "**Batch one-shot max 16:** `checkEligibilityBatch` allows 1–16 trials per commitment; `batchEligibilityChecked` flag is one-shot per pair.",
-            "Instant reader setters hard-revert — use `scheduleAuthorizedReader` / `applyAuthorizedReader` (2-day delay).",
+            "Instant reader setters hard-revert — use `scheduleAuthorizedReader` / `applyAuthorizedReader` (6-hour delay).",
             "Reader role `patientDocumentStore` wires `PatientDocumentStore` address.",
         ],
     },
@@ -277,7 +277,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         related: ["StakingManager", "SponsorIncentiveVault"],
         quirks: [
             "**Failed withdraw escrow (LOW-1):** if ETH send fails in `completeWithdraw` / `completeWithdrawTo`, amount is credited to `pendingFailedWithdrawWei[recipient]`; if `completePublicExit` fails, escrow goes to `pendingFailedWithdrawWei[owner]` (not `stealthRecipient`) and `withdrawNonces[owner]` is preserved. `FailedWithdrawEscrowed` is emitted; burn still completes. Recover via `claimFailedWithdraw()`.",
-            "Instant `authorizeContract` / `deauthorizeContract` hard-revert — use `scheduleContractAuth` / `applyContractAuth` (2-day delay).",
+            "Instant `authorizeContract` / `deauthorizeContract` hard-revert — use `scheduleContractAuth` / `applyContractAuth` (6-hour delay).",
             "EIP-712 domain string: \"MedVault ConfidentialETH\" (unchanged for signature compatibility).",
         ],
     },
@@ -287,7 +287,7 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
         accent: "rose",
         role: "CRE trial finalization",
         summary:
-            "Implements `AutomationCompatibleInterface`. `checkUpkeep` scans expired trials; `performUpkeep` triggers vault distribution. Triggered by Chainlink CRE via `AutomationReceiver` — set `chainlinkForwarder` to the receiver address.",
+            "Implements `AutomationCompatibleInterface`. `checkUpkeep` scans expired trials; `performUpkeep` triggers vault distribution. Driven by Chainlink CRE (`AutomationReceiver` / `chainlinkForwarder`) or owner cron scheduler.",
         keyFunctions: [
             "checkUpkeep(bytes)",
             "performUpkeep(bytes)",

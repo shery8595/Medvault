@@ -24,7 +24,7 @@ MedVault is an fhEVM clinical-trial matching reference architecture on Ethereum 
 | Finding family | Mitigation | Verification |
 |----------------|------------|--------------|
 | Noir–FHE integrity gap (forged `eligible` witness) | P0.2 relayer re-decrypt (defense-in-depth); **P2 `FHE.select` ciphertext gating** (shipped) | `test/integration/relayer-decrypt-verify.test.ts`, `test/unit/sponsor-incentive-vault-payout.test.ts`, `test/unit/formal-eligibility-properties.test.ts`, `test/unit/encrypted-criteria.test.ts` (DIFF-03) |
-| Trusted relayer TCB | P0.2 defense-in-depth + P3 multi-relayer / open finalize (P3.2 shipped); P2 payout gating shipped | [relayer/README.md](../relayer/README.md) |
+| Trusted relayer TCB | P0.2 defense-in-depth + P3.1 multi-relayer + REL-* adversarial tests; P3.3 threshold spec (deferred); P2 payout gating shipped | [relayer/README.md](../relayer/README.md), [RELAYER_TRUST_BOUNDARIES.md](./RELAYER_TRUST_BOUNDARIES.md) |
 | AI protocol PHI leakage | Redaction before every LLM call; no-retention policy | `ai-service/src/redaction.ts`, `ai-service/src/retention.ts` |
 | Indexer data exposure | Bearer auth on data routes (`INDEXER_API_SECRET`) | [indexer/README.md](../indexer/README.md) |
 | Sponsor incentive accounting | CRIT-2 / HIGH-3 remediations | `test/unit/remediation-vuln-fixes.test.ts` |
@@ -46,7 +46,7 @@ MedVault is an fhEVM clinical-trial matching reference architecture on Ethereum 
 ## How to reproduce security tests locally
 
 ```bash
-npm test                                    # default suite (483 cases)
+npm test                                    # default suite (491 cases)
 npm run test:integration                    # relayer + e2e paths
 npx hardhat test test/unit/sponsor-incentive-vault-payout.test.ts
 npx hardhat test test/integration/relayer-decrypt-verify.test.ts

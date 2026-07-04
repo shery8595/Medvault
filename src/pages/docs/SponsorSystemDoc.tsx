@@ -128,9 +128,11 @@ contract SponsorRegistry is Ownable {
                 <h3>Sponsor document decrypt</h3>
                 <p>
                     For <strong>accepted</strong> anonymous matches with an on-chain document CID,{" "}
-                    <code>SponsorDocumentPanel</code> lets the sponsor decrypt supporting files: read 4 FHE AES-key chunks
-                    from <code>PatientDocumentStore</code>, unwrap with Zama SDK, fetch IPFS ciphertext, decrypt locally in
-                    the browser.
+                    <code>SponsorDocumentPanel</code> lets the sponsor decrypt supporting files. On first{" "}
+                    <strong>View patient document</strong>, the UI calls <code>pullSponsorKeyAccess</code> (per-access
+                    on-chain grant), then reads FHE AES-key chunks via <code>getKeyForSponsor</code>, unwraps with Zama
+                    SDK, fetches IPFS ciphertext, and decrypts locally in the browser. Accept alone does not grant
+                    decrypt — pull happens at first view (patient may revoke before pull).
                 </p>
                 <h3>Admin sponsors page (public application)</h3>
                 <p>

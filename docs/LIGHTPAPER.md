@@ -10,7 +10,9 @@
 
 MedVault homomorphically matches **encrypted patient vitals** against **encrypted sponsor trial criteria** on Ethereum Sepolia using Zama's Fully Homomorphic Encryption (FHE). Validators and indexers never see plaintext PHI — every clinical comparison happens in ciphertext space. Patients decrypt match outcomes locally; sponsors see aggregate signals only.
 
-**483** default Hardhat tests · **17** production Solidity contracts · **1** Noir attestation circuit · Deployed on Ethereum Sepolia.
+**The one thing to remember:** private clinical-trial matching — both sides encrypted.
+
+Deployed on Ethereum Sepolia · **491** default Hardhat tests · **17** production Solidity contracts.
 
 ---
 
@@ -30,9 +32,13 @@ Clinical research needs rich health signals to match patients to trials, but exp
 
 ## 2. The Solution
 
-### One sentence
+### Judge hook
 
-MedVault homomorphically matches encrypted patient vitals against encrypted sponsor trial criteria on Ethereum Sepolia — with optional Semaphore anonymity and Noir identity/policy attestation (compliance seal).
+Private clinical-trial matching over encrypted patient vitals and encrypted sponsor trial criteria on Ethereum Sepolia — homomorphic eligibility via Zama FHE.
+
+### Full stack
+
+Beyond matching, MedVault ships an end-to-end research workflow: encrypted inputs, encrypted sponsor criteria, consent gates, anonymous application, audit trail, milestone rewards, and an honest regulatory posture ([REGULATORY_POSTURE.md](./REGULATORY_POSTURE.md)). Optional Semaphore anonymity and Noir identity/policy attestation extend the core FHE stage.
 
 ### Personas
 
@@ -68,7 +74,7 @@ flowchart LR
 | **FHE** | On-chain homomorphic matching (`EligibilityEngine._computeEligibility`) | Off-chain PHI in IPFS, AI service, or indexer; wallet linkage on direct registration; L1 ETH visibility |
 | **Noir** | **Identity and policy attestation** (nullifier, profile commitment, staged handle, criteria echo) | fhEVM execution correctness; seal ≠ proof of eligibility |
 | **Relayer** | Gasless relay + gatekeeper; interim staged-ciphertext re-decrypt before finalize (P0.2 defense-in-depth) | Payout integrity via `FHE.select` gating (P2 shipped); see [formal-verification/certora-halmos-results.md](./formal-verification/certora-halmos-results.md) |
-| **Compliance** | Privacy-by-design on-chain matching | **Not HIPAA-compliant today** |
+| **Compliance** | Privacy-by-design on-chain matching | **Not HIPAA-compliant today** — see [PRODUCTION_READINESS_COMPLIANCE.md](./PRODUCTION_READINESS_COMPLIANCE.md) |
 
 ---
 
@@ -105,7 +111,7 @@ flowchart TB
 | Metric | Value |
 |--------|------:|
 | Production Solidity contracts | 17 |
-| Default test suite passing | 483 |
+| Default test suite passing | 491 |
 | Registered test cases (incl. fuzz) | ~1,908 |
 | In-app documentation pages | 32 |
 | MCP tools | 31 |
@@ -162,7 +168,7 @@ These are **not required** for the FHE core story:
 
 | Phase | Focus |
 |-------|-------|
-| **v0.1 (current)** | FHE eligibility, encrypted criteria, incentives, Sepolia deploy, 483 tests |
+| **v0.1 (current)** | FHE eligibility, encrypted criteria, incentives, Sepolia deploy, dual relayer, 491 tests |
 | **v0.2** | Mainnet pilot with sponsor KYC, external security audit |
 | **v0.3** | FHIR integration, enterprise subgraph, protocol fee enforcement |
 | **v1.0** | Multi-site sponsor network, confidential aggregate analytics API |

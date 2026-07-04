@@ -68,7 +68,7 @@ export function SponsorDocumentPanel({ nullifier, trialId, status, isAnonymous }
   if (!accepted) {
     return (
       <p className="text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
-        Hybrid document attached — decrypt unlocks after you accept this application.
+        Hybrid document attached — view/decrypt unlocks after you accept this application.
       </p>
     );
   }
@@ -79,6 +79,10 @@ export function SponsorDocumentPanel({ nullifier, trialId, status, isAnonymous }
         <FileText className="h-4 w-4" />
         Patient medical document (hybrid IPFS + FHE)
       </div>
+      <p className="text-[10px] text-teal-800 leading-relaxed">
+        First view submits a per-access on-chain grant (<code>pullSponsorKeyAccess</code>), then unwraps the
+        FHE-wrapped AES key, fetches ciphertext from IPFS, and decrypts locally in your browser.
+      </p>
       {!plaintext ? (
         <Button
           type="button"

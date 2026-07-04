@@ -223,6 +223,9 @@ dataSources:
       entities:
         - AnonymousPatient
         - AnonymousSubmission
+        - AuthorizedRelayer
+        - RelayerAuthEvent
+        - RelayerRegistration
       abis:
         - name: MedVaultRegistry
           file: ./abis/MedVaultRegistry.json
@@ -235,6 +238,10 @@ dataSources:
           handler: handleAnonymousApplyStaged
         - event: AnonymousApplication(indexed uint256,indexed uint256,indexed bytes32)
           handler: handleAnonymousApplication
+        - event: AuthorizedRelayerUpdated(indexed address,bool)
+          handler: handleAuthorizedRelayerUpdated
+        - event: PatientRegisteredViaRelayer(indexed address,indexed uint256)
+          handler: handlePatientRegisteredViaRelayer
       file: ./src/mappings/medvault-registry.ts
 
   - kind: ethereum

@@ -179,10 +179,35 @@ type ZKProof @entity(immutable: true) {
 }
 
 # Semaphore-based Anonymous Registration Entities
-type AnonymousPatient @entity(immutable: true) {
+type AnonymousPatient @entity(immutable: false) {
   id: ID!                              # identityCommitment as hex string
   commitment: BigInt!                  # the Semaphore identity commitment
   registeredAt: BigInt!
+  registeredViaRelayer: Bytes            # set on PatientRegisteredViaRelayer
+}
+
+type AuthorizedRelayer @entity(immutable: false) {
+  id: Bytes!                           # relayer address
+  authorized: Boolean!
+  updatedAt: BigInt!
+}
+
+type RelayerAuthEvent @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  relayer: Bytes!
+  authorized: Boolean!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  timestamp: BigInt!
+}
+
+type RelayerRegistration @entity(immutable: true) {
+  id: ID!                              # txHash-logIndex
+  relayer: Bytes!
+  commitment: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  timestamp: BigInt!
 }
 
 type AnonymousSubmission @entity(immutable: false) {

@@ -2,7 +2,7 @@
 
 [![Zama](https://img.shields.io/badge/Powered%20By-Zama-teal?style=for-the-badge)](https://docs.zama.org)
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-blue?style=for-the-badge)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-483%20Cases-emerald?style=for-the-badge)](docs/TEST_MATRIX.md)
+[![Tests](https://img.shields.io/badge/Tests-491%20Cases-emerald?style=for-the-badge)](docs/TEST_MATRIX.md)
 [![Network](https://img.shields.io/badge/Network-Ethereum%20Sepolia-2D374B?style=for-the-badge)](https://sepolia.etherscan.io/)
 [![Chainlink](https://img.shields.io/badge/CRE-Chainlink-375BD2?style=for-the-badge)](https://docs.chain.link/cre)
 [![npm](https://img.shields.io/badge/npm-@medvault%2Fsdk-red?style=for-the-badge)](https://www.npmjs.com/package/@medvault/sdk)
@@ -20,7 +20,7 @@
 | **Repo** | [github.com/shery8595/Med-Vault](https://github.com/shery8595/Med-Vault) |
 | **SDK** | `npm install @medvault/sdk ethers@6.16.0` |
 
-> **MedVault** homomorphically matches **encrypted patient vitals** against **encrypted sponsor trial criteria** on Ethereum Sepolia using **fhEVM** — with optional Semaphore anonymity and Noir identity/policy attestation (compliance seal). Sponsors encrypt inclusion bounds; patients encrypt vitals; validators and indexers never see plaintext PHI. *(Semaphore, Noir, Chainlink, subgraph, relayer, SDK, and Android extend the core FHE story — see [Appendix: platform depth](#appendix-platform-depth-optional-layers).)*
+> **Private clinical-trial matching over encrypted patient vitals and encrypted sponsor trial criteria** — homomorphic eligibility on Ethereum Sepolia using **fhEVM**. Sponsors encrypt inclusion bounds; patients encrypt vitals; validators and indexers never see plaintext PHI. *(Optional layers — Semaphore, Noir, Chainlink, subgraph, relayer, SDK — extend the core matching story; see [Appendix: platform depth](#appendix-platform-depth-optional-layers).)*
 
 ### What is encrypted vs public
 
@@ -43,7 +43,7 @@ MedVault uses strong cryptography, but not every layer proves the same thing. Th
 |-------|-------------------|-------------------------------|
 | **Zama FHE** (`EligibilityEngine._computeEligibility`) | Homomorphic matching on ciphertext — validators and indexers never see plaintext vitals during on-chain scoring | Off-chain PHI handling (IPFS documents, AI service, indexer caches); wallet linkage on non-relayer registration; L1 native ETH visibility at deposit/withdraw |
 | **Noir + Honk** | **Identity and policy attestation** — Semaphore nullifier, profile commitment, staged FHE handle binding, encrypted-criteria echo binding | fhEVM homomorphic correctness; the compliance seal is **not** a proof that you passed eligibility — only that your witness matches your registered profile and staged handle |
-| **Trusted relayer** | Gasless staging/finalize/cancel; **interim** re-decrypt of staged eligibility before finalize (P0.2) as defense-in-depth | Payout integrity is ciphertext-gated via `FHE.select` (P2, shipped — see P5-SELECT tests); relayer honesty is no longer the payout-integrity anchor |
+| **Authorized relayers (P3.1)** | Gasless staging/finalize/cancel; P0.2 re-decrypt when relayer is `permitRecipient`; patient chooses among N relayers | Can **censor or delay** only — see [docs/RELAYER_TRUST_BOUNDARIES.md](docs/RELAYER_TRUST_BOUNDARIES.md); cannot steal funds or forge eligibility (FHE.select + pull-claim) |
 | **Compliance posture** | Privacy-by-design for on-chain clinical matching | **Not HIPAA-compliant today** — off-chain PHI (IPFS, AI pre-screening, indexer), optional wallet linkage, and settlement-layer ETH visibility remain |
 
 See [SECURITY.md](SECURITY.md), [docs/REGULATORY_POSTURE.md](docs/REGULATORY_POSTURE.md), [internal-docs/threat-model.md](internal-docs/threat-model.md), and in-app **Docs → Security Model** for residual risks and mitigations.
@@ -54,7 +54,7 @@ See [SECURITY.md](SECURITY.md), [docs/REGULATORY_POSTURE.md](docs/REGULATORY_POS
 
 1. [Zama FHE — the core of MedVault](#zama-fhe--the-core-of-medvault)
 2. [What MedVault does](#what-medvault-does)
-3. [How MedVault compares](#how-medvault-compares)
+3. [What makes MedVault different](#what-makes-medvault-different)
 4. [Architecture](#architecture)
 5. [Smart contracts](#smart-contracts)
 6. [Repository layout](#repository-layout)
@@ -172,7 +172,7 @@ await client
 
 ```bash
 npm run compile          # Hardhat + Zama FHE types
-npm run test:unit        # 395 passing (+ 6 pending) with @fhevm/hardhat-plugin mocks (see testSuiteData.ts)
+npm run test:unit        # 403 passing (+ 6 pending) with @fhevm/hardhat-plugin mocks (see testSuiteData.ts)
 ```
 
 Shared helpers: `test-support/fhe.ts` (`buildPatientProfileInputs`, `mockDecryptBool`).  
@@ -197,15 +197,27 @@ Recent product areas: FHIR JSON prefill, sponsor representation monitoring, encr
 
 ---
 
-## How MedVault compares
+## What makes MedVault different
 
-MedVault closes three gaps common in Zama/FHE hackathon repos (Circux, Covalent parity):
+**The one thing to remember:** private clinical-trial matching — encrypted patient inputs against encrypted sponsor criteria, with outcomes decrypted only by the patient.
 
-| Capability | MedVault |
-|------------|----------|
+MedVault is the most socially significant **end-to-end** fhEVM clinical-research application: matching is the hook; the full workflow proves it ships as a real system.
+
+| Layer | What MedVault delivers |
+|-------|------------------------|
+| **Core FHE** | Homomorphic matching on **both** patient vitals and sponsor criteria (`EligibilityEngine`, `createTrialWithEncryptedCriteria`) |
+| **Trust & identity** | Consent gates, anonymous application, identity/policy attestation seal |
+| **Operations** | Tamper-proof audit trail, milestone rewards, trial finalization |
+| **Posture** | Privacy-by-design matching with honest regulatory limits — see [docs/REGULATORY_POSTURE.md](docs/REGULATORY_POSTURE.md) |
+
+### Engineering depth
+
+| Capability | Detail |
+|------------|--------|
 | **Confidential token standard** | `ConfidentialETH7984` subclasses OpenZeppelin **ERC-7984** (`@openzeppelin/confidential-contracts ^0.5.1`) while preserving native-ETH deposit, multi-phase withdraw, EIP-712 public exit, and KMS-gated `transferEncrypted`. See [docs/FHE_AUDIT_README.md — ERC-7984 conformance](docs/FHE_AUDIT_README.md). |
 | **One-command local setup** | `docker compose up --build` → frontend on `:3000` against Sepolia; optional `--profile relayer` and `--profile graph`. See [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md). |
 | **Formal internal docs** | SRS, DFD, threat model, Zama integration guide, architecture in [internal-docs/](internal-docs/README.md). |
+| **Verification** | **491** default Hardhat tests, dual relayer adversarial bounds, [FHE audit map](docs/FHE_AUDIT_README.md) |
 
 ---
 
@@ -268,7 +280,7 @@ graph TD
 
 **Indexing:** The Graph (`subgraph/`) for trials, applications, consents, anonymous submissions, incentive pools — not for all audit data until `DataAccessLog` is deployed to Studio.
 
-**Automation:** [Chainlink CRE](#chainlink-cre-trial-finalization) finalizes expired trials via `MedVaultAutomation` + `AutomationReceiver` (not indexed by subgraph).
+**Automation:** Trial expiry finalization via `MedVaultAutomation` — **[Chainlink CRE](#chainlink-cre-trial-finalization)** or **[owner cron](docs/AUTOMATION_CRON.md)** (not indexed by subgraph).
 
 ---
 
@@ -293,7 +305,7 @@ Deployed addresses: `src/lib/contracts/addresses.json` (`sepolia`).
 | 11 | `StakingManager.sol` | Public Aave stake + confidential cETH stake/unstake |
 | 12 | `ConfidentialETH7984.sol` | **IERC7984** canonical implementation — encrypted balances, deposit, withdraw/exit, EIP-712 |
 | 13 | `ConfidentialETH.sol` | **Deploy alias** — `contract ConfidentialETH is ConfidentialETH7984 {}` |
-| 14 | `MedVaultAutomation.sol` | Trial expiry finalization (`checkUpkeep` / `performUpkeep`) — triggered by CRE via `AutomationReceiver` |
+| 14 | `MedVaultAutomation.sol` | Trial expiry finalization (`checkUpkeep` / `performUpkeep`) — CRE via `AutomationReceiver` or owner cron |
 | 15 | `DataAccessLog.sol` | Immutable audit entries (`ActionLogged` / `DetailedActionLogged`) |
 | 16 | `PatientDocumentStore.sol` | Hybrid IPFS CID + FHE-wrapped AES document keys |
 | 17 | `HonkVerifier.sol` | Noir Honk — plaintext criteria attestation (`eligibilityVerifier`) |
@@ -418,15 +430,15 @@ MedVault uses **Hardhat 2**, **Mocha/Chai**, and **`@fhevm/hardhat-plugin`** (Za
 
 > **Canonical counts** — sourced from [`src/lib/docsStats.ts`](src/lib/docsStats.ts) and [`src/pages/docs/testing/testSuiteData.ts`](src/pages/docs/testing/testSuiteData.ts) (methodology in [`docs/AUDIT.md`](docs/AUDIT.md)).
 
-Default CI run: **483 passing** (+ 6 pending, 1 optional Honk). Full registered matrix: **~2,020** cases across **96** test files (incl. **832** parametric fuzz expansions).
+Default CI run: **491 passing** (+ 6 pending, 1 optional Honk). Full registered matrix: **~2,028** cases across **97** test files (incl. **832** parametric fuzz expansions).
 
 | Suite | Cases | Command |
 |-------|-------|---------|
-| Smoke + unit + staking | 395 | `npm run test:unit` |
+| Smoke + unit + staking | 403 | `npm run test:unit` |
 | Integration | 85 | `npm run test:integration` |
 | Crypto (Noir nullifier alignment) | 3 | `npm run test:crypto` |
 | Honk full pipeline (slow) | 1 | `npm run test:honk` |
-| **Default** | **483** | `npm test` |
+| **Default** | **491** | `npm test` |
 
 ```bash
 npm run compile
@@ -559,11 +571,12 @@ npm run deploy:wiring:sepolia
 npm run deploy:check-wiring:sepolia
 ```
 
-### Chainlink CRE (trial finalization)
+### Trial automation (CRE or owner cron)
 
-Chainlink Automation (CLA) upkeeps are sunset; use **Chainlink CRE** with the repo bridge pattern:
+Chainlink Automation (CLA) upkeeps are sunset. MedVault supports **Chainlink CRE** or an **owner cron** scheduler:
 
 ```bash
+# Chainlink CRE
 npm run deploy:cre-receiver:sepolia
 npm run wire:cre-receiver:sepolia
 # after ~6h timelock:
@@ -573,7 +586,9 @@ npm run cre:simulate
 npm run cre:deploy
 ```
 
-See [Chainlink CRE](#chainlink-cre-trial-finalization) in the appendix, in-app **Docs → Chainlink CRE** (`/docs/automation`), and `cre/README.md`.
+Owner cron (standalone package, Railway Cron `*/5 * * * *`): [docs/AUTOMATION_CRON.md](docs/AUTOMATION_CRON.md).
+
+See in-app **Docs → Chainlink CRE** (`/docs/automation`), `cre/README.md`, and the appendix below.
 
 ### Subgraph
 
@@ -679,9 +694,14 @@ These extend MedVault but are **not required** to demonstrate Zama FHE core matc
 - **Noir + Honk:** dual circuits — `eligibility_plaintext` (25 inputs → `HonkVerifier`) and `eligibility_encrypted` (15 inputs → `HonkVerifierEncrypted`).
 - **Tests:** `test/integration/eligibility-anonymous.test.ts`, `test/unit/attestation-binding.test.ts`.
 
-### Chainlink CRE (trial finalization)
+### Trial automation (CRE or owner cron)
 
-`MedVaultAutomation.sol` finalizes expired trials; **Chainlink CRE** (not legacy Automation upkeeps) drives it on Sepolia via `cre/my-workflow` and `AutomationReceiver`. See in-app **Docs → Chainlink CRE** (`/docs/automation`), `cre/README.md`, and [docs/TIMELOCK_WIRING.md](docs/TIMELOCK_WIRING.md).
+`MedVaultAutomation.sol` finalizes expired trials. MedVault supports:
+
+- **Chainlink CRE** — workflow + `AutomationReceiver` (`cre/my-workflow`). See **Docs → Chainlink CRE** (`/docs/automation`), `cre/README.md`, [docs/TIMELOCK_WIRING.md](docs/TIMELOCK_WIRING.md).
+- **Owner cron** — scheduled Node job (e.g. Railway Cron every 5 min) calling `performUpkeep` as contract owner. See [docs/AUTOMATION_CRON.md](docs/AUTOMATION_CRON.md).
+
+Legacy Chainlink Automation (CLA) upkeeps are sunset.
 
 ### The Graph subgraph
 

@@ -53,7 +53,7 @@ These are **not** part of IERC7984 but remain on `ConfidentialETH7984` for proto
 | `lockBalance` / `unlockBalance` | `StakingManager` stake mutex |
 | `transferEncrypted(from, to, amount)` | Homomorphic inter-contract transfer via `FHE.select` — no public sufficiency decrypt |
 | `previewTransferSufficiency` | Staking / vault pre-checks (emits `transferableHandle`) |
-| `scheduleContractAuth` / `applyContractAuth` | 2-day timelock for `authorizedContracts` |
+| `scheduleContractAuth` / `applyContractAuth` | 6-hour timelock for `authorizedContracts` |
 
 Instant `authorizeContract` / `deauthorizeContract` hard-revert on live deployments — use schedule/apply ([TIMELOCK_WIRING.md](./TIMELOCK_WIRING.md)).
 

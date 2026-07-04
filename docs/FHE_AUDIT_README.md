@@ -2,7 +2,7 @@
 
 One-page map of every **Zama FHE** primitive in MedVault and where it lives. For judges verifying the submission without reading the full repo.
 
-**Live demo:** https://med-vault.xyz · **Network:** Ethereum Sepolia · **Tests:** 483 passing (`npm test`; see `src/lib/docsStats.ts`)
+**Live demo:** https://med-vault.xyz · **Network:** Ethereum Sepolia · **Tests:** 491 passing (`npm test`; see `src/lib/docsStats.ts`)
 
 ## What is encrypted vs public
 
@@ -61,7 +61,7 @@ See [TEST_MATRIX.md](TEST_MATRIX.md) for case IDs.
 
 ## ERC-7984 conformance (OpenZeppelin confidential token standard)
 
-MedVault's native-ETH wrapper implements **IERC7984** via OpenZeppelin `@openzeppelin/confidential-contracts` `ERC7984` (`ConfidentialETH7984.sol`). This aligns with the Zama fhEVM canonical confidential fungible token interface (same pattern as Circux/Covalent).
+MedVault's native-ETH wrapper implements **IERC7984** via OpenZeppelin `@openzeppelin/confidential-contracts` `ERC7984` (`ConfidentialETH7984.sol`). This aligns with the Zama fhEVM canonical confidential fungible token interface.
 
 | IERC7984 surface | MedVault implementation |
 |------------------|-------------------------|

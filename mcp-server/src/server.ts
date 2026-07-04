@@ -303,15 +303,27 @@ export function createMedVaultMcpServer(ctx: MedVaultMcpContext): McpServer {
 
   server.tool(
     "medvault_relayer_health",
-    "GET /health from MEDVAULT_RELAYER_URL if configured.",
-    {},
-    async () => {
-      const url = ctx.config.relayerUrl;
-      if (!url) throw new Error("MEDVAULT_RELAYER_URL is not set");
-      const base = url.replace(/\/$/, "");
-      const res = await fetch(`${base}/health`);
-      const body = await res.text();
-      return jsonText({ status: res.status, body: tryParseJson(body) });
+    "GET /health from MEDVAULT_RELAYER_URL or MEDVAULT_RELAYER_URLS if configured.",
+    {
+      url: z.string().optional().describe("Optional single relayer base URL override"),
+    },
+    async ({ url }) => {
+      const urls = url
+        ? [url.replace(/\/$/, "")]
+        : ctx.config.relayerUrls?.length
+          ? ctx.config.relayerUrls
+          : ctx.config.relayerUrl
+            ? [ctx.config.relayerUrl.replace(/\/$/, "")]
+            : [];
+      if (urls.length === 0) throw new Error("MEDVAULT_RELAYER_URL or MEDVAULT_RELAYER_URLS is not set");
+      const results = await Promise.all(
+        urls.map(async (base) => {
+          const res = await fetch(`${base}/health`);
+          const body = await res.text();
+          return { url: base, status: res.status, body: tryParseJson(body) };
+        })
+      );
+      return jsonText(urls.length === 1 ? results[0] : { relayers: results });
     }
   );
 

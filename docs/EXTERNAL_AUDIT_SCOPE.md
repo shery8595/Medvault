@@ -25,7 +25,7 @@
 | Contract | Focus areas |
 |----------|-------------|
 | `EligibilityEngine.sol` | `stageAnonymousEligibility`, `finalizeAnonymousEligibilityWithProof`, `_verifyEligibilityProofCore`, `anonymousResults` ciphertext, `noirVerifiedResults` / `anonymousVaultScreeningEligible` audit-only usage |
-| `MedVaultRegistry.sol` | `finalizeAnonymousApplyWithProof`, `onlyTrustedRelayer`, relayer registration paths |
+| `MedVaultRegistry.sol` | `finalizeAnonymousApplyWithProof`, `onlyAuthorizedRelayer`, relayer registration paths |
 | `SponsorIncentiveVault.sol` | `_creditScreeningRewardEncrypted` (`FHE.select`), `_creditReward` milestone>0, `_registerParticipant`, distribution accounting |
 | `EncryptedConsentGate.sol` | `getAnonymousResult`, value-moving `FHE.select` paths |
 
@@ -94,7 +94,7 @@
 | P2 FHE.select payout gating | Shipped + Phase 5 differential evidence — [VERIFICATION_SNAPSHOT.md](./VERIFICATION_SNAPSHOT.md) rows 13–14, [certora-halmos-results.md](./formal-verification/certora-halmos-results.md) |
 | Threat model updated | [internal-docs/threat-model.md](../internal-docs/threat-model.md) |
 | Regulatory posture | [REGULATORY_POSTURE.md](./REGULATORY_POSTURE.md) |
-| Default test suite | 483+ cases — `npm test` |
+| Default test suite | 491+ cases — `npm test` |
 | Formal spec (informal) | [formal-verification/eligibility-engine.spec.md](./formal-verification/eligibility-engine.spec.md) |
 | Formal / differential results (Phase 5) | [formal-verification/certora-halmos-results.md](./formal-verification/certora-halmos-results.md) |
 

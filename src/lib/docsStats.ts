@@ -71,13 +71,13 @@ export const STAT_BACKING = {
     },
     inAppDocPages: {
         label: "In-app documentation React pages",
-        value: 32,
+        value: 35,
         backing: ["src/pages/docs/**/*.tsx"],
-        note: "32 routed doc pages + DocsLayout.tsx shell (33 TSX files total).",
+        note: "35 routed doc pages + DocsLayout.tsx shell (36 TSX files total).",
     },
     docsNavItems: {
         label: "Documentation nav entries",
-        value: 48,
+        value: 50,
         backing: ["src/lib/docsNav.ts (DOCS_NAV_ITEMS)"],
         note: "Includes external GitHub markdown links in sidebar/search.",
     },
@@ -99,9 +99,9 @@ export const STAT_BACKING = {
     },
     httpRoutes: {
         label: "HTTP routes (backend)",
-        value: 21,
+        value: 23,
         backing: [
-            "relayer/server.js (10)",
+            "relayer/server.js (12)",
             "ai-service/src/server.ts (4)",
             "indexer/src/api.ts (5)",
             "mcp-server/src/http.ts (2)",
@@ -132,19 +132,19 @@ export const STAT_BACKING = {
     },
     testFiles: {
         label: "TypeScript test files",
-        value: 96,
+        value: 97,
         backing: [
             "test/**/*.test.ts",
             "packages/**/tests/**/*.test.ts",
             "src/lib/__tests__/**/*.test.ts",
         ],
-        note: "87 under test/ (76 in default npm test); +9 package/Vitest files.",
+        note: "88 under test/ (77 in default npm test); +9 package/Vitest files.",
     },
     testCasesLiteral: {
         label: "Literal it() blocks in default-suite files",
-        value: 438,
+        value: 446,
         backing: ["grep '\\bit\\s*\\(' across default-suite globs in hardhat-test-suite.mjs"],
-        note: "76 Hardhat files in default suite; loop-expanded cases (OWN-*, P1–P3 PROP) exceed literal count.",
+        note: "77 Hardhat files in default suite; loop-expanded cases (OWN-*, P1–P3 PROP) exceed literal count.",
     },
     testCasesParametricFuzz: {
         label: "Parametric fuzz matrix cases",
@@ -156,26 +156,26 @@ export const STAT_BACKING = {
     },
     testCasesRegistered: {
         label: "Registered test cases (incl. loop expansion)",
-        value: 2020,
+        value: 2028,
         backing: [
-            "491 literal it() (all TS test files)",
+            "499 literal it() (all TS test files)",
             "832 parametric ECM matrix",
             "hardhat.config.ts fuzz.runs loop expansion",
         ],
-        note: "Approximate total; default CI suite runs 483 passing (excludes fuzz/fork/Honk). Recompute: scripts in docs/AUDIT.md.",
+        note: "Approximate total; default CI suite runs 491 passing (excludes fuzz/fork/Honk). Recompute: scripts in docs/AUDIT.md.",
     },
     testSuiteDefaultPassing: {
         label: "Default suite passing (npm test)",
-        value: 483,
+        value: 491,
         backing: [
             "scripts/hardhat-test-suite.mjs (default suite)",
             "src/pages/docs/testing/testSuiteData.ts (SUITE_STATS)",
         ],
-        note: "Verified 2026-07-02: 483 = 395 unit + 85 integration + 3 crypto; 6 pending in unit suite.",
+        note: "Verified 2026-07-04: 491 = 403 unit + 85 integration + 3 crypto; 6 pending in unit suite.",
     },
     testSuiteUnitPassing: {
         label: "Unit + smoke + staking passing (npm run test:unit)",
-        value: 395,
+        value: 403,
         backing: ["scripts/hardhat-test-suite.mjs (unit suite)"],
     },
     testSuiteIntegrationPassing: {
@@ -212,13 +212,13 @@ export const STAT_BACKING = {
     },
     composeServices: {
         label: "Docker Compose services",
-        value: 10,
+        value: 11,
         backing: ["docker-compose.yml"],
-        note: "Profiles: default (frontend), relayer, graph (5), indexer (3).",
+        note: "Profiles: default (frontend), relayer (relayer + relayer-b), graph (5), indexer (3).",
     },
     markdownFiles: {
         label: "Repository Markdown files",
-        value: 33,
+        value: 35,
         backing: ["**/*.md (repo root, docs/, internal-docs/, package READMEs)"],
     },
     eligibilityPublicInputs: {

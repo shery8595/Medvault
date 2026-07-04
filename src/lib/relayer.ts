@@ -50,8 +50,12 @@ export function isNotEligibleForTrialMessage(text: string | null | undefined): b
     );
 }
 
-async function postRelay(path: string, body: Record<string, unknown>): Promise<{ txHash: string; eligible?: boolean; cancelled?: boolean }> {
-    const relayerUrl = getMedVaultRelayerUrl();
+async function postRelay(
+    path: string,
+    body: Record<string, unknown>,
+    baseUrl?: string
+): Promise<{ txHash: string; eligible?: boolean; cancelled?: boolean }> {
+    const relayerUrl = (baseUrl ?? getMedVaultRelayerUrl()).replace(/\/$/, "");
     const response = await fetch(`${relayerUrl}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +110,8 @@ export async function stageViaRelayer(
     commitment: string,
     permitRecipient: string,
     deadline: bigint,
-    permitSignature: string
+    permitSignature: string,
+    baseUrl?: string
 ): Promise<string> {
     const { txHash } = await postRelay('/relay/apply-stage', {
         trialId: Number(trialId),
@@ -115,12 +120,12 @@ export async function stageViaRelayer(
         permitRecipient,
         deadline: deadline.toString(),
         permitSignature,
-    });
+    }, baseUrl);
     return txHash;
 }
 
 /**
- * P3.2: Submit finalize directly from patient wallet (open finalize; payout integrity is FHE.select-gated).
+ * HIGH-1: Submit finalize via authorized relayer (patient EOAs cannot call on-chain directly).
  */
 export async function finalizeAnonymousApplyDirect(
     trialId: number | bigint,
@@ -169,7 +174,9 @@ export async function finalizeViaRelayerWithProof(
     permitSignature: string,
     consentWalletSignature: string,
     noirProof: string,
-    publicInputs: string[]
+    publicInputs: string[],
+    eligible: boolean,
+    baseUrl?: string
 ): Promise<string> {
     const { txHash } = await postRelay('/relay/apply-finalize', {
         trialId: Number(trialId),
@@ -182,19 +189,21 @@ export async function finalizeViaRelayerWithProof(
         consentWalletSignature,
         noirProof,
         publicInputs,
-    });
+        eligible,
+    }, baseUrl);
     return txHash;
 }
 
 /**
- * Full anonymous apply: relayer stage → browser decrypt + Noir proof → patient direct finalize (P3.2).
+ * Full anonymous apply: relayer stage → browser decrypt + Noir proof → relayer finalize (HIGH-1).
  */
 export async function submitViaRelayer(
     trialId: number | bigint,
     proof: SemaphoreProof,
     commitment: string,
     permitRecipient: string,
-    ctx: { provider: Provider; identity: Identity; consentSigner: import('ethers').Signer }
+    ctx: { provider: Provider; identity: Identity; consentSigner: import('ethers').Signer },
+    relayerBaseUrl?: string
 ): Promise<string> {
     const provider = ctx.provider;
     const registry = getMedVaultRegistry(provider);
@@ -222,7 +231,8 @@ export async function submitViaRelayer(
         commitment,
         permitRecipient,
         stageDeadline,
-        stagePermitSignature
+        stagePermitSignature,
+        relayerBaseUrl
     );
 
     const receipt = await provider.getTransactionReceipt(stageTxHash);
@@ -332,18 +342,19 @@ export async function submitViaRelayer(
         }
     );
 
-    return finalizeAnonymousApplyDirect(
+    return finalizeViaRelayerWithProof(
         trialId,
         proofFresh,
         commitment,
         permitRecipient,
-        ctx.consentSigner,
         consentWallet,
         deadline,
         permitSignature,
         consentWalletSignature,
         proofBytes,
-        publicInputs
+        publicInputs,
+        eligible,
+        relayerBaseUrl
     ).then(async (txHash) => {
         const applied = await hasAppliedToTrial(provider, trialId, proofFresh.nullifier);
         if (applied) return txHash;

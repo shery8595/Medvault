@@ -80,10 +80,12 @@ export function IdentityPrivacyDoc() {
                 <h3>Gas-sponsored Semaphore apply</h3>
                 <p>
                     Anonymous trial apply uses a <strong>two-step</strong> relay: <code>POST /relay/apply-stage</code>{" "}
-                    (registry stages FHE eligibility + Semaphore verify) then <code>POST /relay/apply-finalize</code> after the
-                    browser runs Zama FHE <strong>decrypt-for-tx</strong> on the staged boolean (only if eligible). Client entry:{" "}
-                    <code>src/lib/relayer.ts</code> → <code>submitViaRelayer(...)</code>. Deprecated{" "}
-                    <code>POST /relay/apply</code> returns HTTP 410 — do not document it as the live path.
+                    (registry stages FHE eligibility + Semaphore verify) then <code>POST /relay/apply-finalize</code> after
+                    the browser runs Zama FHE <strong>decrypt-for-tx</strong> on the staged boolean, builds a{" "}
+                    <strong>Noir UltraHonk</strong> eligibility attestation (optional hybrid document binding), and the
+                    relayer submits finalize. Client entry: <code>src/lib/relayer.ts</code> →{" "}
+                    <code>submitViaRelayer(...)</code>. Deprecated <code>POST /relay/apply</code> returns HTTP 410 — do
+                    not document it as the live path.
                 </p>
                 <h3>Withdrawal completion &amp; public exit</h3>
                 <p>

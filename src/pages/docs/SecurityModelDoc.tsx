@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
@@ -19,8 +20,8 @@ const threatModel = [
     { vector: "Unauthorized Withdraw-To Staging", severity: "High", mitigation: "requestWithdrawTo requires patient EIP-712 WithdrawTo signature binding destination, encrypted handle, nonce, and deadline. Vault cannot stage payouts to arbitrary addresses without user consent. Tests: TL-05, E2E-09.", status: "Mitigated" },
     { vector: "Relayer Mis-binding on Public Exit", severity: "Medium", mitigation: "EIP-712 v2 `WithdrawAuthorization` binds owner, stealthRecipient, transferableHandle, exitMode, nonce, and deadline. Contract rejects wrong recipient, expired auth, replayed nonces, and exit-mode tampering (SUF-05 / PEX-* tests). Relayer cannot redirect funds to an unsigned address.", status: "Mitigated" },
     { vector: "Event Log Metadata Analysis", severity: "Low", mitigation: "MedVault events emit public structural metadata (trial ID, patient address, status enum) but never emit ciphertexts or health values. Withdraw/stake events omit amounts. An observer can see that an application or withdraw occurred but cannot read staged encrypted amounts from logs.", status: "Accepted Risk" },
-    { vector: "FHE ACL Persists After Consent Revoke", severity: "High", mitigation: "Forward-only revocation: `revokeAccess` bumps `documentEpoch`; sponsor reads require matching `sponsorGrantEpoch`. `rotateDocument` re-wraps AES key and emits `DocumentLegacyHandleRevoked` for off-chain unpin. **Residual:** sponsors who already decrypted retain plaintext off-chain — fhEVM `FHE.allow` is irreversible. Tests: ACL-01..05. See HYBRID_STORAGE.md.", status: "Mitigated (forward-only)" },
-    { vector: "Trusted Relayer TCB (stage/cancel/register)", severity: "High", mitigation: "`stageAnonymousApply`, `cancelAnonymousApplyStage`, `finalizeAnonymousApplyWithConsent`, and `registerPatientViaRelayer` require `msg.sender == trustedRelayer`. **P3.2:** `finalizeAnonymousApplyWithProof` is open — patient EOA submits after local FHE decrypt; payout integrity is `FHE.select`-gated (P2). Relayer re-decrypt on `/relay/apply-finalize` ignores client `eligible` (P0.2). UI verifies `hasAppliedToTrial` after finalize. Tests: HIGH-1, relayer-decrypt-verify.", status: "Mitigated (operational)" },
+    { vector: "FHE ACL Persists After Consent Revoke", severity: "High", mitigation: "Forward-only revocation (H-2 / P4): atomic `revokeAccess` (new CID + key required) bumps `documentEpoch`; sponsor reads require matching `sponsorGrantEpoch` after `pullSponsorKeyAccess`. Emits `DocumentLegacyHandleRevoked` for off-chain unpin. **Residual:** sponsors who already decrypted retain plaintext off-chain — fhEVM `FHE.allow` is irreversible. Tests: ACL-01..06. See HYBRID_STORAGE.md.", status: "Mitigated (forward-only)" },
+    { vector: "Trusted Relayer TCB (stage/cancel/register/finalize)", severity: "High", mitigation: "`finalizeAnonymousApplyWithProof`, `finalizeAnonymousApplyWithConsent`, `cancelAnonymousApplyStage`, and `registerPatientViaRelayer` require `msg.sender` in `authorizedRelayers` (HIGH-1). Payout integrity is `FHE.select`-gated (P2). Relayer re-decrypt on `/relay/apply-finalize` when relayer is `permitRecipient` ignores client `eligible` (P0.2). Multi-relayer choice (P3.1) limits censorship. Tests: HIGH-1, P3-04, relayer-decrypt-verify, relayer-adversarial.", status: "Mitigated (operational)" },
     { vector: "Unauthorized Pool Enrollment (MED-3)", severity: "Medium", mitigation: "`registerAnonymousParticipant` is permit-holder-only; sponsor accept does not auto-enroll. Patient uses Applied Trials UI, `registerAnonymousParticipantFor`, or relayer `POST /relay/register-anon`.", status: "Mitigated" },
     { vector: "SponsorRegistry Auditor Role", severity: "Medium", mitigation: "`scheduleAuditor` / `applyAuditor` (6h timelock) set `SponsorRegistry.auditor` for encrypted institution ID reads; zero-address schedule reverts. Tests: SRA-01–05.", status: "Resolved" },
     { vector: "Silent Eligibility Rejection", severity: "Informational", mitigation: "Ineligible anonymous finalize does not revert to avoid a plaintext eligibility bit on-chain (P1 privacy goal). `EligibilityEngine.silentApplyOutcome` records `SilentRejected`; vault payout gated on FHE `anonymousResults`. Closed by-design — see `docs/MEDIUM_FINDINGS_CLOSEOUT.md`.", status: "Closed (by-design)" },
@@ -117,9 +118,9 @@ export function SecurityModelDoc() {
                                         limits: "fhEVM execution correctness; compliance seal ≠ proof of eligibility",
                                     },
                                     {
-                                        layer: "Trusted relayer",
-                                        guarantees: "Gasless relay; interim re-decrypt before finalize (P0.2 defense-in-depth)",
-                                        limits: "Payout integrity via FHE.select (P2 shipped); relayer re-decrypt is defense-in-depth",
+                                        layer: "Authorized relayers (P3.1)",
+                                        guarantees: "Gasless relay; P0.2 re-decrypt when relayer is permitRecipient; multi-relayer patient choice",
+                                        limits: "Can censor or delay only — cannot steal funds or forge eligibility (see RELAYER_TRUST_BOUNDARIES.md)",
                                     },
                                     {
                                         layer: "Compliance",
@@ -137,6 +138,17 @@ export function SecurityModelDoc() {
                         </table>
                     </div>
                 </div>
+
+                <p className="text-sm text-slate-600">
+                    Relayer formal bounds:{" "}
+                    <Link to="/docs/relayer-trust-boundaries" className="text-teal-700 font-semibold hover:underline">
+                        cannot steal / cannot forge / can only censor
+                    </Link>
+                    {" · "}
+                    <Link to="/docs/p3-3-threshold-attestation" className="text-teal-700 font-semibold hover:underline">
+                        P3.3 threshold spec (deferred)
+                    </Link>
+                </p>
 
                 <hr className="my-12 border-slate-200" />
 

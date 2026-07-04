@@ -1,13 +1,14 @@
 import { ConsentLog } from "../../types";
 import { Button } from "../ui/Button";
-import { Ban } from "lucide-react";
+import { Ban, Loader2, ShieldOff } from "lucide-react";
 import { useMemo } from "react";
+import { canRevokeConsent, consentRowVariant } from "../../lib/consentDisplay";
 import { cn } from "../../lib/utils";
 
 interface ConsentTableProps {
   logs: ConsentLog[];
   searchQuery?: string;
-  onRevokeTrial?: (trialId: string) => void;
+  onRevokeTrial?: (trialId: string) => Promise<void>;
   revokeBusyTrialId?: string | null;
 }
 
@@ -45,7 +46,12 @@ function rowVariant(
   return "active";
 }
 
-export function ConsentTable({ logs, searchQuery = "" }: ConsentTableProps) {
+export function ConsentTable({
+  logs,
+  searchQuery = "",
+  onRevokeTrial,
+  revokeBusyTrialId,
+}: ConsentTableProps) {
   const filteredLogs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return logs;
@@ -134,6 +140,28 @@ export function ConsentTable({ logs, searchQuery = "" }: ConsentTableProps) {
                   )}
                 </td>
                 <td className="px-6 py-5 align-top text-right">
+                  {variant !== "revoked" && onRevokeTrial && canRevokeConsent(log) ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50 font-medium h-9 gap-1.5"
+                      disabled={revokeBusyTrialId === String(log.trialId)}
+                      onClick={() => {
+                        const ok = window.confirm(
+                          `Revoke sponsor access for "${log.trialName}"? Future consent-gated access for this trial will be blocked.`
+                        );
+                        if (ok && log.trialId) void onRevokeTrial(String(log.trialId));
+                      }}
+                    >
+                      {revokeBusyTrialId === String(log.trialId) ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ShieldOff className="h-3.5 w-3.5" />
+                      )}
+                      Revoke
+                    </Button>
+                  ) : null}
                   {variant === "revoked" && (
                     <Button
                       type="button"

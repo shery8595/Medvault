@@ -90,7 +90,7 @@ Failed handlers retry with exponential backoff (`WATCHER_RETRY_BASE_MS`, max `WA
 
 ## Rollout
 
-Breaking change: redeploy `ConfidentialETH7984` + `StakingManager` on Sepolia, rewire via 2-day timelock (`docs/TIMELOCK_WIRING.md`), deploy subgraph **v0.2.0**, and cut over frontend + relayer together (EIP-712 v2). Update `VITE_SUBGRAPH_URL` after subgraph deploy.
+Breaking change: redeploy `ConfidentialETH7984` + `StakingManager` on Sepolia, rewire via 6-hour timelock (`docs/TIMELOCK_WIRING.md`), deploy subgraph **v0.2.0**, and cut over frontend + relayer together (EIP-712 v2). Update `VITE_SUBGRAPH_URL` after subgraph deploy.
 
 ## Failed ETH settlement (escrow recovery)
 

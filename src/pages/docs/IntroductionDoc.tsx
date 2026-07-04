@@ -448,10 +448,14 @@ export function IntroductionDoc() {
                                     MedVault<span className="text-[#00685f]">.</span>
                                 </h1>
                                 <p className="text-sm md:text-base text-slate-600 max-w-xl leading-relaxed m-0">
-                                    FHE-powered clinical trial matching on{" "}
+                                    Private clinical-trial matching on encrypted patient vitals and encrypted sponsor
+                                    criteria — homomorphic eligibility on{" "}
                                     <strong className="text-slate-900">Ethereum Sepolia</strong> with{" "}
-                                    <strong className="text-slate-900">Zama FHE</strong> — homomorphic eligibility on
-                                    ciphertexts, Semaphore identity, and consent-gated access.
+                                    <strong className="text-slate-900">Zama FHE</strong>.
+                                </p>
+                                <p className="text-xs md:text-sm text-slate-500 max-w-xl leading-relaxed mt-2 m-0">
+                                    Consent gates, anonymous application, audit trail, and milestone rewards extend the
+                                    core matching workflow.
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-5">
                                     <Link

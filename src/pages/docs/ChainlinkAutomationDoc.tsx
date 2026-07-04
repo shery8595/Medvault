@@ -13,10 +13,19 @@ export function ChainlinkAutomationDoc() {
 
                 <p className="lead not-prose text-lg text-slate-600 max-w-3xl">
                     Trial expiry finalization runs through <strong>MedVaultAutomation</strong> on Ethereum Sepolia.
-                    As of July 2026, <strong>new Chainlink Automation (CLA) upkeeps are sunset</strong> — production uses{" "}
-                    <strong>Chainlink CRE</strong> (Runtime Environment) with an <code>AutomationReceiver</code> bridge.
-                    FHE eligibility remains separate (<strong>MedVaultRegistry</strong> / <strong>EligibilityEngine</strong>).
+                    MedVault supports <strong>Chainlink CRE</strong> (Runtime Environment) with an{" "}
+                    <code>AutomationReceiver</code> bridge, and an <strong>owner cron</strong> scheduler that calls the
+                    same <code>checkUpkeep</code> / <code>performUpkeep</code> interface. FHE eligibility remains
+                    separate (<strong>MedVaultRegistry</strong> / <strong>EligibilityEngine</strong>).
                 </p>
+
+                <Callout type="info" title="Two supported drivers">
+                    <strong>CRE</strong> — workflow polls off-chain, forwards via <code>AutomationReceiver</code> (
+                    <code>chainlinkForwarder</code>). <strong>Owner cron</strong> — scheduled Node job (e.g. Railway
+                    Cron every 5 min) submits <code>performUpkeep</code> as contract owner. Same on-chain outcome;
+                    pick based on ops preference. Repo markdown:{" "}
+                    <code>docs/AUTOMATION_CRON.md</code>.
+                </Callout>
 
                 <Callout type="warning" title="CLA → CRE migration">
                     Chainlink Automation v1/v2 upkeeps are being retired (Sepolia testnet cutoff June 2026). MedVault
@@ -25,7 +34,8 @@ export function ChainlinkAutomationDoc() {
                     <code>AutomationReceiver</code>. See <code>cre/README.md</code> in the repo.
                 </Callout>
 
-                <h2>Architecture (CRE)</h2>
+                <h2>Architecture</h2>
+                <h3>Chainlink CRE</h3>
                 <CodeBlock
                     language="text"
                     filename="Call flow"
@@ -34,6 +44,21 @@ export function ChainlinkAutomationDoc() {
   → if needed: AutomationReceiver.onReport → performUpkeep(performData)
   → MedVaultAutomation.finalized[trialId], vault.distribute, trialManager.deactivateTrial`}
                 />
+
+                <h3>Owner cron (alternative)</h3>
+                <CodeBlock
+                    language="text"
+                    filename="Call flow"
+                    code={`Railway Cron */5 * * * * (or VM crontab)
+  → eth_call MedVaultAutomation.checkUpkeep("0x")
+  → if needed: owner.performUpkeep(performData)
+  → process exits`}
+                />
+                <p>
+                    Deploy a standalone Node cron package (private repo) with <code>PRIVATE_KEY</code> ={" "}
+                    <code>MedVaultAutomation.owner()</code>. No <code>AutomationReceiver</code> tx path required.
+                    Full ops guide: <code>docs/AUTOMATION_CRON.md</code>.
+                </p>
 
                 <h3>On-chain contracts</h3>
                 <div className="not-prose overflow-x-auto my-4 rounded-xl border border-slate-200 text-xs">
@@ -84,9 +109,10 @@ export function ChainlinkAutomationDoc() {
                     </li>
                     <li>
                         <strong><code>performUpkeep</code></strong> (via <code>onlyForwarder</code> — CRE{" "}
-                        <code>AutomationReceiver</code> or owner) decodes task type <code>1</code>, runs{" "}
-                        <code>vault.distribute(trialId)</code> (paginated when &gt; 20 participants), then{" "}
-                        <code>trialManager.deactivateTrial(trialId)</code> when distribution completes.
+                        <code>AutomationReceiver</code>, scheduled <strong>owner</strong>, or manual owner) decodes task
+                        type <code>1</code>, runs <code>vault.distribute(trialId)</code> (paginated when &gt; 20
+                        participants), then <code>trialManager.deactivateTrial(trialId)</code> when distribution
+                        completes.
                     </li>
                 </ul>
 
@@ -158,6 +184,12 @@ export function ChainlinkAutomationDoc() {
                                 <td className="px-3 py-2">Trial expiry / forwarder debugging</td>
                             </tr>
                             <tr>
+                                <td className="px-3 py-2 font-mono">docs/AUTOMATION_CRON.md</td>
+                                <td className="px-3 py-2">
+                                    Owner cron package — Railway <code>*/5 * * * *</code>, env vars, deploy checklist
+                                </td>
+                            </tr>
+                            <tr>
                                 <td className="px-3 py-2 font-mono">deploy:chainlink-forwarder:sepolia</td>
                                 <td className="px-3 py-2">
                                     <strong>Legacy CLA only</strong> — point forwarder at per-upkeep CLA forwarder (superseded by CRE)
@@ -174,7 +206,27 @@ export function ChainlinkAutomationDoc() {
                     Keystone forwarder directly — the receiver calls <code>performUpkeep</code> and becomes{" "}
                     <code>msg.sender</code>). Changes use <code>scheduleChainlinkForwarder</code> /{" "}
                     <code>applyChainlinkForwarder</code> (6-hour timelock). The contract owner may also call{" "}
-                    <code>performUpkeep</code> manually for one-off testing.
+                    <code>performUpkeep</code> — used by the <strong>owner cron</strong> scheduler or for one-off testing.
+                </p>
+
+                <h2>Owner cron setup</h2>
+                <ol>
+                    <li>
+                        Standalone Node package with <code>checkUpkeep</code> → <code>performUpkeep</code> loop (private
+                        repo).
+                    </li>
+                    <li>
+                        Env: <code>PRIVATE_KEY</code> (owner), <code>MEDVAULT_AUTOMATION_ADDRESS</code>,{" "}
+                        <code>SEPOLIA_RPC_URL</code>.
+                    </li>
+                    <li>
+                        Host on <strong>Railway Cron</strong> — schedule <code>*/5 * * * *</code>, start command runs one
+                        cycle and exits.
+                    </li>
+                </ol>
+                <p>
+                    See <code>docs/AUTOMATION_CRON.md</code>. CRE forwarder wiring is <strong>not</strong> required for the
+                    owner cron path.
                 </p>
 
                 <h2>Chainlink price feeds (separate)</h2>
@@ -199,7 +251,8 @@ export function ChainlinkAutomationDoc() {
                     <Link to="/docs/deployment" className="text-blue-700 font-semibold">
                         Deployment guide
                     </Link>
-                    , and repo <code>cre/README.md</code>.
+                    , repo <code>cre/README.md</code>, and{" "}
+                    <code>docs/AUTOMATION_CRON.md</code>.
                 </Callout>
             </Prose>
         </motion.div>

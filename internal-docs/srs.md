@@ -44,7 +44,7 @@ MedVault is a privacy-preserving clinical trial matching and incentive protocol 
 |----|-------------|
 | NFR-1 | Patient health fields never stored as plaintext on-chain |
 | NFR-2 | cETH implements OpenZeppelin **IERC7984** (`ConfidentialETH7984`) |
-| NFR-3 | Cross-contract wiring changes use 2-day timelock on live networks |
+| NFR-3 | Cross-contract wiring changes use 6-hour timelock on live networks |
 | NFR-4 | Test suite (`npm test`) passes on Hardhat FHE mocks |
 | NFR-5 | Demo runnable via `docker compose up --build` (Sepolia-first) — see [docs/DOCKER.md](../docs/DOCKER.md) |
 

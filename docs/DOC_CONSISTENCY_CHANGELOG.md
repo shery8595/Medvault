@@ -1,5 +1,45 @@
 # Documentation consistency changelog (post–Phase 5)
 
+**Date:** 2026-07-04  
+**Trigger:** Pitch narrative reframe — lead with private clinical-trial matching; breadth as supporting evidence; no third-party project references.
+
+## 2026-07-04 — Comparison narrative tighten
+
+| Surface | Update |
+|---------|--------|
+| `docs/PITCH_DECK.md` | Title hook = encrypted matching; Slide 8 platform depth layers; integrations deferred from opener |
+| `README.md` | Judges blurb + `What makes MedVault different` (replaces `How MedVault compares`); engineering depth subsection |
+| `VISION.md`, `docs/LIGHTPAPER.md` | Judge hook first; full-stack bullets second |
+| `src/pages/docs/IntroductionDoc.tsx` | Docs hero: matching-first copy |
+| `docs/FHE_AUDIT_README.md` | Removed third-party ERC-7984 comparison phrase |
+
+---
+
+**Date:** 2026-07-04  
+**Trigger:** Dual relayer (P3.1) + trusted relayer risk reduction + `relayer-adversarial.test.ts` (+8 cases) + full doc sync.
+
+## 2026-07-04 — Dual relayer + REL-* adversarial suite
+
+| Surface | Update |
+|---------|--------|
+| `docs/RELAYER_TRUST_BOUNDARIES.md` | Proof-style relayer bounds (cannot steal / forge; can censor) |
+| `docs/P3_3_THRESHOLD_ATTESTATION.md` | Deferred M-of-N co-sign spec |
+| `docs/TIMELOCK_WIRING.md` | Dual Railway/Docker relayer deployment; `RELAYER_ADDRESSES` |
+| `relayer/server.js`, `src/lib/relayerRegistry.ts` | Multi-relayer health, metrics, HIGH-1 finalize path |
+| `subgraph/` | `AuthorizedRelayerUpdated`, `PatientRegisteredViaRelayer`, staged apply indexing |
+| `test/unit/relayer-adversarial.test.ts` | REL-EQV-01–02, REL-REP-01–02, REL-FF-01–02, REL-STALE-01–02 |
+| `src/lib/docsStats.ts` | **491** default (403+85+3); 97 test files; ~2,028 registered |
+| In-app docs | `/docs/relayer-trust-boundaries`, `/docs/p3-3-threshold-attestation` |
+
+```bash
+npm run test:unit          # 403 passing, 6 pending
+npm run test:integration   # 85 passing
+npm test                   # 491 passing (default)
+npx hardhat test test/unit/relayer-adversarial.test.ts  # 8 REL-* cases
+```
+
+---
+
 **Date:** 2026-07-02  
 **Trigger:** Medium findings closeout (M-AUDIT-1 / M-SILENT-1 / M-REGCON-1) + full `npm test` re-run (483 passing).
 
@@ -90,7 +130,7 @@ npm test                   # 428 passing (default)
 | **P2 — `FHE.select` payout gating** | Shipped | `SponsorIncentiveVault._gatedRewardUnits`; tests P2-01..04, P5-SELECT-01/02 |
 | **P0.2 — Relayer re-decrypt** | Shipped (defense-in-depth) | `relayer/eligibility-decrypt.mjs`; tests RDV-01..05 |
 | **P5 — Formal / differential** | Shipped (differential fallbacks) | [certora-halmos-results.md](./formal-verification/certora-halmos-results.md); tests P1–P3 PROP, DIFF-03, BIND-01 |
-| **P3.2 — Open finalize** | Shipped | Patient EOAs may finalize directly; payout integrity is ciphertext-gated |
+| **P3.2 — Open finalize** | **Superseded** | HIGH-1 remediation: only `authorizedRelayers` may finalize; docs aligned 2026-07-04 |
 
 ## Canonical reframe language
 

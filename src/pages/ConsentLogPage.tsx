@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useWeb3 } from "../lib/Web3Context";
 import { useConsent } from "../hooks/useConsent";
+import { useRevokeTrialConsent } from "../hooks/useRevokeTrialConsent";
 import { Clock, Loader2, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { ConsentLog } from "../types";
@@ -33,9 +34,12 @@ function countInLastWeek(logs: ConsentLog[], predicate: (l: ConsentLog) => boole
 }
 
 export function ConsentLogPage() {
-  const { account } = useWeb3();
+  const { account, signer } = useWeb3();
   const { consents, applications, loading, error, refetch } = useConsent(account as string | undefined);
   const { trials, loading: trialsLoading, refetch: refetchTrials } = useTrials(account || undefined);
+  const { busyTrialId, error: revokeError, revokeTrialConsent, clearError } = useRevokeTrialConsent(
+    signer ?? undefined
+  );
   const [search, setSearch] = useState("");
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -49,6 +53,15 @@ export function ConsentLogPage() {
       setSyncing(false);
     }
   }, [refetch, refetchTrials]);
+
+  const handleRevokeTrial = useCallback(
+    async (trialId: string) => {
+      clearError();
+      await revokeTrialConsent(trialId);
+      await handleSync();
+    },
+    [clearError, revokeTrialConsent, handleSync]
+  );
 
   useEffect(() => {
     if (!account) return;
@@ -257,6 +270,19 @@ export function ConsentLogPage() {
         </div>
       ) : null}
 
+      {revokeError ? (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-800 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span>Revoke failed: {revokeError}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            className="text-xs font-semibold text-rose-700 underline hover:text-rose-900"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       <motion.div {...fadeUp(0.06)}>
         <PrivacyTimeline
           events={buildDefaultPrivacyTimeline({
@@ -280,7 +306,13 @@ export function ConsentLogPage() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
         <motion.div {...fadeUp(0.12)}>
-          <ConsentLogList logs={formattedLogs} search={search} onSearchChange={setSearch} />
+          <ConsentLogList
+            logs={formattedLogs}
+            search={search}
+            onSearchChange={setSearch}
+            onRevokeTrial={signer ? handleRevokeTrial : undefined}
+            revokeBusyTrialId={busyTrialId}
+          />
         </motion.div>
         <motion.div {...fadeUp(0.14)} className="xl:sticky xl:top-24 xl:self-start">
           <ConsentSidebarPanels logs={formattedLogs} />

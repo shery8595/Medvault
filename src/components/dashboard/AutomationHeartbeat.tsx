@@ -32,7 +32,7 @@ export function AutomationHeartbeat({ trialId, isFinalized, endTime, isActive }:
                             Chainlink CRE
                             <ShieldCheck className="h-4 w-4 text-emerald-500" />
                         </h3>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">Service active for Protocol {trialId.substring(0, 6)}</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">Trial finalization — CRE or scheduled upkeep</p>
                     </div>
                 </div>
 
@@ -55,7 +55,9 @@ export function AutomationHeartbeat({ trialId, isFinalized, endTime, isActive }:
 
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-[10px] text-slate-500">
-                        MedVault uses a Chainlink CRE workflow to poll <code>checkUpkeep</code> and finalize expired trials (screening distribution and deactivation) via <code>AutomationReceiver</code>.
+                        MedVault finalizes expired trials via <code>MedVaultAutomation</code> — Chainlink CRE or a
+                        scheduled owner upkeep job. Polls <code>checkUpkeep</code> and runs screening distribution +
+                        deactivation when due.
                     </p>
                 </div>
             </CardContent>

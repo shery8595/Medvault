@@ -219,8 +219,27 @@ export type FullWiringConfig = {
     honkVerifierEncryptedAddress?: string;
     sponsorRegistryAddress: string;
     stakingManagerAddress: string;
+    /** @deprecated Use relayerAddresses. Single relayer for backward compatibility. */
     trustedRelayer?: string;
+    /** P3.1: one or more authorized relayer EOAs (comma-separated env or explicit array). */
+    relayerAddresses?: string[];
 };
+
+/** Resolve authorized relayer EOAs from RELAYER_ADDRESSES, TRUSTED_RELAYER_ADDRESS, or RELAYER_PRIVATE_KEY. */
+export function resolveRelayerAddresses(): string[] {
+    const fromList = process.env.RELAYER_ADDRESSES?.split(",")
+        .map((a) => a.trim())
+        .filter((a) => a && ethers.isAddress(a)) ?? [];
+    if (fromList.length > 0) return [...new Set(fromList.map((a) => ethers.getAddress(a)))];
+
+    const legacy = process.env.TRUSTED_RELAYER_ADDRESS?.trim();
+    if (legacy && ethers.isAddress(legacy)) return [ethers.getAddress(legacy)];
+
+    const pk = process.env.RELAYER_PRIVATE_KEY?.trim();
+    if (pk) return [new ethers.Wallet(pk).address];
+
+    return [];
+}
 
 /** Full post-deploy wiring with timelocks (MH-1: engine before registry). */
 export async function wireAllContracts(cfg: FullWiringConfig): Promise<void> {
@@ -244,7 +263,15 @@ export async function wireAllContracts(cfg: FullWiringConfig): Promise<void> {
         sponsorRegistryAddress,
         stakingManagerAddress,
         trustedRelayer,
+        relayerAddresses,
     } = cfg;
+
+    const relayers = (relayerAddresses?.length
+        ? relayerAddresses
+        : trustedRelayer
+          ? [trustedRelayer]
+          : []
+    ).filter((a) => ethers.isAddress(a));
 
     const reg = anonymousRegistry as ethers.Contract;
     // MH-1: engine must be set before registry accepts registrations.
@@ -375,12 +402,15 @@ export async function wireAllContracts(cfg: FullWiringConfig): Promise<void> {
     await (await (consentGate as ethers.Contract).authorizeComputer(await engine.getAddress())).wait();
     console.log("✓ Leaderboard + ConsentGate authorizations");
 
-    if (medVaultRegistry && trustedRelayer && ethers.isAddress(trustedRelayer)) {
-        await scheduleAndApply(
-            () => (medVaultRegistry as ethers.Contract).scheduleRelayerAuth(trustedRelayer, true),
-            () => (medVaultRegistry as ethers.Contract).applyRelayerAuth(trustedRelayer)
-        );
-        await ensureCethContractAuth(cETH, trustedRelayer, true);
-        console.log(`✓ MedVaultRegistry authorized relayer → ${trustedRelayer}`);
+    if (medVaultRegistry && relayers.length > 0) {
+        for (const relayerAddr of relayers) {
+            await scheduleAndApply(
+                () => (medVaultRegistry as ethers.Contract).scheduleRelayerAuth(relayerAddr, true),
+                () => (medVaultRegistry as ethers.Contract).applyRelayerAuth(relayerAddr),
+                `MedVaultRegistry authorized relayer → ${relayerAddr}`
+            );
+            await ensureCethContractAuth(cETH, relayerAddr, true);
+        }
+        console.log(`✓ MedVaultRegistry authorized ${relayers.length} relayer(s)`);
     }
 }

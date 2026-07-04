@@ -7,7 +7,7 @@ import { REPO_STATS } from "../../../lib/docsStats";
 /** Repository-wide test inventory (manifest). */
 export const TEST_MANIFEST = {
     testFilesTotal: REPO_STATS.testFiles,
-    hardhatTestFiles: 76,
+    hardhatTestFiles: 77,
     vitestFiles: 3,
     vitestCases: 13,
     nodeTestFiles: 4,
@@ -25,7 +25,7 @@ export const TEST_MANIFEST = {
 } as const;
 /** Hardhat `test/` file counts by directory (not case counts). */
 export const HARDHAT_FILE_COUNTS = {
-    unit: 61,
+    unit: 62,
     integration: 14,
     fuzz: 5,
     invariants: 2,
@@ -52,7 +52,7 @@ export const SUITE_STATS = {
     skippedConditional: 2,
     skippedForkSuite: 4,
     unitPending: REPO_STATS.testSuiteUnitPending,
-    lastVerified: "2026-07-02 (medium-findings closeout + full suite re-run)",
+    lastVerified: "2026-07-04 (dual relayer + relayer-adversarial REL-* suite)",
 } as const;
 export const NPM_SCRIPTS = [
     { cmd: "npm run compile", desc: "Compile Solidity (required before tests)" },
@@ -119,9 +119,9 @@ export const SKIPPED_TESTS = [
     { id: "SF-01–04", reason: "Entire fork suite skipped unless SEPOLIA_RPC_URL is set (conditional describe.skip)" },
 ] as const;
 export const REPO_LAYOUT = `medvault/
-  test/                     # 76 Hardhat/Mocha files in default suite (59 unit + 1 smoke + 1 staking, 14 integration, 5 fuzz, 2 invariants, 2 crypto, 1 fork)
+  test/                     # 77 Hardhat/Mocha files in default suite (60 unit + 1 smoke + 1 staking, 14 integration, 5 fuzz, 2 invariants, 2 crypto, 1 fork)
     smoke/                  # Zama fhEVM + deployMedVaultStack (4 cases)
-    unit/                   # Per-contract unit tests (incl. timelock-wiring, v0.9, PDS, HCU, trust-gap, Phase 5)
+    unit/                   # Per-contract unit tests (incl. relayer-adversarial, p3-relayer-trust-reduction, timelock-wiring, Phase 5)
     integration/            # Cross-contract + named E2E (e2e-patient-to-claim, hybrid-storage.e2e)
     fuzz/                   # Mocha for-loop generators (fuzz.runs: 256 in hardhat.config.ts)
     invariants/             # Token + PatientDocumentStore invariants
@@ -199,6 +199,8 @@ export const TEST_FILES: Array<{
     { path: "test/integration/batch-eligibility.test.ts", contracts: "EligibilityEngine", cases: 1, pillar: "FHE", ids: "BAT-01" },
     { path: "test/integration/relayer-registration.test.ts", contracts: "MedVaultRegistry", cases: 1, pillar: "Privacy", ids: "REL-REG-01" },
     { path: "test/integration/relayer-decrypt-verify.test.ts", contracts: "MVR, relayer", cases: 5, pillar: "Privacy", ids: "RDV-01–05" },
+    { path: "test/unit/p3-relayer-trust-reduction.test.ts", contracts: "MVR, Vault", cases: 5, pillar: "Privacy", ids: "P3-01–P3-05" },
+    { path: "test/unit/relayer-adversarial.test.ts", contracts: "MVR, relayer", cases: 8, pillar: "Privacy", ids: "REL-EQV-01–02, REL-REP-01–02, REL-FF-01–02, REL-STALE-01–02" },
     { path: "test/integration/ai-criteria-roundtrip.test.ts", contracts: "@medvault/ai", cases: 7, pillar: "AI", ids: "AI-01–07" },
     { path: "test/integration/indexer-sync.test.ts", contracts: "@medvault/indexer", cases: 5, pillar: "IDX", ids: "IDX-01–05" },
     { path: "test/integration/hybrid-storage.e2e.test.ts", contracts: "Full stack + IPFS", cases: 1, pillar: "E2E", ids: "HYB-01" },
@@ -221,7 +223,8 @@ export const AUDIT_TRACEABILITY: Array<{ finding: string; tests: string }> = [
     { finding: "EligibilityEngine ↔ ConsentManager FHE ACL", tests: "INT-EE-03, SIV-05+" },
     { finding: "Noir attestation ↔ Zama FHE stage binding", tests: "DIFF-*, BIND-*" },
     { finding: "P2 FHE.select payout gating (trust-gap)", tests: "P2-01..04, P5-SELECT-01/02" },
-    { finding: "Relayer re-decrypt defense-in-depth (P0.2)", tests: "RDV-01–05" },
+    { finding: "Relayer re-decrypt defense-in-depth (P0.2)", tests: "RDV-01–05, REL-FF-01" },
+    { finding: "Multi-relayer + adversarial bounds (P3.1)", tests: "P3-01–P3-05, REL-EQV/REP/FF/STALE" },
     { finding: "Phase 5 differential eligibility properties", tests: "P1–P3 PROP, DIFF-03" },
     { finding: "Homomorphic transferable withdraw/stake (no public sufficiency bool)", tests: "SUF-01..07" },
     { finding: "Encrypted withdraw staging & public exit", tests: "PEX-*, BEX-*, PRIV-01–04" },

@@ -44,7 +44,7 @@ const layers = [
         color: "amber",
         icon: <Coins className="h-4 w-4" />,
         title: "DeFi & automation layer",
-        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH7984 (IERC7984 encrypted withdraw + EIP-712 public exit), MedVaultAutomation + AutomationReceiver (Chainlink CRE).",
+        body: "SponsorIncentiveVault, TrialMilestoneManager, StakingManager, ConfidentialETH7984 (IERC7984 encrypted withdraw + EIP-712 public exit), MedVaultAutomation (CRE or owner cron).",
     },
     {
         color: "rose",
@@ -125,7 +125,7 @@ export function ArchitectureDoc() {
                             <strong>Indexing:</strong> Subgraph for trials, applications, anonymous propensity signals.
                         </li>
                         <li>
-                            <strong>Automation:</strong> MedVaultAutomation + Chainlink CRE workflow.
+                            <strong>Automation:</strong> MedVaultAutomation — Chainlink CRE or owner cron.
                         </li>
                     </ul>
                 </div>
@@ -247,7 +247,7 @@ export function ArchitectureDoc() {
                 <p className="text-sm">
                     Off-chain surface: <strong>{REPO_STATS.httpRoutes}</strong> HTTP routes across relayer, ai-service,
                     indexer, and MCP; <strong>{REPO_STATS.backgroundJobs}</strong> background jobs (relayer watcher, batch
-                    exit queue, indexer sync/reconcile, Chainlink CRE workflow). See{" "}
+                    exit queue, indexer sync/reconcile, trial automation — CRE or owner cron). See{" "}
                     <Link to="/docs/frontend" className="font-semibold underline">
                         frontend architecture
                     </Link>{" "}

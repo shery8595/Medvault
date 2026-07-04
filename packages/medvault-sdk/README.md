@@ -144,7 +144,7 @@ class MedVaultSDK {
 | `finalizeApply` | `POST /relay/apply-finalize` | tx hash `string` |
 | `relayClaim` | `POST /relay/claim` | tx hash `string` |
 
-`finalizeApply` requires `eligible: true` and a valid threshold-decrypt signature from the client.  
+`finalizeApply` requires client-generated Noir proof and `eligible` hint; the authorized relayer submits on-chain (HIGH-1). Use optional `baseUrl` for multi-relayer deployments. `listHealth(urls?)` probes configured origins.
 `NOT_ELIGIBLE_FOR_TRIAL_ERROR_MESSAGE` is thrown when the relayer returns `code: "NOT_ELIGIBLE"`.
 
 ## Sponsor writes
@@ -238,7 +238,7 @@ Run unit tests: `npm run sdk:test` (11 tests across facade, pool privacy, silent
 
 - Never commit `PRIVATE_KEY` or relayer keys.
 - SDK does **not** decrypt patient health data or run Semaphore identity generation.
-- Relayer `finalizeApply` requires `eligible: true` and a valid threshold decrypt signature from the client.
+- Relayer `finalizeApply` requires Noir proof + `eligible` hint; submission is by an authorized relayer wallet (not patient EOA). Use `listHealth()` for multi-relayer ops.
 
 ## Related
 

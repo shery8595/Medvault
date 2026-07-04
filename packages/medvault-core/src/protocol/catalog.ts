@@ -25,13 +25,13 @@ export const PROTOCOL_CONTRACTS: ProtocolContractEntry[] = [
       "registerPatient(..., profileSaltCommitment, ...)",
       "registerPatientViaRelayer(...) onlyAuthorizedRelayer",
       "stageAnonymousApply(...)",
-      "finalizeAnonymousApplyWithProof(...) open (P3.2)",
+      "finalizeAnonymousApplyWithProof(...) onlyAuthorizedRelayer (HIGH-1)",
       "cancelAnonymousApplyStage(...) onlyAuthorizedRelayer",
       "scheduleRelayerAuth / applyRelayerAuth",
     ],
     related: ["AnonymousPatientRegistry", "EligibilityEngine"],
     quirks: [
-      "P3.1: authorizedRelayers timelock allowlist. P3.2: patient EOA may finalize directly; payout is FHE.select-gated.",
+      "P3.1: authorizedRelayers 6-hour timelock allowlist. HIGH-1: only authorized relayer may finalize; payout is FHE.select-gated.",
     ],
   },
   {

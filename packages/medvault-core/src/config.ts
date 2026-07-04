@@ -7,6 +7,8 @@ export interface MedVaultConfig {
   /** When true, skip on-chain sponsor verification (testnet convenience). */
   sponsorOpenAccess?: boolean;
   relayerUrl?: string;
+  /** Comma-separated relayer base URLs (P3.1 multi-relayer). */
+  relayerUrls?: string[];
   maxEthPerTx?: string;
   /** When true, write tools are disabled even if MCP_PRIVATE_KEY is set. */
   readOnly?: boolean;
@@ -21,6 +23,12 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MedVaul
   const networkKey = (env.MEDVAULT_NETWORK?.trim() as NetworkKey) || "sepolia";
   const sponsorOpenAccess = env.MEDVAULT_SPONSOR_OPEN_ACCESS === "true";
   const relayerUrl = env.MEDVAULT_RELAYER_URL?.trim();
+  const relayerUrlsRaw = env.MEDVAULT_RELAYER_URLS?.trim();
+  const relayerUrls = relayerUrlsRaw
+    ? relayerUrlsRaw.split(",").map((u) => u.trim().replace(/\/$/, "")).filter(Boolean)
+    : relayerUrl
+      ? [relayerUrl.replace(/\/$/, "")]
+      : undefined;
   const maxEthPerTx = env.MCP_MAX_ETH_PER_TX?.trim();
   const readOnly = env.MCP_READ_ONLY === "true";
 
@@ -30,6 +38,7 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MedVaul
     subgraphUrl,
     sponsorOpenAccess,
     relayerUrl,
+    relayerUrls,
     maxEthPerTx,
     readOnly,
   };

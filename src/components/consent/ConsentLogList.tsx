@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import {
   Beaker,
   ChevronDown,
@@ -7,11 +7,14 @@ import {
   Droplets,
   FlaskConical,
   HeartPulse,
+  Loader2,
   Search,
   BadgeCheck,
+  ShieldOff,
 } from "lucide-react";
 import type { ConsentLog } from "../../types";
 import {
+  canRevokeConsent,
   consentRowVariant,
   exportConsentLogsCsv,
   formatExpires,
@@ -20,6 +23,7 @@ import {
   type ConsentRowVariant,
 } from "../../lib/consentDisplay";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/Button";
 
 const TRIAL_ICONS = [FlaskConical, Beaker, Droplets, HeartPulse] as const;
 
@@ -65,9 +69,17 @@ type Props = {
   logs: ConsentLog[];
   search: string;
   onSearchChange: (v: string) => void;
+  onRevokeTrial?: (trialId: string) => Promise<void>;
+  revokeBusyTrialId?: string | null;
 };
 
-export function ConsentLogList({ logs, search, onSearchChange }: Props) {
+export function ConsentLogList({
+  logs,
+  search,
+  onSearchChange,
+  onRevokeTrial,
+  revokeBusyTrialId,
+}: Props) {
   const [filter, setFilter] = useState<"all" | ConsentRowVariant>("all");
   const [sponsorFilter, setSponsorFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -164,6 +176,18 @@ export function ConsentLogList({ logs, search, onSearchChange }: Props) {
           const expires = formatExpires(log);
           const Icon = TRIAL_ICONS[trialIconIndex(log.trialId)];
           const expanded = expandedId === log.id;
+          const revokable = Boolean(onRevokeTrial) && canRevokeConsent(log);
+          const revoking = revokeBusyTrialId === String(log.trialId);
+
+          const handleRevoke = async (e: MouseEvent) => {
+            e.stopPropagation();
+            if (!onRevokeTrial || !log.trialId) return;
+            const ok = window.confirm(
+              `Revoke sponsor access for "${log.trialName}"?\n\nThis blocks future consent-gated eligibility for this trial. Already-decrypted data cannot be recalled on-chain (forward-only revocation).`
+            );
+            if (!ok) return;
+            await onRevokeTrial(String(log.trialId));
+          };
 
           return (
             <div key={log.id} className="bg-white hover:bg-slate-50/60 transition-colors">
@@ -222,6 +246,23 @@ export function ConsentLogList({ logs, search, onSearchChange }: Props) {
 
                 <div className="flex items-center gap-3 sm:justify-end">
                   <StatusBadge variant={variant} />
+                  {revokable ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold shrink-0"
+                      disabled={revoking}
+                      onClick={(e) => void handleRevoke(e)}
+                    >
+                      {revoking ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ShieldOff className="h-3.5 w-3.5" />
+                      )}
+                      Revoke
+                    </Button>
+                  ) : null}
                   {expanded ? (
                     <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
                   ) : (
@@ -257,6 +298,13 @@ export function ConsentLogList({ logs, search, onSearchChange }: Props) {
                     </p>
                   ) : null}
                   <p className="text-xs text-slate-500">Trial ID: {log.trialId ?? "—"}</p>
+                  {revokable ? (
+                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
+                      Revoking updates on-chain consent for this trial. Sponsors who already decrypted hybrid
+                      documents may retain copies off-chain — use{" "}
+                      <strong>Revoke &amp; rotate</strong> on the trial card for document access.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

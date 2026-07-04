@@ -5,6 +5,26 @@ import { motion } from "framer-motion";
 const entries: { date: string; title: string; items: string[] }[] = [
     {
         date: "2026-07",
+        title: "Dual relayer + trusted relayer risk reduction (P3.1)",
+        items: [
+            "Ops: dual Railway/Docker relayers (`RELAYER_ADDRESSES`, `VITE_RELAYER_URLS`); `relayer-b` compose service on port 8788.",
+            "Docs: `RELAYER_TRUST_BOUNDARIES.md`, `P3_3_THRESHOLD_ATTESTATION.md`; in-app `/docs/relayer-trust-boundaries`, `/docs/p3-3-threshold-attestation`.",
+            "Tests: `relayer-adversarial.test.ts` (REL-EQV/REP/FF/STALE); default suite **491** passing (403+85+3).",
+            "Subgraph: `AuthorizedRelayerUpdated`, `PatientRegisteredViaRelayer`, staged `AnonymousApplyStaged` indexing.",
+            "Frontend: `relayerRegistry.ts` health probe + picker in `RelayerStatusPanel`; HIGH-1 gasless finalize via relayer.",
+        ],
+    },
+    {
+        date: "2026-07",
+        title: "Trial automation: CRE + owner cron",
+        items: [
+            "Docs: `docs/AUTOMATION_CRON.md` — Railway Cron `*/5 * * * *`, owner `performUpkeep` path alongside Chainlink CRE.",
+            "In-app `/docs/automation` — both CRE and owner cron drivers; `TIMELOCK_WIRING.md` runbook row for cron ops.",
+            "Sepolia: `chainlinkForwarder` → `AutomationReceiver` applied; CRE workflow or standalone cron package both supported.",
+        ],
+    },
+    {
+        date: "2026-07",
         title: "Chainlink CRE migration (CLA sunset)",
         items: [
             "Ops: `AutomationReceiver` bridge on Sepolia; `deploy:cre-receiver:sepolia`, `wire:cre-receiver:sepolia`, `verify:cre-receiver:sepolia`, `cre:simulate`, `cre:deploy`.",
@@ -93,7 +113,8 @@ const entries: { date: string; title: string; items: string[] }[] = [
             "HIGH-2: confidential stake uses `stakeAndLock` (+ `cETH.setOperator` or `confidentialTransferAndCall`); `requestConfidentialStake` / `completeConfidentialStake` revert.",
             "MED-1: `registerPatient` requires `profileSaltCommitment` (random salt); deterministic salts rejected on production.",
             "MED-3: `registerAnonymousParticipant` is permit-holder-only; sponsor accept no longer auto-enrolls — patient enrolls via Applied Trials UI.",
-            "MED-2: `rotateDocument` + `DocumentLegacyHandleRevoked`; `updateDocumentKey` deprecated.",
+            "H-2 / P4: atomic `revokeAccess` (revoke+rotate); `pullSponsorKeyAccess` per-access sponsor decrypt; `rotateDocument` deprecated.",
+            "MED-2: `DocumentLegacyHandleRevoked` on revoke; `updateDocumentKey` deprecated.",
             "LOW-1/2/3 + INFO: `claimFailedWithdraw`, `scheduleAuditor`/`applyAuditor`, `distributePartialPaginated` (batch 20), `MAX_PRUNE_PER_UPKEEP=10`.",
             "Regression: test/unit/remediation-vuln-fixes.test.ts; docs synced via scripts/verify-doc-consistency.mjs.",
         ],

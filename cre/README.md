@@ -2,6 +2,8 @@
 
 Migrates `MedVaultAutomation` from sunset Chainlink Automation (CLA) to **Chainlink CRE**.
 
+MedVault also supports an **owner cron** scheduler (same `checkUpkeep` / `performUpkeep` interface, owner as `msg.sender`). See [docs/AUTOMATION_CRON.md](../docs/AUTOMATION_CRON.md) and in-app `/docs/automation`.
+
 ## On-chain (Hardhat)
 
 ```bash

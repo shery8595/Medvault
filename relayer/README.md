@@ -26,7 +26,7 @@ docker compose --profile relayer up relayer
 
 All `POST /relay/*` routes use a rate limiter: **10 requests per minute** per IP.
 
-**Authorized relayers (P3.1):** `finalizeAnonymousApplyWithConsent`, `cancelAnonymousApplyStage`, and `registerPatientViaRelayer` require `msg.sender` in `MedVaultRegistry.authorizedRelayers` (timelock-governed allowlist). **`finalizeAnonymousApplyWithProof` is open (P3.2)** — patient EOAs may submit directly; payout integrity is ciphertext-gated via `FHE.select` (Phase 2).
+**Authorized relayers (P3.1):** `finalizeAnonymousApplyWithProof`, `finalizeAnonymousApplyWithConsent`, `cancelAnonymousApplyStage`, and `registerPatientViaRelayer` require `msg.sender` in `MedVaultRegistry.authorizedRelayers` (timelock-governed allowlist). **Payout integrity** is ciphertext-gated via `FHE.select` (Phase 2) — forged eligibility cannot move vault value.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -93,9 +93,12 @@ Validates Semaphore proof + consent message binding, then calls `registry.stageA
 
 ### `POST /relay/apply-finalize`
 
-**Optional gasless finalize path** when `permitRecipient` is the relayer wallet (P0.2 decrypt verification). Patients may also call `finalizeAnonymousApplyWithProof` directly on-chain (P3.2 open finalize).
+**Gasless finalize path** — authorized relayer submits `finalizeAnonymousApplyWithProof` on behalf of the patient.
 
-Requires client-side Noir proof. **P0.2:** relayer user-decrypts staged `finalCt` as `permitRecipient` and **ignores** client-supplied `eligible` when authorizing relayed finalize. Rejects decrypt=false with `code: "NOT_ELIGIBLE"`. `permitRecipient` must be the relayer wallet for this route.
+- **P0.2 path:** when `permitRecipient` is the relayer wallet, relayer user-decrypts staged `finalCt` and **ignores** client-supplied `eligible`. Rejects decrypt=false with `code: "NOT_ELIGIBLE"`.
+- **Ephemeral path:** when `permitRecipient` is the patient's ephemeral viewing key, client decrypts locally and supplies a Noir proof; relayer submits without re-decrypt (client `eligible: false` is rejected at HTTP layer).
+
+Patient EOAs **cannot** call `finalizeAnonymousApplyWithProof` directly on-chain (HIGH-1 / `onlyAuthorizedRelayer`).
 
 **Request body:** stage fields plus `noirProof`, `publicInputs`, `eligible` (client hint for proof generation — not authoritative), `consentWallet`, `consentWalletSignature`.
 
@@ -203,7 +206,7 @@ Uses Pinata `pinFileToIPFS`. Credentials resolve in order:
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `RELAYER_PRIVATE_KEY` | **Yes** | Hot wallet paying gas; must match `MedVaultRegistry.trustedRelayer` |
+| `RELAYER_PRIVATE_KEY` | **Yes** | Hot wallet paying gas; must be in `MedVaultRegistry.authorizedRelayers` |
 | `REGISTRY_ADDRESS` | **Yes** | `AnonymousPatientRegistry` / MedVault registry |
 | `SEMAPHORE_ADDRESS` | **Yes** | Must match `registry.semaphore()` |
 | `RPC_URL` | No | Sepolia RPC (fallback chain below) |
@@ -276,13 +279,14 @@ Failure exits with code `1`.
 
 ### P3.1 multi-relayer allowlist
 
-- `authorizedRelayers` mapping on `MedVaultRegistry` — add/remove via `scheduleRelayerAuth` + `applyRelayerAuth` (2-day timelock)
-- Patients choose among authorized relayers for gasless registration/cancel; every relayer must implement P0.2 decrypt verification on relayed finalize
+- `authorizedRelayers` mapping on `MedVaultRegistry` — add/remove via `scheduleRelayerAuth` + `applyRelayerAuth` (**6-hour** timelock)
+- Patients choose among authorized relayers for gasless registration/cancel/finalize; every relayer must implement P0.2 decrypt verification when it is `permitRecipient`
 - Check authorization: `authorizedRelayers(relayerAddress)` on-chain
+- Dual deployment: run two `relayer/server.js` instances (different `RELAYER_PRIVATE_KEY`) — see [docs/TIMELOCK_WIRING.md](../docs/TIMELOCK_WIRING.md)
 
-### P3.2 open finalize
+### HIGH-1 relayer-gated finalize
 
-- `finalizeAnonymousApplyWithProof` has no relayer gate — patient EOAs submit directly (`src/lib/relayer.ts` → `finalizeAnonymousApplyDirect`)
+- `finalizeAnonymousApplyWithProof` requires `onlyAuthorizedRelayer` — patient EOAs cannot self-submit (`src/lib/relayer.ts` → `finalizeViaRelayerWithProof`)
 - Forged `eligible` witness cannot authorize payout; vault reads ciphertext via `FHE.select` (P2 completeness: registration, screening, milestone > 0, consent-gated flows)
 
 ### P3.3 threshold decrypt committee (deferred)

@@ -1,10 +1,10 @@
 # MedVault Test Matrix
 
-**Plan 08 — ~2,020 registered cases** across **96** TypeScript test files (incl. **832** parametric ECM matrix). **0 Foundry test contracts.**
+**Plan 08 — ~2,028 registered cases** across **97** TypeScript test files (incl. **832** parametric ECM matrix). **0 Foundry test contracts.**
 
 | Suite | Files | Passing (verified) | Command |
 |-------|-------|-------------------|---------|
-| Unit + smoke + staking | 61 | **395** (+ 6 pending) | `npm run test:unit` |
+| Unit + smoke + staking | 62 | **403** (+ 6 pending) | `npm run test:unit` |
 | Integration | 14 | **85** | `npm run test:integration` |
 | Crypto (nullifier) | 1 | **3** | `npm run test:crypto` |
 | Fuzz + invariants | 7 | loop-expanded | `npm run test:fuzz` |
@@ -13,7 +13,7 @@
 | Vitest (frontend lib) | 3 | 13 | `npm run test:frontend` |
 | node:test (SDK) | 3 | 11 | `npm run test -w @medvault/sdk` |
 | node:test (core) | 1 | 3 | not CI-wired |
-| **Default `npm test`** | **76** | **483** (395+85+3) | excludes fuzz/fork/Honk |
+| **Default `npm test`** | **77** | **491** (403+85+3) | excludes fuzz/fork/Honk |
 
 Fuzz uses **Mocha `for` loops** (not Foundry `vm.assume`). `hardhat.config.ts` sets `fuzz.runs: 256`.
 
@@ -87,6 +87,8 @@ In-app catalog: **Docs → Tests & verification → Test matrix**.
 | [test/integration/batch-eligibility.test.ts](../test/integration/batch-eligibility.test.ts) | EligibilityEngine | 1 | FHE | BAT-01 |
 | [test/integration/relayer-registration.test.ts](../test/integration/relayer-registration.test.ts) | MedVaultRegistry | 1 | Privacy | REL-REG-01 |
 | [test/integration/relayer-decrypt-verify.test.ts](../test/integration/relayer-decrypt-verify.test.ts) | MVR, relayer | 5 | Privacy | RDV-01–05 |
+| [test/unit/p3-relayer-trust-reduction.test.ts](../test/unit/p3-relayer-trust-reduction.test.ts) | MVR, Vault | 5 | Privacy | P3-01–P3-05 |
+| [test/unit/relayer-adversarial.test.ts](../test/unit/relayer-adversarial.test.ts) | MVR, relayer | 8 | Privacy | REL-EQV-01–02, REL-REP-01–02, REL-FF-01–02, REL-STALE-01–02 |
 | [test/integration/ai-criteria-roundtrip.test.ts](../test/integration/ai-criteria-roundtrip.test.ts) | @medvault/ai | 7 | AI | AI-01–07 |
 | [test/integration/indexer-sync.test.ts](../test/integration/indexer-sync.test.ts) | @medvault/indexer | 5 | IDX | IDX-01–05 |
 | [test/integration/hybrid-storage.e2e.test.ts](../test/integration/hybrid-storage.e2e.test.ts) | Full stack + IPFS | 1 | E2E | HYB-01 |
@@ -161,6 +163,7 @@ In-app catalog: **Docs → Tests & verification → Test matrix**.
 - [ ] SUF-01..07 (transferable completion; SUF-05 aliases PEX-01..05)
 - [ ] P2-01..04, P5-SELECT-01/02 (ciphertext-gated payout)
 - [ ] RDV-01–05 (relayer decrypt-verify)
+- [ ] P3-01–P3-05, REL-EQV/REP/FF/STALE (relayer adversarial)
 - [ ] P1–P3 PROP, DIFF-03 (formal/differential eligibility)
 - [ ] ECR-01–03, BIND-01–04 (encrypted criteria + attestation binding)
 

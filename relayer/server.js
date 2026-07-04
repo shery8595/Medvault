@@ -98,9 +98,17 @@ if (!REGISTRY_ADDRESS || !SEMAPHORE_ADDRESS) {
 const NOT_ELIGIBLE_MSG =
     "Not eligible for this trial. Complete local decrypt showed ineligible result.";
 
+/** In-memory ops counters (reset on process restart). */
+const relayerMetrics = {
+    stageCount: 0,
+    finalizeAttempts: 0,
+    finalizeRejectedNotEligible: 0,
+    finalizeSuccess: 0,
+};
+
 const REGISTRY_ABI = [
     "function stageAnonymousApply(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, uint256 deadline, bytes permitSignature) external",
-    "function finalizeAnonymousApplyWithProof(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, address consentWallet, uint256 deadline, bytes permitSignature, bytes consentWalletSignature, bytes noirProof, bytes32[] publicInputs, bool eligible) external",
+    "function finalizeAnonymousApplyWithProof(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, address consentWallet, uint256 deadline, bytes permitSignature, bytes consentWalletSignature, bytes noirProof, bytes32[] publicInputs) external",
     "function cancelAnonymousApplyStage(uint256 trialId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof, uint256 commitment, address permitRecipient, uint256 deadline, bytes permitSignature, bytes cancelSignature) external",
     "function registerPatientViaRelayer(address patientWallet, uint256 identityCommitment, address viewPermitRecipient, bytes32 profileCommitment, bytes32 profileSaltCommitment, bytes ageHandle, bytes genderHandle, bytes weightHandle, bytes heightHandle, bytes diabetesHandle, bytes hbHandle, bytes smokerHandle, bytes hypertensionHandle, bytes inputProof, uint256 nonce, bytes signature) external",
     "function hasAppliedToTrial(uint256 trialId, uint256 nullifierHash) external view returns (bool)",
@@ -381,6 +389,7 @@ async function relayStage(req, res) {
             Number(block.timestamp) * 1000
         );
 
+        relayerMetrics.stageCount += 1;
         res.json({ success: true, txHash: receipt.hash });
     } catch (err) {
         const reason = extractErrorMessage(err);
@@ -391,13 +400,14 @@ async function relayStage(req, res) {
 
 async function relayFinalize(req, res) {
     safeLog("FINALIZE trialId:", req.body?.trialId);
+    relayerMetrics.finalizeAttempts += 1;
 
     try {
         const { noirProof, publicInputs, eligible, consentWallet, deadline, permitSignature, consentWalletSignature } =
             req.body;
-        if (!noirProof || !Array.isArray(publicInputs) || typeof eligible !== "boolean") {
+        if (!noirProof || !Array.isArray(publicInputs)) {
             return res.status(400).json({
-                error: "Missing noirProof, publicInputs, or eligible (client must decrypt + prove locally)",
+                error: "Missing noirProof or publicInputs (client must decrypt + prove locally)",
             });
         }
         if (!consentWallet || deadline == null || !permitSignature || !consentWalletSignature) {
@@ -412,53 +422,62 @@ async function relayFinalize(req, res) {
         const v = await validateConsentAndSemaphoreProof(req.body, "finalize");
         if (v.error) return res.status(v.status).json({ error: v.error });
 
-        if (v.permitRecipientAddr.toLowerCase() !== relayerWallet.address.toLowerCase()) {
-            return res.status(400).json({
-                error: "permitRecipient must be the relayer wallet for relayer-side decrypt verification",
-            });
-        }
+        const relayerIsPermitHolder =
+            v.permitRecipientAddr.toLowerCase() === relayerWallet.address.toLowerCase();
 
-        let staged;
-        try {
-            staged = resolveStagedFinalCt({
-                nullifier: v.proofForContract.nullifier,
-                trialId: v.trialIdBI,
-                publicInputs,
-            });
-        } catch (resolveErr) {
-            const code = resolveErr?.code ?? "STAGING_NOT_FOUND";
-            return res.status(400).json({
-                error: resolveErr.message ?? "Staged eligibility not found",
-                code,
-            });
-        }
+        let relayerEligible = typeof eligible === "boolean" ? eligible : true;
 
-        let relayerEligible;
-        try {
-            relayerEligible = await getRelayerEligible({
-                sdk: zamaSdk,
-                eligibilityEngineAddress,
-                nullifier: v.proofForContract.nullifier,
-                trialId: v.trialIdBI,
-                finalCt: staged.finalCt,
-                stagedAtMs: staged.stagedAtMs,
-            });
-        } catch (decryptErr) {
-            const code = decryptErr?.code ?? "DECRYPT_FAILED";
-            if (code === "STAGING_EXPIRED") {
+        // P0.2: independent re-decrypt only when relayer is the staged permit holder.
+        if (relayerIsPermitHolder) {
+            let staged;
+            try {
+                staged = resolveStagedFinalCt({
+                    nullifier: v.proofForContract.nullifier,
+                    trialId: v.trialIdBI,
+                    publicInputs,
+                });
+            } catch (resolveErr) {
+                const code = resolveErr?.code ?? "STAGING_NOT_FOUND";
                 return res.status(400).json({
-                    error: "Staging expired — re-stage eligibility before finalize",
+                    error: resolveErr.message ?? "Staged eligibility not found",
                     code,
                 });
             }
-            safeError("Relayer eligibility decrypt failed:", extractErrorMessage(decryptErr));
-            return res.status(400).json({
-                error: "Relayer could not verify staged eligibility ciphertext",
-                code,
-            });
-        }
 
-        if (!relayerEligible) {
+            try {
+                relayerEligible = await getRelayerEligible({
+                    sdk: zamaSdk,
+                    eligibilityEngineAddress,
+                    nullifier: v.proofForContract.nullifier,
+                    trialId: v.trialIdBI,
+                    finalCt: staged.finalCt,
+                    stagedAtMs: staged.stagedAtMs,
+                });
+            } catch (decryptErr) {
+                const code = decryptErr?.code ?? "DECRYPT_FAILED";
+                if (code === "STAGING_EXPIRED") {
+                    return res.status(400).json({
+                        error: "Staging expired — re-stage eligibility before finalize",
+                        code,
+                    });
+                }
+                safeError("Relayer eligibility decrypt failed:", extractErrorMessage(decryptErr));
+                return res.status(400).json({
+                    error: "Relayer could not verify staged eligibility ciphertext",
+                    code,
+                });
+            }
+
+            if (!relayerEligible) {
+                relayerMetrics.finalizeRejectedNotEligible += 1;
+                return res.status(400).json({
+                    error: NOT_ELIGIBLE_MSG,
+                    code: "NOT_ELIGIBLE",
+                    eligible: false,
+                });
+            }
+        } else if (eligible === false) {
+            relayerMetrics.finalizeRejectedNotEligible += 1;
             return res.status(400).json({
                 error: NOT_ELIGIBLE_MSG,
                 code: "NOT_ELIGIBLE",
@@ -466,20 +485,21 @@ async function relayFinalize(req, res) {
             });
         }
 
+        const finalizeArgs = [
+            v.trialIdBI,
+            v.proofForContract,
+            v.commitmentBI,
+            v.permitRecipientAddr,
+            ethers.getAddress(consentWallet),
+            toBigInt(deadline, "deadline"),
+            permitSignature,
+            consentWalletSignature,
+            noirProof,
+            publicInputs,
+        ];
+
         try {
-            await registry.finalizeAnonymousApplyWithProof.staticCall(
-                v.trialIdBI,
-                v.proofForContract,
-                v.commitmentBI,
-                v.permitRecipientAddr,
-                ethers.getAddress(consentWallet),
-                toBigInt(deadline, "deadline"),
-                permitSignature,
-                consentWalletSignature,
-                noirProof,
-                publicInputs,
-                relayerEligible
-            );
+            await registry.finalizeAnonymousApplyWithProof.staticCall(...finalizeArgs);
             safeLog("finalize staticCall passed");
         } catch (staticErr) {
             const reason = formatContractRevert(staticErr);
@@ -487,38 +507,14 @@ async function relayFinalize(req, res) {
             return res.status(400).json({ error: "Contract would revert: " + reason });
         }
 
-        const estimatedGas = await registry.finalizeAnonymousApplyWithProof.estimateGas(
-            v.trialIdBI,
-            v.proofForContract,
-            v.commitmentBI,
-            v.permitRecipientAddr,
-            ethers.getAddress(consentWallet),
-            toBigInt(deadline, "deadline"),
-            permitSignature,
-            consentWalletSignature,
-            noirProof,
-            publicInputs,
-            relayerEligible
-        );
+        const estimatedGas = await registry.finalizeAnonymousApplyWithProof.estimateGas(...finalizeArgs);
         const gasLimit = (estimatedGas * 130n) / 100n;
 
-        const tx = await registry.finalizeAnonymousApplyWithProof(
-            v.trialIdBI,
-            v.proofForContract,
-            v.commitmentBI,
-            v.permitRecipientAddr,
-            ethers.getAddress(consentWallet),
-            toBigInt(deadline, "deadline"),
-            permitSignature,
-            consentWalletSignature,
-            noirProof,
-            publicInputs,
-            relayerEligible,
-            { gasLimit }
-        );
+        const tx = await registry.finalizeAnonymousApplyWithProof(...finalizeArgs, { gasLimit });
 
         const receipt = await tx.wait();
         safeLog("Finalize TX confirmed:", receipt.hash);
+        relayerMetrics.finalizeSuccess += 1;
 
         res.json({ success: true, txHash: receipt.hash, eligible: relayerEligible });
     } catch (err) {
@@ -825,9 +821,14 @@ app.get("/transparency", async (_, res) => {
     res.json({
         relayerWallet: relayerWallet.address,
         relayerAuthorized,
-        relayerGovernance: "P3.1 authorizedRelayers + 2-day timelock (scheduleRelayerAuth / applyRelayerAuth)",
-        openFinalize: "P3.2 finalizeAnonymousApplyWithProof — patient EOA may submit directly",
-        thresholdCommittee: "P3.3 deferred until institutional pilot",
+        relayerGovernance: "P3.1 authorizedRelayers + 6-hour timelock (scheduleRelayerAuth / applyRelayerAuth)",
+        finalizeGate: "HIGH-1: finalizeAnonymousApplyWithProof requires onlyAuthorizedRelayer; payout forgery blocked by FHE.select (P2)",
+        p02DecryptPath: "When permitRecipient == relayerWallet, /relay/apply-finalize re-decrypts staged finalCt (ignores client eligible)",
+        ephemeralDecryptPath: "When permitRecipient is patient ephemeral, relayer submits gaslessly after client Noir proof (no relayer re-decrypt)",
+        committeeMode: "P3.1-dual-independent",
+        thresholdTarget: "2-of-2 (spec only — see docs/P3_3_THRESHOLD_ATTESTATION.md)",
+        thresholdCommittee: "P3.3 on-chain quorum deferred until institutional pilot",
+        metrics: { ...relayerMetrics },
         pinnedContracts: {
             registry: REGISTRY_ADDRESS,
             semaphore: SEMAPHORE_ADDRESS,

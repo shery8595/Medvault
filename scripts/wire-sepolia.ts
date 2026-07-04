@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { loadAddresses, networkKeyFromHardhatName } from "./lib/networkAddresses";
-import { ensureFhevmInitialized, wireAllContracts, wireAutomationForwarder } from "./lib/timelockWiring";
+import { ensureFhevmInitialized, wireAllContracts, wireAutomationForwarder, resolveRelayerAddresses } from "./lib/timelockWiring";
 
 async function fetchCreationBlock(address: string): Promise<number> {
     const url = `https://api-sepolia.etherscan.io/api?module=contract&action=getcontractcreation&contractaddresses=${address}`;
@@ -57,11 +57,7 @@ async function main() {
     const patientDocumentStore = a.PatientDocumentStore
         ? await ethers.getContractAt("PatientDocumentStore", a.PatientDocumentStore)
         : null;
-    const trustedRelayer =
-        process.env.TRUSTED_RELAYER_ADDRESS ||
-        (process.env.RELAYER_PRIVATE_KEY
-            ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address
-            : undefined);
+    const relayerAddresses = resolveRelayerAddresses();
 
     await wireAllContracts({
         anonymousRegistry,
@@ -81,7 +77,7 @@ async function main() {
         honkVerifierEncryptedAddress,
         sponsorRegistryAddress: a.SponsorRegistry,
         stakingManagerAddress: a.StakingManager,
-        trustedRelayer,
+        relayerAddresses,
     });
 
     const realForwarder = process.env.CHAINLINK_FORWARDER?.trim();

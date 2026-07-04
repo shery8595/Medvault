@@ -282,30 +282,33 @@ const plaintext = await fetchAndDecryptDocument(cid, aesKey);`}
                     same wire format. See <code>CryptoFallbackBanner</code> in the mobile shell.
                 </p>
 
-                <h3>Revocation &amp; key rotation (forward-only)</h3>
+                <h3>Revocation &amp; key rotation (forward-only, H-2 / P4)</h3>
                 <p>
                     fhEVM <code>FHE.allow</code> grants are <strong>irreversible</strong>. A sponsor who already decrypted
-                    the AES key may retain plaintext off-chain even after revocation.
+                    the AES key may retain plaintext off-chain even after revocation. Old IPFS CIDs must be unpinned
+                    off-chain (best-effort via trusted indexer).
                 </p>
                 <ul>
                     <li>
-                        <code>PatientDocumentStore.revokeAccess(nullifier, trialId)</code> bumps{" "}
-                        <code>documentEpoch</code> and blocks sponsor <code>getDocumentRecord</code> reads when{" "}
-                        <code>sponsorGrantEpoch != documentEpoch</code>.
+                        <code>revokeAccess(nullifier, trialId, newCid, newAesKeyCtHash, keyChunks, inputProof)</code>{" "}
+                        is <strong>atomic revoke+rotate</strong>: bumps <code>documentEpoch</code>, rotates CID + FHE key
+                        chunks, emits <code>DocumentLegacyHandleRevoked</code>. Standalone{" "}
+                        <code>rotateDocument</code> / <code>updateDocumentKey</code> revert with{" "}
+                        <code>Use revokeAccess</code>.
                     </li>
                     <li>
-                        <code>rotateDocument</code> (patient-only, after revoke) re-wraps the AES key and rotates the IPFS CID; emits{" "}
-                        <code>DocumentLegacyHandleRevoked</code> for indexer unpin hooks.{" "}
-                        <code>updateDocumentKey</code> is deprecated (reverts <code>Use rotateDocument</code>).
+                        Sponsor decrypt ACL is <strong>per-access pull</strong>:{" "}
+                        <code>authorizeSponsorOnAccept</code> marks eligibility only; sponsor calls{" "}
+                        <code>pullSponsorKeyAccess</code> on first view. Patient may revoke before first pull.
                     </li>
                     <li>
-                        Re-authorization requires a new Accepted flow via{" "}
-                        <code>authorizeSponsorOnAccept</code>.
+                        Sponsor reads use <code>getKeyForSponsor</code> / epoch gate (
+                        <code>sponsorGrantEpoch == documentEpoch</code> after pull).
                     </li>
                 </ul>
                 <Callout type="warning" title="Honest limit">
                     MedVault does <strong>not</strong> cryptographically revoke data a sponsor already decrypted.
-                    Forward-only revocation blocks new contract-gated reads and rotates keys for future access only.
+                    Atomic revoke+rotate blocks new contract-gated reads; IPFS unpin is off-chain best-effort only.
                 </Callout>
 
                 <hr className="my-12 border-slate-200" />
