@@ -30,7 +30,7 @@ function devAiServiceProxyBypass(req: { url?: string }) {
   if (pathname === '/ai-service/health' || pathname.startsWith('/ai-service/ai/')) {
     return null;
   }
-  return false;
+  return req.url;
 }
 
 /** Same allowlist pattern for the hybrid indexer dev proxy. */
@@ -45,7 +45,7 @@ function devIndexerProxyBypass(req: { url?: string }) {
   ) {
     return null;
   }
-  return false;
+  return req.url;
 }
 
 const isCapacitorBuild = process.env.CAPACITOR_BUILD === 'true';
