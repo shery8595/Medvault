@@ -70,6 +70,8 @@ import { McpServerDoc } from "./pages/docs/McpServerDoc";
 import { McpSetupDoc } from "./pages/docs/McpSetupDoc";
 import { McpToolsDoc } from "./pages/docs/McpToolsDoc";
 import { SdkDoc } from "./pages/docs/SdkDoc";
+import { MarkdownDocPage } from "./pages/docs/MarkdownDocPage";
+import { MARKDOWN_DOC_ROUTES } from "./lib/docsMarkdownSources";
 
 import { PrivyProvider } from "@privy-io/react-auth";
 import { sepolia } from "viem/chains";
@@ -546,6 +548,17 @@ function MedVaultRoutes() {
                 </DocsLayout>
               }
             />
+            {MARKDOWN_DOC_ROUTES.map((path) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <DocsLayout>
+                    <MarkdownDocPage />
+                  </DocsLayout>
+                }
+              />
+            ))}
 
             {/* Legacy global redirects */}
             <Route path="/consent" element={<Navigate to="/patient/consent-logs" replace />} />

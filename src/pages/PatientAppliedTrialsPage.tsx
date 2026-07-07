@@ -128,6 +128,19 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
             rewardReadiness.hasCethBalance ||
             rewardReadiness.hasPendingWithdraw);
 
+    const awaitingNextPayout =
+        poolFunded &&
+        status === "Accepted" &&
+        hasIdentity &&
+        rewardReadiness !== null &&
+        !rewardReadinessLoading &&
+        rewardReadiness.registered &&
+        !canClaimRewards &&
+        (rewardReadiness.confirmedMilestones.length > 0 ||
+            rewardReadiness.paidMilestones.length > 0) &&
+        (milestones.length === 0 ||
+            rewardReadiness.confirmedMilestones.length < milestones.length);
+
     const rewardsClaimedSuccessfully =
         poolFunded &&
         status === "Accepted" &&
@@ -136,6 +149,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
         !rewardReadinessLoading &&
         rewardReadiness.registered &&
         !canClaimRewards &&
+        !awaitingNextPayout &&
         (rewardReadiness.confirmedMilestones.length > 0 ||
             rewardReadiness.paidMilestones.length > 0 ||
             isRewardClaimedLocally(trial.id, rewardReadiness.participantAddress));
@@ -337,7 +351,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                 identity,
             );
             const ephemeralSigner = getEphemeralSigner(identity, provider);
-            const milestoneScanCount = Math.max(milestones.length, 2);
+            const milestoneScanCount = Math.max(milestones.length, 12);
             const readiness = await getPatientRewardReadiness(
                 provider,
                 trial.id,
@@ -361,6 +375,43 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
         void refreshRewardReadiness();
     }, [refreshRewardReadiness]);
 
+    // Check milestones and progress
+    const fetchProgress = useCallback(async () => {
+        const provider = signer?.provider ?? readOnlyProvider;
+        if (!provider || !trial.id) return;
+        setMilestonesLoading(true);
+        try {
+            const identity = getStoredIdentity();
+            const progressAddress =
+                identity && (trial.nullifier || status === "Accepted")
+                    ? await generateEphemeralAddress(identity)
+                    : account || undefined;
+            const progressSigner = signer ?? provider;
+            const { rawMilestones, progress } = await getMilestonesAndProgress(
+                progressSigner,
+                trial.id,
+                progressAddress,
+            );
+            setMilestones(rawMilestones || []);
+
+            if (progressAddress && progress) {
+                setCurrentProgress(Number(progress[0]));
+            }
+        } catch (err) {
+            console.error("Error fetching progress:", err);
+        } finally {
+            setMilestonesLoading(false);
+        }
+    }, [signer, readOnlyProvider, trial.id, trial.nullifier, account, status]);
+
+    useEffect(() => {
+        void fetchProgress();
+    }, [fetchProgress, isRegistered]);
+
+    const refreshApplicationState = useCallback(async () => {
+        await Promise.all([refreshRewardReadiness(), fetchProgress()]);
+    }, [refreshRewardReadiness, fetchProgress]);
+
     useEffect(() => {
         if (status !== "Accepted" || !poolFunded) return;
         const intervalMs =
@@ -368,51 +419,32 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
             rewardReadiness?.hasCethBalance ||
             rewardReadinessError
                 ? 45_000
-                : 12_000;
+                : awaitingNextPayout
+                  ? 15_000
+                  : 12_000;
         const timer = window.setInterval(() => {
-            void refreshRewardReadiness();
+            void refreshApplicationState();
         }, intervalMs);
         return () => window.clearInterval(timer);
-    }, [status, poolFunded, refreshRewardReadiness, rewardReadiness, rewardReadinessError]);
+    }, [
+        status,
+        poolFunded,
+        refreshApplicationState,
+        rewardReadiness,
+        rewardReadinessError,
+        awaitingNextPayout,
+    ]);
 
-    // Check milestones and progress
     useEffect(() => {
-        const fetchProgress = async () => {
-            const provider = signer?.provider ?? readOnlyProvider;
-            if (!provider || !trial.id) return;
-            setMilestonesLoading(true);
-            try {
-                const identity = getStoredIdentity();
-                const progressAddress =
-                    identity && (trial.nullifier || status === "Accepted")
-                        ? await generateEphemeralAddress(identity)
-                        : account || undefined;
-                const progressSigner = signer ?? provider;
-                const { rawMilestones, progress } = await getMilestonesAndProgress(
-                    progressSigner,
-                    trial.id,
-                    progressAddress,
-                );
-                setMilestones(rawMilestones || []);
-
-                if (progressAddress && progress) {
-                    // Progress is [lastCompletedIndex, isActive]
-                    // We only care about lastCompletedIndex if it's > -1
-                    // Wait, TrialMilestoneManager.sol:getParticipantProgress returns (uint256, bool)
-                    // If not registered, it might return 0 but bool false.
-                    // Actually let's just use the index if bool is true or even if false (default 0)
-                    // But we need to know if they actually STARTED.
-                    // If they are in the incentive pool, they started.
-                    setCurrentProgress(Number(progress[0]));
-                }
-            } catch (err) {
-                console.error("Error fetching progress:", err);
-            } finally {
-                setMilestonesLoading(false);
+        if (status !== "Accepted" || !poolFunded) return;
+        const onVisible = () => {
+            if (document.visibilityState === "visible") {
+                void refreshApplicationState();
             }
         };
-        fetchProgress();
-    }, [signer, readOnlyProvider, trial.id, trial.nullifier, account, status, isRegistered]);
+        document.addEventListener("visibilitychange", onVisible);
+        return () => document.removeEventListener("visibilitychange", onVisible);
+    }, [status, poolFunded, refreshApplicationState]);
 
     useEffect(() => {
         if (milestones.length > 0) {
@@ -631,6 +663,24 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                             </Button>
                         )}
 
+                        {awaitingNextPayout && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className="w-full border-emerald-200 bg-emerald-50/80 text-emerald-800 font-bold rounded-xl text-[10px] uppercase tracking-wider h-9 gap-1.5 cursor-default opacity-100"
+                            >
+                                {rewardReadinessLoading ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                    <CheckCircle className="h-3 w-3" />
+                                )}
+                                {rewardReadinessLoading
+                                    ? "Checking for new payouts…"
+                                    : "Claimed · awaiting next payout"}
+                            </Button>
+                        )}
+
                         {rewardsClaimedSuccessfully && (
                             <Button
                                 size="sm"
@@ -764,7 +814,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                 isOpen={isClaimModalOpen}
                 onClose={() => {
                     setIsClaimModalOpen(false);
-                    void refreshRewardReadiness();
+                    void refreshApplicationState();
                 }}
                 trialId={trial.id}
                 nullifier={trial.nullifier}

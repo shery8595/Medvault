@@ -86,7 +86,14 @@ export function DocsTopNav() {
                                                 type="button"
                                                 className="w-full text-left px-3 py-2.5 hover:bg-slate-50 flex flex-col gap-0.5"
                                                 onClick={() => {
-                                                    navigate(item.href);
+                                                    if (
+                                                        item.href.startsWith("http://") ||
+                                                        item.href.startsWith("https://")
+                                                    ) {
+                                                        window.open(item.href, "_blank", "noopener,noreferrer");
+                                                    } else {
+                                                        navigate(item.href);
+                                                    }
                                                     setQ("");
                                                     setOpen(false);
                                                 }}

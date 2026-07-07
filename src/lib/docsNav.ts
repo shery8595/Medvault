@@ -100,7 +100,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Documentation index",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/README.md",
+        href: "/docs/index",
         tabId: "getting-started",
         section: "Overview",
         keywords: ["docs", "index", "readme", "markdown", "github"],
@@ -126,7 +126,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Local development & Docker",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/LOCAL_DEVELOPMENT.md",
+        href: "/docs/local-development",
         tabId: "getting-started",
         section: "First steps",
         keywords: ["docker", "compose", "local", "dev", "setup", "npm", "smoke", "sepolia"],
@@ -134,7 +134,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Docker Compose guide",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/DOCKER.md",
+        href: "/docs/docker",
         tabId: "getting-started",
         section: "First steps",
         keywords: ["docker", "dockerfile", "compose", "profile", "graph", "relayer", "troubleshooting", "production"],
@@ -219,7 +219,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "IERC7984 confidential token",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ERC7984_CONFIDENTIAL_TOKEN.md",
+        href: "/docs/erc7984-confidential-token",
         tabId: "protocol",
         section: "Smart contracts",
         keywords: ["erc7984", "ierc7984", "confidential", "ceth", "openzeppelin", "7984", "confidentialTransfer"],
@@ -228,7 +228,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Hybrid document storage",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/HYBRID_STORAGE.md",
+        href: "/docs/hybrid-storage",
         tabId: "protocol",
         section: "Smart contracts",
         keywords: ["ipfs", "pinata", "patientdocumentstore", "aes", "document", "hybrid", "cid", "revokeAccess", "pullSponsorKeyAccess", "DocumentLegacyHandleRevoked"],
@@ -237,7 +237,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Atomic flows",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ATOMIC_FLOWS.md",
+        href: "/docs/atomic-flows",
         tabId: "protocol",
         section: "Smart contracts",
         keywords: ["atomic", "stage", "finalize", "consent", "fundTrialAndSetMilestones", "stakeAndLock", "onlyTrustedRelayer", "cancelAnonymousApplyStage"],
@@ -246,7 +246,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Zero-revelation rewards",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md",
+        href: "/docs/zero-revelation-rewards",
         tabId: "protocol",
         section: "Smart contracts",
         keywords: ["rewards", "screening", "fhe", "milestone", "confidentialtransfer", "zero revelation", "distributePartialPaginated", "confirmReceipt", "prepareEntitlementProof", "pruneUnconfirmedSlots", "pull claim"],
@@ -255,7 +255,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "EligibilityEngine formal spec",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/eligibility-engine.spec.md",
+        href: "/docs/formal-verification/eligibility-engine-spec",
         tabId: "security",
         section: "Formal verification",
         keywords: ["certora", "halmos", "formal", "verification", "spec", "properties"],
@@ -264,7 +264,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Certora / Halmos results (Phase 5)",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/certora-halmos-results.md",
+        href: "/docs/formal-verification/certora-halmos-results",
         tabId: "security",
         section: "Formal verification",
         keywords: ["certora", "halmos", "formal", "verification", "differential", "phase 5", "diff-03", "p5-select"],
@@ -551,7 +551,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Subgraph deploy & sync",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/docs/SUBGRAPH_SYNC.md",
+        href: "/docs/subgraph-sync",
         tabId: "operations",
         section: "Runbooks",
         keywords: ["subgraph", "the graph", "studio", "deploy", "version", "medvault", "v0.2.0", "sync"],
@@ -561,7 +561,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "AI service",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/ai-service/README.md",
+        href: "/docs/ai-service",
         tabId: "operations",
         section: "Backend services",
         keywords: ["ai", "openai", "phi", "redaction", "criteria", "extract", "3200", "ai-service"],
@@ -570,7 +570,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Hybrid indexer",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/indexer/README.md",
+        href: "/docs/hybrid-indexer",
         tabId: "clients",
         section: "Integration",
         keywords: ["indexer", "mongodb", "redis", "3300", "hybrid", "rpc", "alerts", "desync"],
@@ -579,7 +579,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Archived design proposals",
-        href: "https://github.com/shery8595/Med-Vault/tree/main/docs/archive",
+        href: "/docs/archive",
         tabId: "protocol",
         section: "Smart contracts",
         keywords: ["archive", "historical", "new contracts", "upgrade", "v1.1", "milestone", "dataaccesslog"],
@@ -595,7 +595,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Security notes (Noir–FHE gap)",
-        href: "https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md",
+        href: "/docs/security-notes",
         tabId: "security",
         section: "Assurance",
         keywords: ["noir", "fhe", "integrity", "attestation", "criteria", "createTrial", "encrypted criteria"],
@@ -670,7 +670,7 @@ export const DOCS_NAV_ITEMS: DocsNavItem[] = [
     },
     {
         title: "Internal docs (SRS, DFD)",
-        href: "https://github.com/shery8595/Med-Vault/tree/main/internal-docs",
+        href: "/docs/internal",
         tabId: "security",
         section: "Assurance",
         keywords: ["srs", "dfd", "threat model", "zama integration", "internal-docs"],
@@ -695,6 +695,16 @@ const DEFAULT_TAB: DocsTabId = "getting-started";
 export function getTabForPath(pathname: string): DocsTabId {
     if (pathname.startsWith("/docs/testing")) {
         return "testing";
+    }
+    if (pathname.startsWith("/docs/formal-verification")) {
+        return "security";
+    }
+    if (
+        pathname === "/docs/index" ||
+        pathname === "/docs/local-development" ||
+        pathname === "/docs/docker"
+    ) {
+        return "getting-started";
     }
     if (pathname.startsWith("/docs/zama-fhe") || pathname.startsWith("/docs/fhe-primitives") || pathname.startsWith("/docs/client-encryption")) {
         return "zama";

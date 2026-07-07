@@ -95,6 +95,7 @@ export function SponsorTrialDetailsPage() {
         Record<string, { participant: string; registered: boolean; progress: number; staged: boolean[]; confirmed: boolean[]; paid: boolean[] }>
     >({});
     const [anonymousStateLoading, setAnonymousStateLoading] = useState(false);
+    const [promotingKey, setPromotingKey] = useState<string | null>(null);
     const [protocolRefreshing, setProtocolRefreshing] = useState(false);
     const [newMilestones, setNewMilestones] = useState([
         { name: "Screening", weight: 2500, deadline: Math.floor(Date.now() / 1000) + 86400 * 7 },
@@ -326,8 +327,47 @@ export function SponsorTrialDetailsPage() {
         }
     };
 
+    const promoteTargetKey = (kind: "anon" | "wallet", targetId: string, mIdx: number) =>
+        `${kind}:${targetId}:${mIdx}`;
+
+    const handleEnrollParticipants = async () => {
+        if (!signer || !id) {
+            setMilestoneStatus("Error: Connect your sponsor wallet to enroll participants.");
+            return;
+        }
+
+        const acceptedNullifiers = anonymousMatches
+            .filter((match) => match.applicationStatus === "Accepted" && match.nullifier)
+            .map((match) => match.nullifier!);
+
+        if (acceptedNullifiers.length === 0) {
+            setMilestoneStatus("Error: No accepted anonymous participants to enroll.");
+            return;
+        }
+
+        setMilestoneStatus("Enrolling accepted participants in the reward pool…");
+        try {
+            const result = await enrollUnregisteredAcceptedParticipants(signer, id, acceptedNullifiers);
+            if (result.enrolled === 0 && result.alreadyRegistered === acceptedNullifiers.length) {
+                setMilestoneStatus("All accepted participants are already enrolled in the reward pool.");
+            } else {
+                setMilestoneStatus(
+                    `Success! Enrolled ${result.enrolled} participant${result.enrolled === 1 ? "" : "s"}${result.failed > 0 ? ` (${result.failed} failed)` : ""}.`,
+                );
+            }
+            await refreshAnonymousMilestoneState();
+            await refreshProtocolData();
+        } catch (err: any) {
+            console.error(err);
+            setMilestoneStatus(`Error: ${err.reason || err.message || "Enrollment failed"}`);
+        }
+    };
+
     const handleDistributePartial = async (index: number) => {
-        if (!signer || !id) return;
+        if (!signer || !id) {
+            setMilestoneStatus("Error: Connect your sponsor wallet to stage entitlements.");
+            return;
+        }
 
         const acceptedNullifiers = anonymousMatches
             .filter((match) => match.applicationStatus === "Accepted" && match.nullifier)
@@ -485,7 +525,15 @@ export function SponsorTrialDetailsPage() {
     };
 
     const handlePromoteAnonymous = async (nullifier: string, milestoneIndex: number, milestoneName: string) => {
-        if (!signer || !id) return;
+        if (!signer || !id) {
+            const msg = "Error: Connect your sponsor wallet to promote participants.";
+            setDecisionStatus(msg);
+            setMilestoneStatus(msg);
+            return;
+        }
+
+        const key = promoteTargetKey("anon", nullifier, milestoneIndex);
+        setPromotingKey(key);
         setDecisionStatus(`Promoting anonymous participant to ${milestoneName}...`);
         try {
             const result = await promoteAnonymousParticipantAndDistribute(
@@ -517,6 +565,55 @@ export function SponsorTrialDetailsPage() {
             } else {
                 setDecisionStatus(`Error: ${err.reason || err.message || "Promotion failed"}`);
             }
+        } finally {
+            setPromotingKey(null);
+        }
+    };
+
+    const handlePromoteWallet = async (
+        patientAddress: string,
+        milestoneIndex: number,
+        milestoneName: string,
+    ) => {
+        if (!signer || !id) {
+            const msg = "Error: Connect your sponsor wallet to promote participants.";
+            setDecisionStatus(msg);
+            setMilestoneStatus(msg);
+            return;
+        }
+
+        const key = promoteTargetKey("wallet", patientAddress, milestoneIndex);
+        setPromotingKey(key);
+        setDecisionStatus(`Promoting to ${milestoneName}...`);
+        try {
+            const result = await promoteParticipantAndDistribute(
+                signer,
+                id,
+                patientAddress,
+                milestoneIndex,
+            );
+            if (result.alreadyPaid) {
+                setDecisionStatus(`Success! Reward for ${milestoneName} was already distributed.`);
+            } else {
+                setDecisionStatus(
+                    `Success! Promoted to ${milestoneName}. Use Stage entitlements above to release this phase.`,
+                );
+            }
+            await refetchMatches();
+            await refreshProtocolData();
+            await refreshAnonymousMilestoneState();
+        } catch (err: any) {
+            console.error("Promotion Error:", err);
+            const reason = err.reason || err.message || "";
+            if (reason.includes("Participant not registered")) {
+                setDecisionStatus("Error: Participant not in reward pool. Fund trial and retry.");
+            } else if (reason.toLowerCase().includes("must complete milestones in order")) {
+                setDecisionStatus("Error: Promote earlier phases first. Milestones must be completed in order.");
+            } else {
+                setDecisionStatus(`Error: ${reason || "Promotion failed"}`);
+            }
+        } finally {
+            setPromotingKey(null);
         }
     };
 
@@ -584,6 +681,8 @@ export function SponsorTrialDetailsPage() {
 
     type PhaseRowTone = "idle" | "ready" | "promoted" | "staged" | "done" | "blocked" | "staging";
 
+    type PhaseRowAction = "enroll" | "stage" | "none";
+
     const resolvePhaseRowUi = (
         idx: number,
         milestone: { name: string; distributed?: boolean },
@@ -593,6 +692,7 @@ export function SponsorTrialDetailsPage() {
         statusLabel: string;
         buttonLabel: string;
         buttonDisabled: boolean;
+        action: PhaseRowAction;
         tone: PhaseRowTone;
         hint: string | null;
     } => {
@@ -603,6 +703,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Staging in progress",
                 buttonLabel: "Staging…",
                 buttonDisabled: true,
+                action: "none",
                 tone: "staging",
                 hint: null,
             };
@@ -614,6 +715,7 @@ export function SponsorTrialDetailsPage() {
                     statusLabel: "Already distributed",
                     buttonLabel: "Done",
                     buttonDisabled: true,
+                    action: "none",
                     tone: "done",
                     hint:
                         idx === 0
@@ -625,6 +727,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "No enrolled participants",
                 buttonLabel: "Stage entitlements",
                 buttonDisabled: true,
+                action: "none",
                 tone: "idle",
                 hint: "Accept participants before releasing milestone payouts.",
             };
@@ -635,6 +738,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "All confirmed",
                 buttonLabel: "Complete",
                 buttonDisabled: true,
+                action: "none",
                 tone: "done",
                 hint: `All ${phase.total} participant(s) confirmed receipt for ${milestone.name}.`,
             };
@@ -645,6 +749,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: `${phase.releasedCount}/${phase.total} confirmed`,
                 buttonLabel: phase.stagedCount > phase.releasedCount ? "Awaiting confirm" : "Partially confirmed",
                 buttonDisabled: true,
+                action: "none",
                 tone: "staged",
                 hint: "Some participants still need to confirm receipt in My Applications.",
             };
@@ -655,6 +760,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Staged — awaiting confirm",
                 buttonLabel: "Staged",
                 buttonDisabled: true,
+                action: "none",
                 tone: "staged",
                 hint: "Participants must confirm receipt before funds are finalized.",
             };
@@ -665,6 +771,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: `${phase.stagedCount}/${phase.total} staged`,
                 buttonLabel: "Partially staged",
                 buttonDisabled: true,
+                action: "none",
                 tone: "staged",
                 hint: null,
             };
@@ -675,6 +782,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Already distributed",
                 buttonLabel: "Done",
                 buttonDisabled: true,
+                action: "none",
                 tone: "done",
                 hint:
                     idx === 0
@@ -692,6 +800,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Awaiting trial end",
                 buttonLabel: "Stage after end",
                 buttonDisabled: true,
+                action: "none",
                 tone: "blocked",
                 hint: "Screening (Phase 1) entitlements can only be staged after the trial end date.",
             };
@@ -701,9 +810,10 @@ export function SponsorTrialDetailsPage() {
             return {
                 statusLabel: `${phase.registeredCount}/${phase.total} in reward pool`,
                 buttonLabel: "Enroll participants",
-                buttonDisabled: true,
+                buttonDisabled: false,
+                action: "enroll",
                 tone: "blocked",
-                hint: "Accepted patients must be enrolled in the incentive pool before staging payouts (re-accept or use enroll on match cards).",
+                hint: "Accepted patients must be enrolled in the incentive pool before staging payouts.",
             };
         }
 
@@ -712,6 +822,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Awaiting promotion",
                 buttonLabel: "Promote first",
                 buttonDisabled: true,
+                action: "none",
                 tone: "blocked",
                 hint: `Promote participants to ${milestone.name} before staging entitlements.`,
             };
@@ -722,6 +833,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: `All ${phase.total} promoted`,
                 buttonLabel: "Stage entitlements",
                 buttonDisabled: false,
+                action: "stage",
                 tone: "ready",
                 hint: null,
             };
@@ -732,6 +844,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: `${phase.promotedCount}/${phase.total} promoted`,
                 buttonLabel: "Stage entitlements",
                 buttonDisabled: false,
+                action: "stage",
                 tone: "promoted",
                 hint: "You can stage now; remaining participants can be promoted later.",
             };
@@ -742,6 +855,7 @@ export function SponsorTrialDetailsPage() {
                 statusLabel: "Ready for screening payout",
                 buttonLabel: "Stage entitlements",
                 buttonDisabled: false,
+                action: "stage",
                 tone: "ready",
                 hint: null,
             };
@@ -751,6 +865,7 @@ export function SponsorTrialDetailsPage() {
             statusLabel: "Ready",
             buttonLabel: "Stage entitlements",
             buttonDisabled: false,
+            action: "stage",
             tone: "idle",
             hint: null,
         };
@@ -774,6 +889,30 @@ export function SponsorTrialDetailsPage() {
         }
         if (phase.promoted) {
             return { label: `P${mIdx + 1} promoted`, sublabel: "Ready for release", disabled: true, tone: "promoted" };
+        }
+        return { label: `Promote P${mIdx + 1}`, sublabel: "Not started", disabled: false, tone: "action" };
+    };
+
+    const getWalletParticipantPhaseUi = (
+        mIdx: number,
+        progress: number,
+    ): {
+        label: string;
+        sublabel: string;
+        disabled: boolean;
+        tone: "locked" | "action" | "promoted";
+    } => {
+        const prevDone = mIdx === 0 || progress >= mIdx;
+        if (!prevDone) {
+            return { label: `P${mIdx + 1} locked`, sublabel: "Complete prior phase", disabled: true, tone: "locked" };
+        }
+        if (progress >= mIdx + 1) {
+            return {
+                label: `P${mIdx + 1} promoted`,
+                sublabel: progress === mIdx + 1 ? "Current phase" : "Complete",
+                disabled: true,
+                tone: "promoted",
+            };
         }
         return { label: `Promote P${mIdx + 1}`, sublabel: "Not started", disabled: false, tone: "action" };
     };
@@ -1131,10 +1270,16 @@ export function SponsorTrialDetailsPage() {
                                                             size="sm"
                                                             variant="outline"
                                                             disabled={rowUi.buttonDisabled}
-                                                            onClick={() => void handleDistributePartial(idx)}
+                                                            onClick={() => {
+                                                                if (rowUi.action === "enroll") {
+                                                                    void handleEnrollParticipants();
+                                                                } else if (rowUi.action === "stage") {
+                                                                    void handleDistributePartial(idx);
+                                                                }
+                                                            }}
                                                             className={cn(
                                                                 "h-8 min-w-[7.5rem] text-[10px] font-bold uppercase disabled:opacity-100",
-                                                                rowUi.buttonDisabled ? tones.button : "bg-sky-600 text-white border-sky-600 hover:bg-sky-700",
+                                                                rowUi.buttonDisabled ? tones.button : rowUi.action === "enroll" ? "bg-orange-600 text-white border-orange-600 hover:bg-orange-700" : "bg-sky-600 text-white border-sky-600 hover:bg-sky-700",
                                                             )}
                                                         >
                                                             {isReleasing ? (
@@ -1341,6 +1486,26 @@ export function SponsorTrialDetailsPage() {
                                 <div className="p-3 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-300 text-xs font-medium">
                                     {anonymousMatchCount} anonymous application{anonymousMatchCount > 1 ? "s are" : " is"} managed via nullifier flow.
                                 </div>
+                                {decisionStatus && (
+                                    <p className={cn(
+                                        "text-[10px] font-bold uppercase italic px-1",
+                                        decisionStatus.startsWith("Error") ? "text-rose-500" : "text-indigo-500",
+                                    )}>
+                                        {decisionStatus.includes("Promoting") ? (
+                                            <span className="inline-flex items-center gap-1">
+                                                <Loader2 className="h-3 w-3 animate-spin" /> {decisionStatus}
+                                            </span>
+                                        ) : decisionStatus.startsWith("Success") ? (
+                                            <span className="inline-flex items-center gap-1">
+                                                <Check className="h-3 w-3" /> {decisionStatus}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1">
+                                                <ShieldAlert className="h-3 w-3" /> {decisionStatus}
+                                            </span>
+                                        )}
+                                    </p>
+                                )}
                                 {anonymousMatches.slice(0, 6).map((match, i) => (
                                     <Card
                                         key={match.id}
@@ -1385,6 +1550,8 @@ export function SponsorTrialDetailsPage() {
                                                     <div className="grid grid-cols-2 gap-2">
                                                         {milestones.map((m, mIdx) => {
                                                             const ui = getParticipantPhaseUi(mIdx, match.nullifier);
+                                                            const isPromoting =
+                                                                promotingKey === promoteTargetKey("anon", match.nullifier!, mIdx);
                                                             const toneClass =
                                                                 ui.tone === "released"
                                                                     ? "bg-emerald-600 text-white border-emerald-600"
@@ -1401,17 +1568,19 @@ export function SponsorTrialDetailsPage() {
                                                                     size="sm"
                                                                     variant={ui.tone === "action" ? "outline" : "default"}
                                                                     onClick={() => handlePromoteAnonymous(match.nullifier!, mIdx, m.name)}
-                                                                    disabled={ui.disabled || anonymousStateLoading}
+                                                                    disabled={ui.disabled || isPromoting}
                                                                     className={cn(
                                                                         "h-11 text-[9px] font-bold flex flex-col gap-0.5 disabled:opacity-100",
                                                                         toneClass,
                                                                     )}
                                                                 >
                                                                     <span className="inline-flex items-center gap-1">
-                                                                        {ui.tone === "released" || ui.tone === "promoted" ? (
+                                                                        {isPromoting ? (
+                                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                                        ) : ui.tone === "released" || ui.tone === "promoted" ? (
                                                                             <Check className="h-3 w-3" />
                                                                         ) : null}
-                                                                        {ui.label}
+                                                                        {isPromoting ? "Promoting…" : ui.label}
                                                                     </span>
                                                                     <span className="opacity-80 truncate max-w-full font-normal">{m.name}</span>
                                                                     <span className="opacity-60 text-[8px] font-normal">{ui.sublabel}</span>
@@ -1508,12 +1677,13 @@ export function SponsorTrialDetailsPage() {
                                                                     </div>
                                                                 )}
                                                                 <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-slate-400 hover:text-accent"
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-accent hover:text-accent"
                                                                     onClick={() => setSelectedMatch(selectedMatch === match.patientAddress ? null : match.patientAddress)}
                                                                 >
-                                                                    <TrendingUp className="h-4 w-4" />
+                                                                    <TrendingUp className="h-3.5 w-3.5" />
+                                                                    Promote
                                                                 </Button>
                                                             </div>
                                                         )}
@@ -1537,46 +1707,39 @@ export function SponsorTrialDetailsPage() {
                                                                     <Badge variant="outline" className="text-[9px]">Participant</Badge>
                                                                 </div>
                                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                                                    {milestones.map((m, mIdx) => (
+                                                                    {milestones.map((m, mIdx) => {
+                                                                        const ui = getWalletParticipantPhaseUi(mIdx, match.currentMilestone || 0);
+                                                                        const isPromoting =
+                                                                            promotingKey === promoteTargetKey("wallet", match.patientAddress, mIdx);
+                                                                        return (
                                                                         <Button
                                                                             key={mIdx}
                                                                             size="sm"
-                                                                            variant={(match.currentMilestone || 0) >= mIdx + 1 ? "default" : "outline"}
+                                                                            variant={ui.tone === "action" ? "outline" : "default"}
+                                                                            disabled={ui.disabled || isPromoting}
                                                                             className={cn(
-                                                                                "h-10 text-[9px] font-bold flex flex-col gap-0.5",
+                                                                                "h-10 text-[9px] font-bold flex flex-col gap-0.5 disabled:opacity-100",
+                                                                                ui.tone === "promoted"
+                                                                                    ? "bg-emerald-600 text-white border-emerald-600"
+                                                                                    : ui.tone === "locked"
+                                                                                        ? "bg-slate-100 text-slate-400 border-slate-200"
+                                                                                        : "",
                                                                                 (match.currentMilestone || 0) === mIdx + 1 && "ring-1 ring-emerald-500"
                                                                             )}
-                                                                            onClick={async () => {
-                                                                                if (!signer || !id) return;
-                                                                                setDecisionStatus(`Promoting to ${m.name}...`);
-                                                                                try {
-                                                                                    const result = await promoteParticipantAndDistribute(
-                                                                                        signer,
-                                                                                        id,
-                                                                                        match.patientAddress,
-                                                                                        mIdx
-                                                                                    );
-                                                                                    if (result.alreadyPaid) {
-                                                                                        setDecisionStatus(`Success! Reward for ${m.name} was already distributed.`);
-                                                                                        return;
-                                                                                    }
-                                                                                    setDecisionStatus(`Success! Promoted to ${m.name}. Processing reward...`);
-                                                                                    setDecisionStatus(`Success! Promoted & Reward Sent for ${m.name}.`);
-                                                                                } catch (err: any) {
-                                                                                    console.error("Promotion Error:", err);
-                                                                                    const reason = err.reason || err.message || "";
-                                                                                    if (reason.includes("Participant not registered")) {
-                                                                                        setDecisionStatus("Error: Participant not in reward pool. Fund trial and retry.");
-                                                                                    } else {
-                                                                                        setDecisionStatus(`Error: ${reason}`);
-                                                                                    }
-                                                                                }
-                                                                            }}
+                                                                            onClick={() => void handlePromoteWallet(match.patientAddress, mIdx, m.name)}
                                                                         >
-                                                                            <span>Phase {mIdx + 1}</span>
+                                                                            <span className="inline-flex items-center gap-1">
+                                                                                {isPromoting ? (
+                                                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                                                ) : ui.tone === "promoted" ? (
+                                                                                    <Check className="h-3 w-3" />
+                                                                                ) : null}
+                                                                                {isPromoting ? "Promoting…" : ui.label}
+                                                                            </span>
                                                                             <span className="opacity-50 text-[7px] truncate w-full">{m.name}</span>
                                                                         </Button>
-                                                                    ))}
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                                 <p className="text-[9px] text-slate-500 italic">
                                                                     Advancing a patient through phases allows for individual progress tracking and automated payout release.

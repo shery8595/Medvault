@@ -91,7 +91,7 @@ export function SecurityModelDoc() {
                                 encrypt/decrypt. Registration can still link a wallet to a commitment; trial bounds are
                                 <strong> encrypted</strong> when sponsors use <code>createTrialWithEncryptedCriteria</code> (production default) or
                                 <strong> public</strong> on the legacy <code>createTrial</code> path; native ETH movements remain visible at settlement.
-                                See <a href="https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md" className="font-semibold text-[#00685f] hover:underline">SECURITY.md</a> for the Noir–FHE integrity gap.
+                                See <Link to="/docs/security-notes" className="font-semibold text-[#00685f] hover:underline">Security notes</Link> for the Noir–FHE integrity gap.
                             </p>
                         </div>
                     </div>

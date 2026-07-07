@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
@@ -246,12 +247,12 @@ dataAccessLog.log(
                         Security model
                     </a>{" "}
                     and repository{" "}
-                    <a
-                        href="https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md"
+                    <Link
+                        to="/docs/security-notes"
                         className="font-semibold text-[#00685f] hover:underline"
                     >
-                        SECURITY.md
-                    </a>
+                        Security notes
+                    </Link>
                     .
                 </Callout>
 

@@ -239,58 +239,48 @@ export function SmartContractsDoc() {
                 <h2>Related deep dives</h2>
                 <ul className="text-sm">
                     <li>
-                        <a
-                            href="https://github.com/shery8595/Med-Vault/blob/main/docs/HYBRID_STORAGE.md"
+                        <Link
+                            to="/docs/hybrid-storage"
                             className="font-semibold text-[#00685f] hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
                         >
                             Hybrid storage
-                        </a>{" "}
+                        </Link>{" "}
                         — IPFS + FHE document keys (<code>PatientDocumentStore</code>)
                     </li>
                     <li>
-                        <a
-                            href="https://github.com/shery8595/Med-Vault/blob/main/docs/ATOMIC_FLOWS.md"
+                        <Link
+                            to="/docs/atomic-flows"
                             className="font-semibold text-[#00685f] hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
                         >
                             Atomic flows
-                        </a>{" "}
+                        </Link>{" "}
                         — wallet-visible single-tx optimizations vs 2-tx anonymous apply
                     </li>
                     <li>
-                        <a
-                            href="https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md"
+                        <Link
+                            to="/docs/zero-revelation-rewards"
                             className="font-semibold text-[#00685f] hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
                         >
                             Zero-revelation rewards
-                        </a>{" "}
+                        </Link>{" "}
                         — FHE-gated screening payouts
                     </li>
                     <li>
-                        <a
-                            href="https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/eligibility-engine.spec.md"
+                        <Link
+                            to="/docs/formal-verification/eligibility-engine-spec"
                             className="font-semibold text-[#00685f] hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
                         >
                             EligibilityEngine formal spec
-                        </a>{" "}
+                        </Link>{" "}
                         — property specification for Certora / Halmos review
                     </li>
                     <li>
-                        <a
-                            href="https://github.com/shery8595/Med-Vault/blob/main/docs/formal-verification/certora-halmos-results.md"
+                        <Link
+                            to="/docs/formal-verification/certora-halmos-results"
                             className="font-semibold text-[#00685f] hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
                         >
                             Formal verification results (Phase 5)
-                        </a>{" "}
+                        </Link>{" "}
                         — Certora/Halmos blocked on fhEVM; differential fallbacks pass
                     </li>
                 </ul>

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Prose } from "../../components/docs/Prose";
 import { CodeBlock } from "../../components/docs/CodeBlock";
 import { Callout } from "../../components/docs/Callout";
@@ -158,9 +159,9 @@ contract SponsorRegistry is Ownable {
                     immediately. The sponsor UI shows <strong>Staged</strong> vs <strong>Confirmed</strong> per participant.
                     After <code>CHALLENGE_WINDOW</code> (7 days), sponsors may <code>pruneUnconfirmedSlots</code> for patients
                     who never called <code>confirmReceipt</code>. See{" "}
-                    <a href="https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md" className="font-semibold text-[#00685f]">
+                    <Link to="/docs/zero-revelation-rewards" className="font-semibold text-[#00685f] hover:underline">
                         zero-revelation rewards
-                    </a>.
+                    </Link>.
                 </p>
 
                 <hr className="my-12 border-slate-200" />

@@ -31,6 +31,9 @@ import { getNavItemsForTab, getTabForPath, type DocsNavItem } from "../../lib/do
 
 const HREF_ICONS: Record<string, LucideIcon> = {
     "/docs": BookOpen,
+    "/docs/index": BookOpen,
+    "/docs/local-development": Terminal,
+    "/docs/docker": Terminal,
     "/docs/guides": MonitorPlay,
     "/docs/faq": HelpCircle,
     "/docs/architecture": Cpu,
@@ -40,10 +43,16 @@ const HREF_ICONS: Record<string, LucideIcon> = {
     "/docs/fhe-primitives": Lock,
     "/docs/engine": Activity,
     "/docs/contracts": FileCode2,
+    "/docs/erc7984-confidential-token": FileCode2,
+    "/docs/hybrid-storage": FileCode2,
+    "/docs/atomic-flows": FileCode2,
+    "/docs/zero-revelation-rewards": FileCode2,
+    "/docs/archive": FileCode2,
     "/docs/sponsor-system": ShieldCheck,
     "/docs/automation": Bot,
     "/docs/client-encryption": Key,
     "/docs/subgraph": Database,
+    "/docs/hybrid-indexer": Database,
     "/docs/frontend": LayoutTemplate,
     "/docs/identity-privacy": Fingerprint,
     "/docs/staking": Coins,
@@ -53,11 +62,17 @@ const HREF_ICONS: Record<string, LucideIcon> = {
     "/docs/testing/infrastructure": FlaskConical,
     "/docs/testing/ci": FlaskConical,
     "/docs/deployment": Terminal,
+    "/docs/subgraph-sync": Terminal,
+    "/docs/ai-service": Terminal,
     "/docs/mcp": Plug,
     "/docs/mcp/setup": Terminal,
     "/docs/mcp/tools": Bot,
     "/docs/changelog": ScrollText,
     "/docs/security-model": Shield,
+    "/docs/security-notes": Shield,
+    "/docs/internal": Shield,
+    "/docs/formal-verification/eligibility-engine-spec": Shield,
+    "/docs/formal-verification/certora-halmos-results": Shield,
     "/docs/compliance": Scale,
 };
 
@@ -158,18 +173,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                                         {group.items.map((item) => {
                                             const Icon = HREF_ICONS[item.href] ?? BookOpen;
                                             const isActive = location.pathname === item.href;
-                                            return (
-                                                <Link
-                                                    key={item.href}
-                                                    to={item.href}
-                                                    onClick={onNavigate}
-                                                    className={cn(
-                                                        "group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors",
-                                                        isActive
-                                                            ? "text-[#00685f] bg-[#00685f]/8 border border-[#00685f]/15"
-                                                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                                                    )}
-                                                >
+                                            const isExternal = item.href.startsWith("http://") || item.href.startsWith("https://");
+                                            const className = cn(
+                                                "group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold transition-colors",
+                                                isActive
+                                                    ? "text-[#00685f] bg-[#00685f]/8 border border-[#00685f]/15"
+                                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                                            );
+                                            const content = (
+                                                <>
                                                     {isActive && (
                                                         <motion.div
                                                             layoutId="docs-sidebar-active-marker"
@@ -184,6 +196,32 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                                                         )}
                                                     />
                                                     <span className="flex-1 tracking-tight pr-1 truncate">{item.title}</span>
+                                                </>
+                                            );
+
+                                            if (isExternal) {
+                                                return (
+                                                    <a
+                                                        key={item.href}
+                                                        href={item.href}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={onNavigate}
+                                                        className={className}
+                                                    >
+                                                        {content}
+                                                    </a>
+                                                );
+                                            }
+
+                                            return (
+                                                <Link
+                                                    key={item.href}
+                                                    to={item.href}
+                                                    onClick={onNavigate}
+                                                    className={className}
+                                                >
+                                                    {content}
                                                 </Link>
                                             );
                                         })}

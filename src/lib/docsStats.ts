@@ -79,7 +79,7 @@ export const STAT_BACKING = {
         label: "Documentation nav entries",
         value: 50,
         backing: ["src/lib/docsNav.ts (DOCS_NAV_ITEMS)"],
-        note: "Includes external GitHub markdown links in sidebar/search.",
+        note: "Includes markdown-backed in-app doc routes in sidebar/search.",
     },
     components: {
         label: "React components",

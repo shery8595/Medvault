@@ -161,9 +161,9 @@ await cEth.requestWithdraw(encrypted.handle, encrypted.inputProof);
                 <p>
                     After <code>CHALLENGE_WINDOW</code> (7 days), sponsors call <code>pruneUnconfirmedSlots</code> for
                     patients who never confirmed. See{" "}
-                    <a href="https://github.com/shery8595/Med-Vault/blob/main/docs/ZERO_REVELATION_REWARDS.md" className="font-semibold text-[#00685f] hover:underline">
+                    <Link to="/docs/zero-revelation-rewards" className="font-semibold text-[#00685f] hover:underline">
                         zero-revelation rewards
-                    </a>.
+                    </Link>.
                 </p>
 
                 <h2>VII. Exit modes (UI)</h2>

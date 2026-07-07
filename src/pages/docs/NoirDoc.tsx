@@ -210,12 +210,12 @@ export function NoirDoc() {
                     The seal is <strong>operationally</strong> bound to the Zama <code>finalCt</code> handle hash.
                     Full cryptographic proof that FHE ciphertext plaintext equals the Noir witness requires Zama
                     input-proof primitives not yet wired in this repo. See{" "}
-                    <a
-                        href="https://github.com/shery8595/Med-Vault/blob/main/SECURITY.md"
+                    <Link
+                        to="/docs/security-notes"
                         className="font-semibold text-[#00685f] hover:underline"
                     >
-                        SECURITY.md
-                    </a>{" "}
+                        Security notes
+                    </Link>{" "}
                     (Noir–FHE integrity gap).
                 </Callout>
 
