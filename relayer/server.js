@@ -110,6 +110,8 @@ const relayerMetrics = {
 
 /** trialId:nullifier → pre-signed vault register auth (from patient apply). */
 const pendingRegisterAuthStore = new Map();
+/** trialId:nullifier:milestoneIndex → pre-signed milestone completion auth. */
+const pendingMilestoneAuthStore = new Map();
 
 /** applicant (lowercase) → encrypted sponsor application manifest (AES key server-side only). */
 const sponsorApplicationStore = new Map();
@@ -208,6 +210,10 @@ async function assertRegistryOwnerWallet(walletHeader) {
 
 function pendingRegisterAuthKey(trialId, nullifier) {
     return `${BigInt(trialId).toString()}:${BigInt(nullifier).toString()}`;
+}
+
+function pendingMilestoneAuthKey(trialId, nullifier, milestoneIndex) {
+    return `${pendingRegisterAuthKey(trialId, nullifier)}:${BigInt(milestoneIndex).toString()}`;
 }
 
 const REGISTRY_ABI = [
@@ -1026,6 +1032,67 @@ async function relayGetPendingRegisterAuth(req, res) {
     }
 }
 
+async function relayStoreMilestoneAuth(req, res) {
+    try {
+        const {
+            trialId,
+            nullifier,
+            patient,
+            milestoneIndex,
+            nonce,
+            deadline,
+            signature,
+            milestoneManagerAddress,
+        } = req.body ?? {};
+        if (
+            trialId === undefined ||
+            nullifier === undefined ||
+            !patient ||
+            milestoneIndex === undefined ||
+            nonce === undefined ||
+            deadline === undefined ||
+            !signature
+        ) {
+            return res.status(400).json({ error: "Missing store-milestone-auth fields" });
+        }
+        const key = pendingMilestoneAuthKey(trialId, nullifier, milestoneIndex);
+        pendingMilestoneAuthStore.set(key, {
+            trialId: BigInt(trialId).toString(),
+            nullifier: BigInt(nullifier).toString(),
+            patient: ethers.getAddress(patient),
+            milestoneIndex: BigInt(milestoneIndex).toString(),
+            nonce: BigInt(nonce).toString(),
+            deadline: BigInt(deadline).toString(),
+            signature,
+            milestoneManagerAddress: milestoneManagerAddress ?? "",
+            storedAt: Date.now(),
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error("relay/store-milestone-auth failed:", safeError(err));
+        res.status(500).json({ error: safeError(err) });
+    }
+}
+
+async function relayGetPendingMilestoneAuth(req, res) {
+    try {
+        const { trialId, nullifier, milestoneIndex } = req.query ?? {};
+        if (trialId === undefined || nullifier === undefined || milestoneIndex === undefined) {
+            return res.status(400).json({ error: "Missing trialId, nullifier, or milestoneIndex" });
+        }
+        const entry = pendingMilestoneAuthStore.get(
+            pendingMilestoneAuthKey(trialId, nullifier, milestoneIndex)
+        );
+        if (!entry) {
+            return res.status(404).json({ error: "Pending milestone auth not found" });
+        }
+        res.json({ success: true, auth: entry });
+    } catch (err) {
+        console.error("relay/pending-milestone-auth failed:", safeError(err));
+        res.status(500).json({ error: safeError(err) });
+    }
+}
+
 async function relayStoreSponsorApplication(req, res) {
     try {
         const {
@@ -1258,6 +1325,8 @@ app.post("/relay/claim", limiter, relayClaim);
 app.post("/relay/register-anon", limiter, relayRegisterAnon);
 app.post("/relay/store-register-auth", limiter, relayStoreRegisterAuth);
 app.get("/relay/pending-register-auth", limiter, relayGetPendingRegisterAuth);
+app.post("/relay/store-milestone-auth", limiter, relayStoreMilestoneAuth);
+app.get("/relay/pending-milestone-auth", limiter, relayGetPendingMilestoneAuth);
 app.post("/relay/sponsor-application", limiter, relayStoreSponsorApplication);
 app.get("/relay/sponsor-applications", limiter, relayListSponsorApplications);
 app.get("/relay/sponsor-application/:address", limiter, relayGetSponsorApplication);

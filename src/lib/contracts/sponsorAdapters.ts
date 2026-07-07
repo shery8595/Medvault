@@ -23,6 +23,11 @@ import {
   type PendingRegisterAuth,
 } from "../pendingRegisterAuth";
 import {
+  createPendingMilestoneAuthorization,
+  resolvePendingMilestoneAuth,
+} from "../pendingMilestoneAuth";
+import { completeMilestoneSigned } from "../milestoneAuth";
+import {
   parseParticipantCreditFailures,
   type ParticipantCreditFailure,
 } from "../vaultDistributionEvents";
@@ -731,25 +736,88 @@ export async function resetMilestonePagination(
   await tx.wait();
 }
 
+async function resolveMilestonePatientSignature(
+  sponsorSigner: ethers.Signer,
+  trialId: string,
+  patientAddress: string,
+  milestoneIndex: number,
+  options?: { nullifier?: string | bigint; relayerBaseUrl?: string }
+): Promise<{ signature: string; deadline: bigint }> {
+  const mm = getTrialMilestoneManager(sponsorSigner);
+  const milestones = await mm.getMilestones(trialId);
+  if (milestoneIndex >= milestones.length) {
+    throw new Error(`Milestone ${milestoneIndex + 1} is not configured for this trial.`);
+  }
+
+  if (options?.nullifier !== undefined) {
+    const auth = await resolvePendingMilestoneAuth(
+      BigInt(trialId),
+      BigInt(options.nullifier),
+      milestoneIndex,
+      options.relayerBaseUrl
+    );
+    if (auth) {
+      return {
+        signature: auth.signature,
+        deadline: BigInt(auth.deadline),
+      };
+    }
+    throw new Error(
+      "No milestone promotion authorization found for this anonymous participant. " +
+        "Ask the patient to open My Applications on the same browser profile used to apply and sync milestone authorization."
+    );
+  }
+
+  const sponsorAddress = await sponsorSigner.getAddress();
+  if (sponsorAddress.toLowerCase() === patientAddress.toLowerCase()) {
+    const auth = await createPendingMilestoneAuthorization(
+      sponsorSigner,
+      BigInt(trialId),
+      0n,
+      patientAddress,
+      milestoneIndex
+    );
+    return {
+      signature: auth.signature,
+      deadline: BigInt(auth.deadline),
+    };
+  }
+
+  throw new Error(
+    "Patient signature required to promote this participant. " +
+      "The patient must authorize milestone completion from their wallet or anonymous profile."
+  );
+}
+
 export async function promoteParticipantAndDistribute(
   signer: ethers.Signer,
   trialId: string,
   patientAddress: string,
-  milestoneIndex: number
+  milestoneIndex: number,
+  options?: { nullifier?: string | bigint; relayerBaseUrl?: string }
 ) {
   const vault = getSponsorIncentiveVault(signer);
   const mm = getTrialMilestoneManager(signer);
-  const currentProgress = Number(await mm.getParticipantProgress(trialId, patientAddress));
+  let currentProgress = Number(await mm.getParticipantProgress(trialId, patientAddress));
   const alreadyPaid = await vault.participantMilestonePaid(trialId, patientAddress, milestoneIndex);
 
   if (currentProgress <= milestoneIndex) {
-    const tx1 = await mm.completeMilestone(trialId, patientAddress, milestoneIndex);
-    await tx1.wait();
+    for (let idx = currentProgress; idx <= milestoneIndex; idx++) {
+      const { signature, deadline } = await resolveMilestonePatientSignature(
+        signer,
+        trialId,
+        patientAddress,
+        idx,
+        options
+      );
+      await completeMilestoneSigned(signer, trialId, patientAddress, idx, signature, deadline);
+      currentProgress = idx + 1;
+    }
   }
 
   return {
     alreadyPaid,
-    promoted: currentProgress <= milestoneIndex,
+    promoted: true,
     progress: Math.max(currentProgress, milestoneIndex + 1),
   };
 }
@@ -768,7 +836,10 @@ export async function promoteAnonymousParticipantAndDistribute(
     options
   );
 
-  return promoteParticipantAndDistribute(signer, trialId, patientAddress, milestoneIndex);
+  return promoteParticipantAndDistribute(signer, trialId, patientAddress, milestoneIndex, {
+    nullifier,
+    relayerBaseUrl: options?.relayerBaseUrl,
+  });
 }
 
 export async function pruneUnconfirmedSlots(

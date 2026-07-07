@@ -19,6 +19,7 @@ import { BN254_FIELD_ORDER } from './criteriaSchema';
 import { fetchTrialCriteria } from './trialCriteria';
 import { getStoredPatientProfilePlain } from './profileStorage';
 import { createAndPublishPendingRegisterAuthorization } from './pendingRegisterAuth';
+import { createAndPublishPendingMilestoneAuths } from './pendingMilestoneAuth';
 import { getRelayersInFailoverOrder, probeAllRelayerHealth } from './relayerRegistry';
 import { resolveDocumentBindingForApply } from './patientDocumentUpload';
 import { getPendingHybridDocument } from './pendingHybridDocument';
@@ -529,6 +530,19 @@ export async function submitViaRelayer(
             });
         } catch (err) {
             console.warn("[apply] pending register auth failed (apply still succeeded):", err);
+        }
+
+        try {
+            await createAndPublishPendingMilestoneAuths({
+                identity: ctx.identity,
+                provider,
+                trialId: BigInt(trialId),
+                nullifier: proofFresh.nullifier,
+                permitHolder: permitRecipient,
+                relayerBaseUrl: stageRelayerUrl,
+            });
+        } catch (err) {
+            console.warn("[apply] pending milestone auth failed (apply still succeeded):", err);
         }
 
         return txHash;

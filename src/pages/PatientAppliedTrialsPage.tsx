@@ -52,6 +52,7 @@ import {
 import { getPatientRewardReadiness, type PatientRewardReadiness } from "../lib/confirmReceiptFlow";
 import { isRewardClaimedLocally } from "../lib/rewardClaimCache";
 import { friendlyContractError } from "../lib/contractErrors";
+import { createAndPublishPendingMilestoneAuths } from "../lib/pendingMilestoneAuth";
 
 /* ─── Status Configuration ─── */
 const statusConfig = {
@@ -111,6 +112,9 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
     const [decryptError, setDecryptError] = useState<string | null>(null);
     const autoEnrollAttemptedRef = useRef(false);
     const rewardRefreshInFlightRef = useRef(false);
+    const milestoneAuthSyncAttemptedRef = useRef(false);
+    const [isSyncingMilestoneAuth, setIsSyncingMilestoneAuth] = useState(false);
+    const [milestoneAuthStatus, setMilestoneAuthStatus] = useState<string | null>(null);
 
     const status = trial.applicationStatus || "Pending";
     const engineAddress = getContractAddressForChain("EligibilityEngine");
@@ -219,6 +223,51 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
         }
     };
 
+    const handleSyncMilestoneAuth = async () => {
+        if (!signer?.provider || !trial.id) return;
+        const identity = getStoredIdentity();
+        if (!identity) {
+            setMilestoneAuthStatus("Semaphore identity not found in this browser.");
+            return;
+        }
+        setIsSyncingMilestoneAuth(true);
+        setMilestoneAuthStatus("Syncing milestone authorization for sponsor promotion...");
+        try {
+            const nullifier =
+                trial.nullifier != null
+                    ? BigInt(trial.nullifier)
+                    : await resolveAnonymousNullifier(signer.provider, BigInt(trial.id));
+            if (!nullifier) {
+                throw new Error("Missing anonymous application nullifier for this trial.");
+            }
+            const permitHolder = await generateEphemeralAddress(identity);
+            const auths = await createAndPublishPendingMilestoneAuths({
+                identity,
+                provider: signer.provider,
+                trialId: BigInt(trial.id),
+                nullifier,
+                permitHolder,
+            });
+            if (auths.length === 0) {
+                setMilestoneAuthStatus("Trial milestones are not configured yet. Retry after the sponsor funds the pool.");
+            } else {
+                setMilestoneAuthStatus(`Milestone authorization synced (${auths.length} phase${auths.length === 1 ? "" : "s"}).`);
+            }
+        } catch (err: unknown) {
+            console.error("Milestone auth sync failed:", err);
+            setMilestoneAuthStatus(`Sync failed: ${friendlyContractError(err)}`);
+        } finally {
+            setIsSyncingMilestoneAuth(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!signer?.provider || !trial.id || status !== "Accepted" || !hasIdentity) return;
+        if (milestoneAuthSyncAttemptedRef.current || milestones.length === 0) return;
+        milestoneAuthSyncAttemptedRef.current = true;
+        void handleSyncMilestoneAuth();
+    }, [signer?.provider, trial.id, status, hasIdentity, milestones.length]);
+
     const handleRegisterForRewards = async () => {
         if (!signer || !account || !trial.id) return;
         setIsRegistering(true);
@@ -280,6 +329,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
             setIsRegistered(true);
             setIncentiveStatus("Successfully registered in reward pool.");
             await refreshRewardReadiness();
+            void handleSyncMilestoneAuth();
         } catch (err: unknown) {
             console.error("Registration failed:", err);
             const errObj = err as { reason?: string; message?: string; shortMessage?: string; code?: string; data?: unknown };
@@ -702,6 +752,29 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                             >
                                 <MessageSquare className="h-3 w-3" /> {showMessage ? "Hide Message" : "Sponsor Message"}
                             </Button>
+                        )}
+
+                        {poolFunded && status === "Accepted" && hasIdentity && milestones.length > 0 && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isSyncingMilestoneAuth}
+                                className="w-full font-bold rounded-xl text-[10px] uppercase tracking-wider h-9 gap-1.5"
+                                onClick={() => void handleSyncMilestoneAuth()}
+                            >
+                                {isSyncingMilestoneAuth ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                    <ShieldCheck className="h-3 w-3" />
+                                )}
+                                {isSyncingMilestoneAuth ? "Syncing promotion auth..." : "Sync promotion authorization"}
+                            </Button>
+                        )}
+
+                        {milestoneAuthStatus && (
+                            <p className="text-[9px] font-bold text-center leading-snug px-1 text-slate-500">
+                                {milestoneAuthStatus}
+                            </p>
                         )}
 
                         {/* View trial details link */}

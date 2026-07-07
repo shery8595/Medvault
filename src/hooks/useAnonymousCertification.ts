@@ -39,6 +39,17 @@ export function useAnonymousCertification(
             ? subgraph.noirEligible
             : null;
 
+    /**
+     * Encrypted-criteria trials emit `eligible: false` on EligibilityProofVerified
+     * (Noir binds identity only; FHE is the eligibility authority). When propensity
+     * was committed, or the event eligible bit is true, show eligible in UI.
+     */
+    const displayEligible = !certified
+        ? eligible
+        : fheCommitted || eligible === true
+          ? true
+          : eligible;
+
     useEffect(() => {
         if (!nullifier || !trialId) {
             setCertified(false);
@@ -98,7 +109,7 @@ export function useAnonymousCertification(
         subgraphEligible,
     ]);
 
-    return { certified, eligible, fheCommitted, loading };
+    return { certified, eligible: displayEligible, fheCommitted, loading };
 }
 
 // --- Per-key dedup + short TTL cache -------------------------------------

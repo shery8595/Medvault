@@ -560,6 +560,10 @@ export function SponsorTrialDetailsPage() {
                 setDecisionStatus("Error: Promote earlier phases first. Milestones must be completed in order.");
             } else if (raw.includes("not a registered participant") || raw.includes("participant not registered")) {
                 setDecisionStatus("Error: Participant is not in the reward pool yet. Accept/enroll them first.");
+            } else if (raw.includes("milestone promotion authorization")) {
+                setDecisionStatus(
+                    "Error: Patient must sync milestone authorization from My Applications (same browser profile used to apply), then retry promotion."
+                );
             } else if (raw.includes("already paid")) {
                 setDecisionStatus(`Success! ${milestoneName} was already released.`);
             } else {
@@ -649,7 +653,30 @@ export function SponsorTrialDetailsPage() {
         const promoted = !!state && state.progress >= milestoneIndex + 1;
         const staged = !!state?.staged?.[milestoneIndex];
         const released = !!(state?.confirmed?.[milestoneIndex] ?? state?.paid?.[milestoneIndex]);
-        return { promoted, staged, released };
+        const priorSatisfied =
+            milestoneIndex === 0 ||
+            (() => {
+                const prev = state
+                    ? {
+                          promoted: state.progress >= milestoneIndex,
+                          staged: !!state.staged?.[milestoneIndex - 1],
+                          released: !!(state.confirmed?.[milestoneIndex - 1] ?? state.paid?.[milestoneIndex - 1]),
+                      }
+                    : { promoted: false, staged: false, released: false };
+                return prev.promoted || prev.staged || prev.released;
+            })();
+        return { promoted, staged, released, priorSatisfied, needsOnChainSync: (staged || released) && !promoted };
+    };
+
+    const getEffectiveProgress = (state: (typeof anonymousMilestoneState)[string] | undefined): number => {
+        if (!state) return 0;
+        let effective = state.progress;
+        const limit = Math.max(state.staged?.length ?? 0, state.confirmed?.length ?? 0, milestones.length);
+        for (let i = 0; i < limit; i++) {
+            const paid = state.confirmed?.[i] || state.paid?.[i] || state.staged?.[i];
+            if (paid && effective < i + 1) effective = i + 1;
+        }
+        return effective;
     };
 
     const getAnonymousPhaseAggregateState = (milestoneIndex: number) => {
@@ -661,7 +688,7 @@ export function SponsorTrialDetailsPage() {
             .filter(Boolean);
         const allKnown = accepted.length > 0 && states.length === accepted.length;
         const registeredCount = states.filter((state) => state.registered).length;
-        const promotedCount = states.filter((state) => state.progress >= milestoneIndex + 1).length;
+        const promotedCount = states.filter((state) => getEffectiveProgress(state) >= milestoneIndex + 1).length;
         const stagedCount = states.filter((state) => state.staged?.[milestoneIndex]).length;
         const releasedCount = states.filter((state) => state.confirmed?.[milestoneIndex] ?? state.paid?.[milestoneIndex]).length;
 
@@ -876,10 +903,18 @@ export function SponsorTrialDetailsPage() {
         nullifier: string | undefined,
     ): { label: string; sublabel: string; disabled: boolean; tone: "locked" | "action" | "promoted" | "staged" | "released" } => {
         const phase = getAnonymousPhaseState(nullifier, mIdx);
-        const prevPromoted = mIdx === 0 || getAnonymousPhaseState(nullifier, mIdx - 1).promoted;
+        const prevSatisfied = mIdx === 0 || getAnonymousPhaseState(nullifier, mIdx - 1).priorSatisfied;
 
-        if (!prevPromoted) {
+        if (!prevSatisfied) {
             return { label: `P${mIdx + 1} locked`, sublabel: "Complete prior phase", disabled: true, tone: "locked" };
+        }
+        if (phase.needsOnChainSync) {
+            return {
+                label: `Sync P${mIdx + 1}`,
+                sublabel: "Confirm on-chain",
+                disabled: false,
+                tone: "action",
+            };
         }
         if (phase.released) {
             return { label: `P${mIdx + 1} released`, sublabel: "Funds confirmed", disabled: true, tone: "released" };
@@ -1605,7 +1640,7 @@ export function SponsorTrialDetailsPage() {
                         <div className="space-y-3">
                             {matchesLoading ? (
                                 <p className="text-sm text-slate-500 italic">Syncing matches...</p>
-                            ) : trialMatches.length === 0 ? (
+                            ) : trialMatches.length === 0 && anonymousMatches.length === 0 ? (
                                 <p className="text-sm text-slate-500 italic">No matches found for this protocol yet.</p>
                             ) : (
                                 trialMatches.slice(0, 10).map((match, i) => (
