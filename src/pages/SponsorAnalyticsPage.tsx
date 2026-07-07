@@ -92,14 +92,14 @@ export function SponsorAnalyticsPage() {
     decryptError: fheAggError,
     decryptAggregates,
   } = useEncryptedTrialAggregates(trialIds);
-  const { totalLogCount, logs: auditLogs } = useAuditLogs();
+  const { totalLogCount, logs: auditLogs, loading: auditLogsLoading } = useAuditLogs();
   const {
     summary: aiSummary,
     loading: aiSummaryLoading,
     error: aiSummaryError,
     configured: aiConfigured,
     refresh: refreshAiSummary,
-  } = useAiLogSummary(trialIds, auditLogs);
+  } = useAiLogSummary(trialIds, auditLogs, auditLogsLoading);
 
   const pipelineData = useMemo(() => {
     return charts.donutChart.map((slice) => ({
@@ -142,8 +142,8 @@ export function SponsorAnalyticsPage() {
   }, [trials]);
 
   const yieldProjection = useMemo(() => {
-    if (!apy || apyLoading) return null;
-    if (!isRevealed || !stakedBalanceEth) return null;
+    if (apy == null || apyLoading) return null;
+    if (!isRevealed || stakedBalanceEth == null) return null;
     const p = parseFloat(stakedBalanceEth);
     if (!Number.isFinite(p) || p <= 0) return null;
     const est = (p * apy) / 100;
@@ -153,9 +153,11 @@ export function SponsorAnalyticsPage() {
   const apyBadge =
     apySource === "protocol"
       ? "Live pool (linear APR snapshot)"
-      : apySource === "wrong_chain"
-        ? "Reference only — connect Ethereum Sepolia"
-        : "Fallback / degraded pool read";
+      : apySource === "testnet_zero"
+        ? "Reference APR — Sepolia pool rate is 0%"
+        : apySource === "wrong_chain"
+          ? "Reference only — connect Ethereum Sepolia"
+          : "Fallback / degraded pool read";
 
   if (loading) {
     return (
@@ -336,14 +338,11 @@ export function SponsorAnalyticsPage() {
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2"
                 >
                   <span className="font-medium text-slate-800">Trial #{row.trialId}</span>
-                  {row.error ? (
-                    <span className="text-xs text-rose-700">{row.error}</span>
-                  ) : (
-                    <span className="text-xs text-slate-600">
-                      {row.applicantCount ?? "—"} applicants
-                      {row.avgScore != null ? ` · avg score ${row.avgScore}` : ""}
-                    </span>
-                  )}
+                  <span className="text-xs text-slate-600">
+                    {row.applicantCount ?? "—"} applicants
+                    {row.avgScore != null ? ` · avg score ${row.avgScore}` : ""}
+                    {row.error ? <span className="ml-2 text-rose-700">{row.error}</span> : null}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -423,14 +422,16 @@ export function SponsorAnalyticsPage() {
           <CardContent className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-xl border border-slate-100 bg-white p-4">
               <p className="text-[10px] font-bold uppercase text-slate-500">Supply APR snapshot</p>
-              <p className="mt-2 text-2xl font-black tabular-nums text-teal-700">{apyLoading ? "…" : `${apy}%`}</p>
+              <p className="mt-2 text-2xl font-black tabular-nums text-teal-700">
+                {apyLoading ? "…" : apy != null ? `${apy}%` : "—"}
+              </p>
               <p className="text-[10px] text-slate-500 mt-1">Aave V3 WETH reserve (approximation)</p>
               {apyError ? <p className="text-[10px] text-amber-700 mt-2">{apyError}</p> : null}
             </div>
             <div className="rounded-xl border border-slate-100 bg-white p-4">
               <p className="text-[10px] font-bold uppercase text-slate-500">Revealed stake</p>
               <p className="mt-2 text-2xl font-black tabular-nums text-slate-900">
-                {isRevealed ? stakedBalanceEth : "—"} ETH
+                {isRevealed && stakedBalanceEth != null ? `${stakedBalanceEth} ETH` : "Encrypted"}
               </p>
               <p className="mt-1 text-[10px] text-slate-500">
                 {isRevealed ? (
@@ -458,7 +459,9 @@ export function SponsorAnalyticsPage() {
               <p className="mt-2 text-2xl font-black tabular-nums text-violet-800">
                 {yieldProjection !== null ? `~${yieldProjection}` : "—"} ETH / yr
               </p>
-              <p className="text-[10px] text-slate-500 mt-1">APR × stake (does not compound)</p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {isRevealed ? "APR × stake (does not compound)" : "Reveal stake to estimate yearly yield"}
+              </p>
             </div>
           </CardContent>
         </Card>

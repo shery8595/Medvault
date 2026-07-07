@@ -124,16 +124,18 @@ export function StakingVaultCard() {
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Yield</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-2xl font-black text-emerald-500">
-                                        {apyLoading ? "..." : `${apy}%`}
+                                        {apyLoading ? "..." : apy != null ? `${apy}%` : "—"}
                                     </span>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">APY</span>
                                 </div>
                                 <p className="text-[9px] text-slate-400 mt-2 font-medium leading-snug">
                                     {apySource === "protocol"
                                         ? "From Aave reserve liquidity rate (linear approx.)"
-                                        : apySource === "wrong_chain"
-                                          ? "Showing reference — switch to Ethereum Sepolia for live read"
-                                          : "Using conservative fallback when pool read fails"}
+                                        : apySource === "testnet_zero"
+                                          ? "Sepolia pool rate is 0% — reference APR shown"
+                                          : apySource === "wrong_chain"
+                                            ? "Showing reference — switch to Ethereum Sepolia for live read"
+                                            : "Using conservative fallback when pool read fails"}
                                 </p>
                             </div>
                             <div className="space-y-1.5 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">

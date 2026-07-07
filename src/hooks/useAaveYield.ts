@@ -9,7 +9,7 @@ const ETHEREUM_SEPOLIA = BigInt(ETHEREUM_SEPOLIA_CHAIN_ID);
 /** Conservative static headline when RPC / pool reads fail — not randomly jittered (clearly labeled in UI). */
 export const FALLBACK_REFERENCE_APY_PCT = 2.92;
 
-export type AaveYieldSource = "protocol" | "fallback" | "wrong_chain";
+export type AaveYieldSource = "protocol" | "fallback" | "wrong_chain" | "testnet_zero";
 
 export function useAaveYield() {
     const { readOnlyProvider, chainId } = useWeb3();
@@ -41,9 +41,14 @@ export function useAaveYield() {
                 }
 
                 const pct = await fetchAaveWethSupplyAprPercent(readOnlyProvider);
-                if (pct != null && Number.isFinite(pct)) {
+                if (pct != null && Number.isFinite(pct) && pct > 0) {
                     setApy(Math.round(pct * 100) / 100);
                     setSource("protocol");
+                } else if (pct === 0) {
+                    // Sepolia testnet pools often report 0% supply APR when utilization is idle.
+                    setApy(FALLBACK_REFERENCE_APY_PCT);
+                    setSource("testnet_zero");
+                    setError("Sepolia pool supply rate is 0% — showing reference APR.");
                 } else {
                     setApy(FALLBACK_REFERENCE_APY_PCT);
                     setSource("fallback");

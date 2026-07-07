@@ -1,4 +1,5 @@
 import type { EventLog, Provider } from "ethers";
+import startBlocks from "../../subgraph/sepolia-start-blocks.json";
 import { getDataAccessLog } from "./contracts";
 
 export interface AuditLogEntry {
@@ -12,8 +13,8 @@ export interface AuditLogEntry {
     source?: "chain" | "subgraph";
 }
 
-/** MedVault stack deploy window on Ethereum Sepolia (matches subgraph start). */
-const DATA_ACCESS_LOG_FROM_BLOCK = 272205848;
+/** Ethereum Sepolia deploy block for DataAccessLog (see subgraph/sepolia-start-blocks.json). */
+const DATA_ACCESS_LOG_FROM_BLOCK = startBlocks.DataAccessLog;
 
 const MAX_DISPLAY_LOGS = 500;
 const GET_LOG_BATCH_SIZE = 48;

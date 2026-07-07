@@ -2,14 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchAiAuditSummary, isAiServiceConfigured, type AuditLogsSummary } from "../lib/aiServiceClient";
 import type { AuditLogEntry } from "./useAuditLogs";
 
-export function useAiLogSummary(trialIds: string[], logs: AuditLogEntry[]) {
+export function useAiLogSummary(
+  trialIds: string[],
+  logs: AuditLogEntry[],
+  auditLogsLoading = false,
+) {
   const [summary, setSummary] = useState<AuditLogsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const configured = isAiServiceConfigured();
 
   const refresh = useCallback(async () => {
-    if (!configured || (trialIds.length === 0 && logs.length === 0)) {
+    if (!configured || auditLogsLoading || (trialIds.length === 0 && logs.length === 0)) {
       setSummary(null);
       return;
     }
@@ -34,7 +38,7 @@ export function useAiLogSummary(trialIds: string[], logs: AuditLogEntry[]) {
     } finally {
       setLoading(false);
     }
-  }, [configured, trialIds, logs]);
+  }, [configured, auditLogsLoading, trialIds, logs]);
 
   useEffect(() => {
     void refresh();

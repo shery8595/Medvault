@@ -95,7 +95,8 @@ export async function auditLogs(
 ): Promise<AuditLogsSummary> {
   let logs = request.logs ?? [];
 
-  if (logs.length === 0 && request.trialIds && request.trialIds.length > 0) {
+  // Only fetch on-chain when the caller did not supply a logs array (e.g. MCP with trialIds only).
+  if (request.logs === undefined && request.trialIds && request.trialIds.length > 0) {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
     const trialIdSet = new Set(request.trialIds);
     const chainLogs = await fetchAuditLogsFromChain(provider, trialIdSet);
