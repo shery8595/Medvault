@@ -10,6 +10,12 @@ function reloadOnceForStaleChunks(): boolean {
   return true;
 }
 
+function failedAssetUrlFromTarget(target: EventTarget | null): string {
+  if (target instanceof HTMLScriptElement) return target.src;
+  if (target instanceof HTMLLinkElement) return target.href;
+  return "";
+}
+
 /** Clear guard after a successful boot so a future deploy can trigger one more reload. */
 export function clearStaleChunkReloadGuard() {
   sessionStorage.removeItem(CHUNK_RELOAD_KEY);
@@ -31,10 +37,8 @@ export function registerStaleChunkRecovery() {
     "error",
     (event) => {
       const msg = event.message ?? "";
-      const scriptSrc =
-        event.filename ||
-        (event.target instanceof HTMLScriptElement ? event.target.src : "");
-      if (STALE_CHUNK_RE.test(msg) || (scriptSrc.includes("/assets/") && msg.includes("script"))) {
+      const assetUrl = event.filename || failedAssetUrlFromTarget(event.target);
+      if (STALE_CHUNK_RE.test(msg) || assetUrl.includes("/assets/")) {
         reloadOnceForStaleChunks();
       }
     },
