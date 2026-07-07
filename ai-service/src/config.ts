@@ -26,7 +26,7 @@ export function loadAiConfig(): AiServiceConfig {
   const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
   return {
-    port: Number(process.env.PORT ?? process.env.AI_SERVICE_PORT ?? 3200),
+    port: Number(process.env.AI_SERVICE_PORT ?? 3200),
     openaiBaseUrl: process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1",
     openaiApiKey: apiKey,
     openaiModel: model,

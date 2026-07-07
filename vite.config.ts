@@ -1,52 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { createLogger, defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
-
-const viteLogger = createLogger();
-const viteWarn = viteLogger.warn.bind(viteLogger);
-viteLogger.warn = (msg, options) => {
-  if (typeof msg === 'string' && msg.includes('Sourcemap for') && msg.includes('@aztec/bb.js')) {
-    return;
-  }
-  viteWarn(msg, options);
-};
 
 /** Zama fhEVM relayer API (Sepolia). Proxied same-origin in dev + Vercel prebuilt routes. */
 const ZAMA_RELAYER_SEPOLIA = 'https://relayer.testnet.zama.org';
 
 /** Hybrid indexer on Railway — proxied as /indexer in dev (matches vercel.json). */
 const INDEXER_RAILWAY = 'https://indexermedvault-production.up.railway.app';
-
-/**
- * Only forward known API paths. Workspace files like `/ai-service/README.md?import&raw`
- * must stay on Vite — a broad `/ai-service` proxy breaks in-app markdown docs.
- */
-function devAiServiceProxyBypass(req: { url?: string }) {
-  const pathname = (req.url ?? '').split('?')[0];
-  if (pathname === '/ai-service/health' || pathname.startsWith('/ai-service/ai/')) {
-    return null;
-  }
-  return false;
-}
-
-/** Same allowlist pattern for the hybrid indexer dev proxy. */
-function devIndexerProxyBypass(req: { url?: string }) {
-  const pathname = (req.url ?? '').split('?')[0];
-  if (
-    pathname === '/indexer/health' ||
-    pathname === '/indexer/alerts' ||
-    pathname === '/indexer/trials' ||
-    pathname.startsWith('/indexer/sponsor/') ||
-    pathname.startsWith('/indexer/trial/')
-  ) {
-    return null;
-  }
-  return false;
-}
 
 const isCapacitorBuild = process.env.CAPACITOR_BUILD === 'true';
 
@@ -63,7 +27,6 @@ export default defineConfig(({ mode }) => {
     'https://ethereum-sepolia-rpc.publicnode.com';
   return {
     base: isCapacitorBuild ? './' : '/',
-    customLogger: viteLogger,
     plugins: [
       react(),
       tailwindcss(),
@@ -158,9 +121,6 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 3000,
       strictPort: true,
-      sourcemapIgnoreList(sourcePath) {
-        return sourcePath.includes('node_modules');
-      },
       // `npm run dev` binds 0.0.0.0 for LAN/Docker; pin HMR WS to localhost for browser tabs.
       hmr:
         process.env.DISABLE_HMR === 'true'
@@ -186,57 +146,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
         },
-        '/ai-service/health': {
+        '/ai-service': {
           target: 'http://127.0.0.1:3200',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/ai-service/, ''),
         },
-        '/ai-service/ai': {
-          target: 'http://127.0.0.1:3200',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/ai-service/, ''),
-        },
-        '/indexer/health': {
-          target:
-            env.VITE_INDEXER_URL?.trim().startsWith('http://127.0.0.1') ||
-            env.VITE_INDEXER_URL?.trim().startsWith('http://localhost')
-              ? env.VITE_INDEXER_URL.trim().replace(/\/$/, '')
-              : INDEXER_RAILWAY,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/indexer/, ''),
-          secure: true,
-        },
-        '/indexer/alerts': {
-          target:
-            env.VITE_INDEXER_URL?.trim().startsWith('http://127.0.0.1') ||
-            env.VITE_INDEXER_URL?.trim().startsWith('http://localhost')
-              ? env.VITE_INDEXER_URL.trim().replace(/\/$/, '')
-              : INDEXER_RAILWAY,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/indexer/, ''),
-          secure: true,
-        },
-        '/indexer/trials': {
-          target:
-            env.VITE_INDEXER_URL?.trim().startsWith('http://127.0.0.1') ||
-            env.VITE_INDEXER_URL?.trim().startsWith('http://localhost')
-              ? env.VITE_INDEXER_URL.trim().replace(/\/$/, '')
-              : INDEXER_RAILWAY,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/indexer/, ''),
-          secure: true,
-        },
-        '/indexer/sponsor': {
-          target:
-            env.VITE_INDEXER_URL?.trim().startsWith('http://127.0.0.1') ||
-            env.VITE_INDEXER_URL?.trim().startsWith('http://localhost')
-              ? env.VITE_INDEXER_URL.trim().replace(/\/$/, '')
-              : INDEXER_RAILWAY,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/indexer/, ''),
-          secure: true,
-        },
-        '/indexer/trial': {
+        '/indexer': {
           target:
             env.VITE_INDEXER_URL?.trim().startsWith('http://127.0.0.1') ||
             env.VITE_INDEXER_URL?.trim().startsWith('http://localhost')

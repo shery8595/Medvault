@@ -175,7 +175,6 @@
     "deploy:verifier:sepolia": "hardhat run scripts/deploy-verifier.ts --network sepolia",
     "deploy:encrypted-verifier:sepolia": "hardhat run scripts/deploy-encrypted-verifier-sepolia.ts --network sepolia",
     "deploy:wire:sepolia": "hardhat run scripts/wire-sepolia.ts --network sepolia",
-    "deploy:leaderboard-sponsors:sepolia": "hardhat run scripts/set-leaderboard-trial-sponsors.ts --network sepolia",
     "deploy:upgrade:sepolia": "hardhat run scripts/upgrade-attestation-sepolia.ts --network sepolia",
     "deploy:upgrade-vault-security:sepolia": "hardhat run scripts/upgrade-attestation-sepolia.ts --network sepolia",
     "deploy:finish-upgrade:sepolia": "hardhat run scripts/finish-attestation-upgrade-sepolia.ts --network sepolia",

@@ -106,7 +106,7 @@ export function createAiServiceApp(config: AiServiceConfig): Express {
 }
 
 export function startAiService(app: Express, port: number): void {
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`[@medvault/ai] listening on 0.0.0.0:${port}`);
+  app.listen(port, () => {
+    console.log(`[@medvault/ai] listening on :${port}`);
   });
 }

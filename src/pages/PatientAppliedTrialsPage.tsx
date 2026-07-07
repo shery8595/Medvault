@@ -763,7 +763,7 @@ function ApplicationRow({ trial, index }: { trial: Trial; index: number }) {
                                     <p className="text-xs text-emerald-800/90 mt-0.5 leading-relaxed">
                                         {rewardReadinessLoading
                                             ? "Checking for the next sponsor release…"
-                                            : "You're all set for this phase. We'll update this page when your sponsor releases the next payout."}
+                                            : "You&apos;re caught up for now. We&apos;ll notify you here when the next phase is ready to claim."}
                                     </p>
                                 </div>
                             </div>
@@ -965,7 +965,7 @@ export function PatientAppliedTrialsPage() {
             <div className="mx-auto max-w-6xl space-y-8 pb-8">
                 <SectionTopBar title="My Applications" />
                 <p className="-mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-                    Track every trial you've applied to — status updates, sponsor messages, and reward registration in one place.
+                    Track every trial you&apos;ve applied to — status updates, sponsor messages, and reward registration in one place.
                 </p>
                 <PatientConnectPrompt
                     title="Connect to view your applications"
@@ -1011,7 +1011,7 @@ export function PatientAppliedTrialsPage() {
             />
 
             <p className="text-slate-500 text-sm leading-relaxed max-w-2xl -mt-2">
-                Track every trial you've applied to — status updates, sponsor messages, and reward registration in one place.
+                Track every trial you&apos;ve applied to — status updates, sponsor messages, and reward registration in one place.
             </p>
 
             {loading && trials.length === 0 ? (
@@ -1029,7 +1029,7 @@ export function PatientAppliedTrialsPage() {
                     </div>
                     <h3 className="text-slate-900 font-bold text-lg mb-1">No applications yet</h3>
                     <p className="text-slate-500 max-w-xs mx-auto mb-6 text-sm">
-                        You haven't applied to any clinical trials yet. Find a match to get started.
+                        You haven&apos;t applied to any clinical trials yet. Find a match to get started.
                     </p>
                     <Link to="/patient/find-trials">
                         <motion.button

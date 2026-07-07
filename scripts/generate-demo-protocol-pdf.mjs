@@ -1,12 +1,12 @@
 /**
  * Generates a sponsor trial protocol PDF for /sponsor/trials/create upload testing.
- * Usage: node scripts/generate-demo-protocol-pdf.mjs [outputDir]
+ * Usage: node scripts/generate-demo-protocol-pdf.mjs
  */
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import fs from "node:fs";
 import path from "node:path";
 
-const OUT_DIR = path.resolve(process.argv[2] ?? path.join(process.cwd(), "fixtures"));
+const OUT_DIR = path.join(process.cwd(), "fixtures");
 const OUT_FILE = path.join(OUT_DIR, "sponsor-medvault-demo-protocol.pdf");
 
 const LINES = [
@@ -20,7 +20,7 @@ const LINES = [
   "",
   "1. Synopsis",
   "Randomized, double-blind, placebo-controlled study evaluating encrypted eligibility",
-  "matching via MedVault fhEVM on Ethereum Sepolia. Duration: 7 minutes (demo / Sepolia automation window).",
+  "matching via MedVault fhEVM on Ethereum Sepolia. Duration: 12 weeks screening + 24 weeks treatment.",
   "",
   "2. Objectives",
   "Primary: Change in HbA1c from baseline to week 24.",
@@ -49,10 +49,8 @@ const LINES = [
   "Remote-first enrollment with optional site visits in Boston, MA and Austin, TX.",
   "",
   "6. Compensation",
-  "Initial incentive pool funding: 0.002 ETH (Sepolia demo).",
-  "Milestone payouts: 25% at 2 minutes (screening), 75% at 4 minutes (phase 1 completion).",
   "Participants receive confidential ETH micro-payments via MedVault Sponsor Incentive Vault",
-  "upon milestone completion.",
+  "upon milestone completion (screening, week 12, week 24).",
   "",
   "7. Regulatory",
   "Demo document only - not for human subjects. For MedVault sponsor UI and AI criteria extraction testing.",
