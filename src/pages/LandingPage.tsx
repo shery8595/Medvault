@@ -1547,14 +1547,14 @@ export function LandingPage() {
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                   <a
                     href={apkDownloadUrl}
-                    download
+                    download={apkDownloadUrl.startsWith("/") ? "medvault.apk" : undefined}
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00685f] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_32px_-18px_rgba(0,104,95,0.65)] transition hover:bg-[#00584f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00685f]/35"
                   >
                     <Download className="h-4 w-4" strokeWidth={2.2} />
                     Download APK
                   </a>
                   <Link
-                    to="/docs/local-development"
+                    to="/docs/mobile/android-apk"
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-[#00685f]/25 bg-white px-6 py-3 text-sm font-bold text-[#00685f] transition hover:bg-[#00685f]/5"
                   >
                     Build notes

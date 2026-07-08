@@ -28,6 +28,14 @@ const config = {
   routes: [
     { handle: 'filesystem' },
     {
+      src: '/downloads/(.*\\.apk)',
+      headers: {
+        'content-type': 'application/vnd.android.package-archive',
+        'content-disposition': 'attachment; filename="medvault.apk"',
+      },
+      continue: true,
+    },
+    {
       src: '/assets/(.*)',
       headers: { 'cache-control': 'public, max-age=31536000, immutable' },
       continue: true,
@@ -39,7 +47,7 @@ const config = {
     },
     { src: '^/api/relayer/11155111/v2$', dest: ZAMA_RELAYER_SEPOLIA },
     { src: '^/api/relayer/11155111/v2/(.*)$', dest: `${ZAMA_RELAYER_SEPOLIA}/$1` },
-    { src: '/.*', dest: '/index.html' },
+    { src: '/((?!downloads/).*)', dest: '/index.html' },
   ],
 };
 

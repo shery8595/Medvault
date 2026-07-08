@@ -5,7 +5,7 @@
  * Usage: node scripts/android-apk.mjs [debug|release]
  */
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,5 +37,18 @@ const outDir =
   variant === "release"
     ? path.join(androidDir, "app", "build", "outputs", "apk", "release")
     : path.join(androidDir, "app", "build", "outputs", "apk", "debug");
+
+const apkName = variant === "release" ? "app-release.apk" : "app-debug.apk";
+const builtApk = path.join(outDir, apkName);
+const publicDownloadsDir = path.join(root, "public", "downloads");
+const publishedApk = path.join(publicDownloadsDir, "medvault.apk");
+
+if (existsSync(builtApk)) {
+  mkdirSync(publicDownloadsDir, { recursive: true });
+  copyFileSync(builtApk, publishedApk);
+  console.log(`\nPublished web download: ${publishedApk}`);
+} else {
+  console.warn(`\nWarning: expected APK not found at ${builtApk}`);
+}
 
 console.log(`\nAPK output directory: ${outDir}`);
