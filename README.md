@@ -111,12 +111,12 @@ flowchart LR
   P["Patient encrypted profile\n(euint8/euint16/ebool)"] --> EE["EligibilityEngine\nFHE.sol ops"]
   S["Sponsor encrypted criteria\n(createTrialWithEncryptedCriteria)"] --> EE
   EE --> R["Encrypted score result\n(ebool + euint8)"]
-  R -->|FHE.allow + @zama-fhe/sdk| D["Patient decrypts locally"]
+  R -->|"FHE.allow + zama-fhe/sdk"| D["Patient decrypts locally"]
 ```
 
 ```mermaid
 sequenceDiagram
-    participant Browser as Browser @zama-fhe/sdk
+    participant Browser as "Browser (zama-fhe/sdk)"
     participant Arb as Ethereum Sepolia contracts
     participant CoP as Zama FHE coprocessor
     participant Pat as Patient decrypt
@@ -228,36 +228,36 @@ MedVault is the **reference fhEVM architecture for encrypted clinical-trial matc
 ```mermaid
 graph TD
   subgraph Frontend
-    A[React 19 + Vite] --> B[@zama-fhe/sdk]
-    A --> S[Semaphore.js]
-    A --> N[Noir.js / bb.js]
-    A --> G[GraphQL subgraph]
+    A["React 19 + Vite"] --> B["@zama-fhe/sdk"]
+    A --> S["Semaphore.js"]
+    A --> N["Noir.js / bb.js"]
+    A --> G["GraphQL subgraph"]
   end
   subgraph Chain["Ethereum Sepolia — no upgrade proxies"]
     subgraph FHE["ZamaEthereumConfig base"]
-      TM[TrialManager]
-      MVR[MedVaultRegistry]
-      APR[AnonymousPatientRegistry]
-      EE[EligibilityEngine]
-      CM[ConsentManager]
-      ECG[EncryptedConsentGate]
-      ESL[EncryptedScoreLeaderboard]
-      PDS[PatientDocumentStore]
-      SR[SponsorRegistry]
+      TM["TrialManager"]
+      MVR["MedVaultRegistry"]
+      APR["AnonymousPatientRegistry"]
+      EE["EligibilityEngine"]
+      CM["ConsentManager"]
+      ECG["EncryptedConsentGate"]
+      ESL["EncryptedScoreLeaderboard"]
+      PDS["PatientDocumentStore"]
+      SR["SponsorRegistry"]
     end
     subgraph Finance["ERC7984 + EIP712"]
-      CET[ConfidentialETH7984]
-      CE[ConfidentialETH alias]
-      SM[StakingManager]
-      SIV[SponsorIncentiveVault]
+      CET["ConfidentialETH7984"]
+      CE["ConfidentialETH alias"]
+      SM["StakingManager"]
+      SIV["SponsorIncentiveVault"]
     end
-    subgraph Ops["Automation & audit"]
-      TMM[TrialMilestoneManager]
-      MVA[MedVaultAutomation]
-      DAL[DataAccessLog]
+    subgraph Ops["Automation and audit"]
+      TMM["TrialMilestoneManager"]
+      MVA["MedVaultAutomation"]
+      DAL["DataAccessLog"]
     end
     subgraph ZK["Honk abstract base"]
-      HV[HonkVerifier]
+      HV["HonkVerifier"]
     end
   end
   B --> EE
