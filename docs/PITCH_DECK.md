@@ -156,7 +156,7 @@ flowchart LR
 
 - **Web:** [med-vault.xyz](https://med-vault.xyz) — patient privacy tour + sponsor create trial
 
-- **Video:** [YouTube walkthrough](https://www.youtube.com/watch?v=1wR01KflBOM&t=88s)
+- **Video:** [YouTube walkthrough](https://youtu.be/7VrcpRRugWc)
 
 - **Terminal:** `npm run demo:fhe` — scripted Sepolia lifecycle
 

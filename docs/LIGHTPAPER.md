@@ -212,6 +212,6 @@ See [SECURITY.md](../SECURITY.md) and [internal-docs/threat-model.md](../interna
 ## 10. Call to action
 
 1. Read the [FHE audit map](./FHE_AUDIT_README.md) (5 minutes).
-2. Watch the [demo video](https://www.youtube.com/watch?v=1wR01KflBOM&t=88s).
+2. Watch the [demo video](https://youtu.be/7VrcpRRugWc).
 3. Try the [live app](https://med-vault.xyz) or run `npm run demo:fhe`.
 4. Explore in-app docs at [/docs](https://med-vault.xyz/docs).

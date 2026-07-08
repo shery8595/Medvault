@@ -12,7 +12,7 @@
 | Resource | Link |
 |----------|------|
 | **Live app** | [https://med-vault.xyz](https://med-vault.xyz) |
-| **Demo video** | [YouTube walkthrough](https://www.youtube.com/watch?v=1wR01KflBOM&t=88s) |
+| **Demo video** | [YouTube walkthrough](https://youtu.be/7VrcpRRugWc) |
 | **Pitch deck outline** | [docs/PITCH_DECK.md](docs/PITCH_DECK.md) |
 | **Lightpaper** | [docs/LIGHTPAPER.md](docs/LIGHTPAPER.md) |
 | **FHE audit map** | [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md) — primitive → contract → test; includes [who can decrypt what](docs/FHE_AUDIT_README.md#who-can-decrypt-what) |

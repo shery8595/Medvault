@@ -15,7 +15,7 @@ MedVault is privacy-centric clinical trial infrastructure on **Zama (Zama FHE)**
 | **FHE audit map** | [docs/FHE_AUDIT_README.md](docs/FHE_AUDIT_README.md) |
 | **Changelog** | https://med-vault.xyz/docs/changelog |
 | **Repo** | https://github.com/shery8595/Med-Vault |
-| **Demo video** | https://www.youtube.com/watch?v=1wR01KflBOM&t=88s |
+| **Demo video** | https://youtu.be/7VrcpRRugWc |
 | **Terminal demo** | `npm run demo:fhe` |
 
 **Stack** — Core: Zama FHE · Ethereum Sepolia. Extensions: Semaphore · Noir/UltraHonk · The Graph · Chainlink CRE · Hardhat
